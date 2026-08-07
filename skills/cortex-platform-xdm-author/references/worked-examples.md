@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Worked examples -- index
 
-Five production-derived walkthroughs, one per extraction pattern. Each takes a synthesised raw log sample and walks through to a complete, validated `[MODEL: dataset=..._raw]` rule. Load only the walkthrough whose pattern matches the log in front of you.
+Sixteen production-derived walkthroughs, covering every extraction pattern and each mapping story. Each takes a synthesised raw log sample and walks through to a complete, validated `[MODEL: dataset=..._raw]` rule. Load only the walkthrough whose pattern matches the log in front of you.
 
 The final XQL in each walkthrough is a complete, validated rule reproduced verbatim. The vendor name in each header is real because the rules target real log formats; you would use the same `xdm.observer.vendor` string when authoring against those products. The raw log samples are synthesised with fake addresses (`acme.local`, `10.0.0.1`, `alice@example.com`) so no real customer data is reproduced.
 
@@ -21,6 +21,14 @@ The final XQL in each walkthrough is a complete, validated rule reproduced verba
 | 6 | [06-okta-authentication-multi-format.md](worked-examples/06-okta-authentication-multi-format.md) | Okta / Identity Cloud | A (JSON) and B (RFC 5424 syslog) | One authentication event in two wire formats. Mandatory 12-field authentication-story mapping (WARN-042); extraction differs, XDM assignment is identical. |
 | 7 | [07-fortigate-network-multi-format.md](worked-examples/07-fortigate-network-multi-format.md) | Fortinet / FortiGate | A (JSON) and B (RFC 3164 syslog, Stage 0 envelope) | One network event in two wire formats plus a dual authentication+network SSL-VPN branch. Mandatory 20-field network-story mapping (WARN-043); merged story tags in one arraycreate. |
 | 8 | [08-cisco-tacacs-aaa-multi-shape.md](worked-examples/08-cisco-tacacs-aaa-multi-shape.md) | Cisco / Secure ACS TACACS+ | B (RFC 3164 syslog, Stage 0 envelope) | Nine AAA event shapes (structured kv, legacy freeform, chatter) through one rule: discriminator filter, shared coalesce drain, AAA topology, non-UPN identity policy, reason normalisation. |
+| 9 | [09-sysmon-endpoint-multi-eventid.md](worked-examples/09-sysmon-endpoint-multi-eventid.md) | Microsoft / Sysmon | A (JSON) | Many EventIDs through one rule on the channel/verb model; endpoint events carry blank tags. |
+| 10 | [10-windows-security-4688-process-creation.md](worked-examples/10-windows-security-4688-process-creation.md) | Microsoft / Windows Security | A (JSON) | Process creation; the executable-parent distinction WARN-044 exists to catch. |
+| 11 | [11-linux-sudo-command.md](worked-examples/11-linux-sudo-command.md) | Linux / `sudo` | B (RFC 3164 syslog) | Command execution over syslog; the `COMMAND=` capture terminated on content, not end-of-line. |
+| 12 | [12-windows-logon-kerberos.md](worked-examples/12-windows-logon-kerberos.md) | Microsoft / Windows Security | A (JSON) | 4624 / 4625 / 4768; the complete LOGON_TYPE list and the Kerberos crosswalk. |
+| 13 | [13-aws-cloudtrail-multi-event.md](worked-examples/13-aws-cloudtrail-multi-event.md) | Amazon / AWS CloudTrail | D (nested JSON) | Operation verb DERIVED from `eventName`; many API actions through one rule. |
+| 14 | [14-azure-activity-signin.md](worked-examples/14-azure-activity-signin.md) | Microsoft / Azure + Entra ID | D (nested JSON) | Activity and sign-in in one rule; dual CLOUD + AUTHENTICATION tagging. |
+| 15 | [15-gcp-cloud-audit.md](worked-examples/15-gcp-cloud-audit.md) | Google / Cloud Audit Logs | D (nested JSON) | Verb from `methodName`, outcome from `status.code`. |
+| 16 | [16-nokia-nfmp-management-plane.md](worked-examples/16-nokia-nfmp-management-plane.md) | Nokia / NFM-P (NSP) | B (syslog) + a nested application header | A management plane with NO authentication anywhere. Recipe 14 two-stage parse; `logged in` as a false friend; the audit trail as a command execution; continuation lines to the catch-all. |
 
 ## Each walkthrough follows the same structure
 

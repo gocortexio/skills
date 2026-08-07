@@ -172,8 +172,8 @@ class TestScaffoldSyslogStage0(unittest.TestCase):
             'regextract(_raw_log, "^.*<(\\d{1,3})>[A-Za-z]{3}', rule
         )
         self.assertIn('regextract(_raw_log, "^<(\\d{1,3})>")', rule)
-        # No WARN-047 self-flag from the relay-aware envelope captures.
-        self.assertNotIn("WARN-047", [v["rule_id"] for v in _lint.lint(rule)])
+        # No ERR-030 self-flag from the relay-aware envelope captures.
+        self.assertNotIn("ERR-030", [v["rule_id"] for v in _lint.lint(rule)])
 
     def test_facility_and_severity_in_separate_alters(self):
         rule = self._rule()
@@ -225,7 +225,11 @@ class TestScaffoldAuthMandatory(unittest.TestCase):
             "xdm.event.tags = arraycreate(XDM_CONST.EVENT_TAG_AUTHENTICATION)",
             rule,
         )
-        self.assertIn('xdm.auth.service = "Login"', rule)
+        # xdm.auth.service is NOT paddable: the role is decided per
+        # event type, so a seeded default would assert a flow shape the
+        # scaffolder cannot know. It is a must-extract TODO instead.
+        self.assertNotIn('xdm.auth.service = "Login"', rule)
+        self.assertIn("xdm.auth.service             -- AUTH MANDATORY", rule)
         self.assertIn(
             "xdm.network.ip_protocol = XDM_CONST.IP_PROTOCOL_IP", rule
         )
@@ -240,12 +244,22 @@ class TestScaffoldAuthMandatory(unittest.TestCase):
 
     def test_unpaddable_fields_listed_as_todo(self):
         rule = self._rule()
-        # upn / operation / original_event_type / outcome cannot be padded
-        # with a safe value, so they appear as AUTH MANDATORY TODOs for the
-        # author.
+        # upn / operation / original_event_type / outcome / target.resource
+        # .name cannot be padded with a safe value, so they appear as AUTH
+        # MANDATORY TODOs for the author.
         self.assertIn("AUTH MANDATORY", rule)
         self.assertIn("xdm.source.user.upn", rule)
         self.assertIn("xdm.event.operation", rule)
+        self.assertIn("xdm.target.resource.name", rule)
+
+    def test_target_resource_name_is_never_padded(self):
+        # The contrast with xdm.target.ipv4 is the point: an empty target
+        # ADDRESS is honest, an empty target IDENTITY is not. A padded
+        # target is how an inverted auth rule passes the linter, so the
+        # scaffold must never seed a placeholder here (WARN-055).
+        rule = self._rule()
+        self.assertNotIn('xdm.target.resource.name = ""', rule)
+        self.assertNotIn("xdm.target.resource.name = null", rule)
 
     def test_self_gates_clean(self):
         errors = [v for v in _lint.lint(self._rule())

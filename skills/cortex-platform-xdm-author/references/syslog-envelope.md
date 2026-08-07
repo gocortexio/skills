@@ -5,6 +5,41 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Syslog envelope parsing -- the transport layer beneath Pattern B
 
+## The requirement, stated once
+
+Syslog reaches Cortex in two arrival forms: direct off the device, and
+behind one or more intermediate relays, each of which prepends its own
+`<PRI> timestamp host tag:` header. The same source produces both, often
+in the same feed, and a sample almost always shows only one.
+
+Every syslog rule this skill produces must model BOTH forms in ONE rule,
+always. Not the form the sample happened to show. Not two rules with a
+dataset split. One rule whose output is identical either way.
+
+Two mechanisms make that true, and both are required:
+
+1. The envelope is captured relay-aware, with a greedy `^.*` that skips
+   any number of prepended headers to reach the ORIGIN priority and host.
+   Anchoring on `^<` alone reads the outermost relay's values instead of
+   the device's.
+2. Every payload field is anchored on its OWN token, never on `^` and
+   never on a positional offset from the start of the line. A positional
+   capture shifts the moment a header is added or removed. Lint blocks
+   this as ERR-030, an error rather than an advisory.
+
+Static lint cannot prove the property on its own -- a pattern can look
+like a sanctioned envelope capture and still be position-dependent -- so
+prove it mechanically before emitting:
+
+```sh
+python3 scripts/verify_rule.py <rule.xql> <sample> --prepend-check
+```
+
+That evaluates every record twice, as supplied and with a relay header
+prepended, and exits 1 naming any field whose value differs. A
+difference is a defect in the anchor; fix the anchor rather than
+special-casing the second form.
+
 Every syslog source carries two independent layers. The envelope is the
 RFC 3164 or RFC 5424 transport wrapper (priority, timestamp, host, tag).
 The payload is the vendor body that Pattern B parses. Today rules parse
@@ -71,7 +106,7 @@ arrival form differs from the sample. Make it robust in two places:
   on a fixed column offset from the header.
 
 The bundled linter enforces the body half: a `^`-anchored / positional
-body capture in a syslog rule is flagged WARN-047. The relay-aware
+body capture in a syslog rule is flagged ERR-030. The relay-aware
 envelope captures are exempt (they are the sanctioned transport layer).
 
 ## Stage 0 -- canonical envelope capture (RFC 3164 and RFC 5424)
@@ -86,21 +121,138 @@ through a greedy `^.*` prefix so that an intermediate relay which prepends
 its own `<PRI> ts host` header (see the HARD RULE section above) is
 skipped, and the innermost origin host/PRI are captured -- not the
 relay's. On a direct line the greedy prefix matches nothing extra, so the
-result is byte-identical. The RFC 5424 host stays `^`-anchored because a
-5424 relay carries its identity in structured data, not a raw prepend.
+result is byte-identical.
+
+The RFC 5424 fields are anchored on the ISO TIMESTAMP that follows the
+version digit, not on `^` and not on a count of `\S+` from the start of
+the line. A compliant 5424 relay records itself in structured data rather
+than prepending a header, but a BSD relay in a mixed estate will happily
+prepend one onto a 5424 line, and a `^`-anchored 5424 capture then reads
+the relay's fields instead of the origin's. The `<PRI>VERSION ISO-8601`
+sequence is unambiguous and occurs once, so anchoring there is correct
+for both arrival forms at no cost.
 
 ```
 filter
     _raw_log != null
 | alter
-    tmp_pri        = to_integer(to_number(coalesce(arrayindex(regextract(_raw_log, "^.*<(\d{1,3})>[A-Za-z]{3}\s+\d+\s+[\d:]+"), 0), arrayindex(regextract(_raw_log, "^<(\d{1,3})>"), 0)))),
-    tmp_host_5424  = arrayindex(regextract(_raw_log, "^<\d{1,3}>\d+\s+\S+\s+(\S+)\s"), 0),
+    tmp_pri        = to_integer(to_number(coalesce(arrayindex(regextract(_raw_log, "^.*<(\d{1,3})>[A-Za-z]{3}\s+\d+\s+[\d:]+"), 0), arrayindex(regextract(_raw_log, "<(\d{1,3})>\d\s+\d{4}-\d{2}-\d{2}T"), 0)))),
+    tmp_host_5424  = arrayindex(regextract(_raw_log, "<\d{1,3}>\d\s+\d{4}-\d{2}-\d{2}T[\d:.+\-]+\s+(\S+)"), 0),
     tmp_host_3164  = arrayindex(regextract(_raw_log, "^.*<\d{1,3}>[A-Za-z]{3}\s+\d+\s+[\d:]+\s+(\S+)\s"), 0)
 | alter
     tmp_syslog_host_raw = coalesce(tmp_host_5424, tmp_host_3164)
 | alter
     tmp_syslog_host = if(tmp_syslog_host_raw != "-", tmp_syslog_host_raw)
 ```
+
+### The observer has no address field, and the hostname slot often holds one
+
+Two related facts that both bite on the first attempt.
+
+There is no `xdm.observer.ipv4`. The observer family carries `name`,
+`type`, `product`, `vendor`, `version`, `sub_type`, `action`,
+`content_version` and `unique_identifier` -- and no address at all, so
+ERR-020 rejects the natural first mapping. For a syslog source the
+observer IS the device and its address is a first-class fact about the
+record, so the gap is real. The workaround is `xdm.target.ipv4` plus
+`xdm.target.host.ipv4_addresses`, accepting that this conflates "the
+device that reported this" with "the device this happened to". Those
+coincide when a device self-reports an administrative login and diverge
+when it reports something about a peer, so state the choice in the
+MAPPED header NOTES rather than leaving a reader to infer it.
+
+Separately, the HOSTNAME slot frequently contains an ADDRESS rather than
+a name -- on some sources, on every record:
+
+```
+<185>Jul 29 13:23:56 172.22.205.92 host-aeeeb42e: 47596 Base CHASSIS-CRITICAL-...
+                     ^^^^^^^^^^^^^ hostname slot  ^^^^^^^^^^^^ tag
+```
+
+Mapping that slot to `xdm.observer.name` is correct, and it leaves the
+address unreachable by any address-based correlation, because nothing
+downstream knows the name field happens to hold one. Map the name
+unconditionally and the address only when the value IS an address:
+
+```
+    tmp_dev_ip = arrayindex(regextract(tmp_dev_host, "^(\d{1,3}(?:\.\d{1,3}){3})$"), 0)
+```
+
+The `^...$` anchoring is load bearing: an unanchored test matches an
+address embedded in a longer hostname and would map a fragment.
+
+### The RFC 5424 field layout
+
+Count the fields from the ISO timestamp, and get the offset right: the
+fields are all bare tokens, so extracting one and believing it is another
+produces plausible-looking output. APP-NAME mistaken for MSGID yields
+daemon names, which is exactly why the error survives review.
+
+```
+<190>1 2026-07-25T10:34:24.316+10:00 host-a mgd 16590 UI_LOGIN_EVENT [junos@2636 k="v"] MSG
+ |    | |                            |      |   |     |              |                  |
+ PRI  V TIMESTAMP                    HOST   APP PROCID MSGID         STRUCTURED-DATA    MSG
+```
+
+| Field | Offset after the ISO timestamp | Typical use |
+| --- | --- | --- |
+| HOSTNAME | 1 | `xdm.observer.name` (guard the nil) |
+| APP-NAME | 2 | the emitting daemon / process name |
+| PROCID | 3 | the PID |
+| MSGID | 4 | the event identity, when present |
+| STRUCTURED-DATA | 5 | `[id k="v" ...]` or a nil `-` |
+| MSG | rest | the free-text body |
+
+Add one `\S+\s+` per field after the timestamp anchor to reach the next.
+
+### A nil field is first-class, not an edge case
+
+RFC 5424 permits the NILVALUE `-` in ANY header field, and vendors use it
+heavily -- a nil MSGID is common rather than rare, and a record with
+APP-NAME, PROCID, MSGID and SD all nil is the standard
+`last message repeated N times` marker.
+
+So every 5424 header field must be tested for the dash explicitly, not
+merely for null. A dash is a value: it is not null, it has non-zero
+length, and it passes every population check.
+
+```
+// WRONG -- yields the identity "JUNOS_DAEMON_-" on every nil-MSGID record,
+// a label no daemon has, and puts a dash in the process name
+tmp_identity = if(tmp_msgid = null, concat("JUNOS_DAEMON_", tmp_app), tmp_msgid)
+
+// RIGHT -- MSGID, then APP-NAME only if it is not nil, then the catch-all
+tmp_identity = coalesce(
+    if(tmp_msgid != "-", tmp_msgid),
+    if(tmp_app != "-", concat("DAEMON_", tmp_app)),
+    "GOCORTEX_UNMODELLED")
+```
+
+Guard each field once, at the point of capture, so no downstream stage
+has to remember:
+
+```
+    tmp_app   = if(tmp_app_raw != "-", tmp_app_raw),
+    tmp_procid = if(tmp_procid_raw != "-", tmp_procid_raw),
+    tmp_msgid = if(tmp_msgid_raw != "-", tmp_msgid_raw)
+```
+
+### Never anchor the body on an optional structural character
+
+The MSG field is easiest to reach by anchoring on the end of the
+structured-data element, `"\]\s+(.+)$"`. That breaks silently on every
+record whose SD is nil, because there is no `]` anywhere in the line -- an
+ordinary daemon line in 5424 clothing has none. The capture returns null,
+the field falls back to its default, and if that default is the catch-all
+sentinel the result passes both a lint and a population count.
+
+Anchor the body positionally from the timestamp instead (six fields in),
+or coalesce the SD-anchored form with a positional fallback. And measure
+the two separately: envelope coverage and payload-structure coverage are
+different figures. A feed can be almost entirely 5424 by envelope while
+only around half of it carries a structured-data element, and the two
+drive different parts of the rule -- the envelope drives extraction, the
+payload structure drives classification.
 
 `tmp_pri` takes the origin priority through the greedy 3164 capture and
 falls back to the first `<NNN>` for RFC 5424 / PRI-only lines. The greedy
@@ -190,14 +342,61 @@ the coalesce -- that is correct. (Both payload temps must be produced
 from raw columns earlier in the rule; a coalesce over an undefined
 underscore field is rejected by the linter as ERR-027.)
 
+## Greedy `^.*` is necessary but NOT sufficient
+
+The greedy prefix works by making the regex prefer the LAST place the
+pattern can match, which on a relayed line is the origin's copy rather
+than the relay's. That reasoning holds only while the origin actually
+satisfies the WHOLE pattern. When it does not, the engine does not give
+up -- it BACKTRACKS to an earlier position, and the relay's copy has the
+same shape by construction, so the relay wins.
+
+So greedy alone is wrong for any field that can be ABSENT from the origin
+record. The process tag is the common case, because a tagless record is
+ordinary:
+
+```
+// WRONG -- a tagless origin leaves the relay's tag as the only match,
+// so greedy backtracks to it and the field says "relayd"
+tmp_proc = arrayindex(regextract(_raw_log, ".*\s([A-Za-z][\w\-]*)\[\d+\]:"), 0)
+
+// The obvious fix -- asserting that no further <PRI> follows -- needs a
+// negative lookahead, and this engine does not support lookaround: the
+// query hangs rather than failing (ERR-033). There is no regex answer.
+//
+// RIGHT -- do not derive the tag from the line at all on a source that
+// emits tagless records behind a relay. Leave the field null and say so
+// in the MAPPED header.
+
+```
+
+Re-anchoring on a fuller RFC 3164 header instead does NOT fix this, and
+is worth knowing because it is the intuitive next move. A pattern like
+`.*<\d{1,3}>[A-Za-z]{3}\s+\d+\s+[\d:]+\s+\S+\s+(\S+)\[\d+\]:` looks more
+specific, but the relay's own header matches that shape exactly as well
+as the origin's, so backtracking still reaches it -- and it now fails on
+a relayed line whose origin PRI was stripped, where the looser form
+succeeded. Specificity in the anchor does not help when the thing being
+excluded has the same shape; only asserting what must NOT follow does.
+
+Verify rather than reason about it. `--prepend-check` evaluates each
+record as supplied and relay-prepended and fails on any field whose value
+differs, which is what catches this class.
+
 ## When the priority is stripped
 
 A relay can forward a record with the `<NNN>` token removed. Then `tmp_pri`
 is null and the decode chain yields null all the way through, which the
 coalesce above handles: severity and log_level fall to whatever the
-payload provides. The Stage 0 host captures also return null, because
-they are anchored on the priority token by design (never on a vendor
-literal). For a source that arrives both with and without the PRI, use
+payload provides.
+
+On a DIRECT line the Stage 0 host captures also return null, because they
+are anchored on the priority token by design (never on a vendor literal).
+On a RELAYED line they do not: the relay supplies a `<PRI>` of its own,
+the origin no longer has one to be preferred, and the greedy prefix
+backtracks onto the relay's header, so `tmp_pri` and the host silently
+become the RELAY's. That is the same backtracking failure as above, and
+it is the one arrival form Stage 0 as written does not survive. For a source that arrives both with and without the PRI, use
 the prepend-tolerant host in extraction-recipes.md Recipe 5 -- a greedy
 `^.*` prefix with the `<PRI>` made optional
 (`^.*(?:<\d{1,3}>)?[A-Za-z]{3}\s+\d+\s+[\d:]+\s+(\S+)\s`) captures the
@@ -220,9 +419,13 @@ NOT MAPPED
 - Host capture is anchored on the priority token, never on a vendor literal.
   The linter flags a vendor-anchored header regex as WARN-040.
 - The capture is relay-aware (greedy `^.*` prefix): direct and
-  relay-prepended lines both yield the origin host / PRI. Body fields must
+  relay-prepended lines both yield the origin host / PRI, PROVIDED the
+  origin carries the token at all. Where it can be absent, greedy
+  backtracks onto the relay's copy, and there is no regex fix -- the
+  guard that would express it needs lookaround, which this engine does
+  not support (ERR-033). See the section above. Body fields must
   be token-anchored so they too match both forms -- a `^`-anchored /
-  positional body capture is flagged WARN-047.
+  positional body capture is flagged ERR-030.
 - If you capture the priority, decode it: a PRI captured but never turned
   into log_level or severity is flagged as WARN-041.
 - Facility and severity live in separate alter stages (ERR-024).
@@ -235,7 +438,7 @@ NOT MAPPED
 [ ] filter _raw_log != null is the first stage
 [ ] PRI captured relay-aware: coalesce(^.*<(\d{1,3})> origin, ^<(\d{1,3})> first)
 [ ] host captured via the relay-aware RFC 3164 (^.*<) + RFC 5424 coalesce, not a vendor literal
-[ ] every payload field token-anchored (no ^-anchored body, no everything-after-header) -- WARN-047
+[ ] every payload field token-anchored (no ^-anchored body, no everything-after-header) -- ERR-030
 [ ] NILVALUE hostname (-) guarded to null, never mapped literally
 [ ] priority decoded with function-form arithmetic (no infix, no modulo)
 [ ] facility and severity in separate alter stages (no sibling reference)

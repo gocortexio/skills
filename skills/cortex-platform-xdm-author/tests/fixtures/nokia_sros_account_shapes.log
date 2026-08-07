@@ -1,0 +1,4 @@
+<187>Jul 29 08:54:40 172.26.8.31 host-afc687b5: 150420 vprn256 SECURITY-MINOR-ssh_user_login-2009 [user_90226669]:  User user_90226669 from 198.51.100.9 logged in
+<187>Jul 30 23:25:20 172.20.209.230 host-4746bb28: 18249532 vprn170 USER-MINOR-cli_user_login-2001 [user_575b9419]:  User from 172.25.220.157 logged in
+<187>Jul 30 20:10:29 10.38.73.53 ALUCE: 9717555 Base USER-MINOR-cli_user_login_failed-2003 [${jndi]:  User from 172.30.18.99 failed authentication
+<188>Jul 30 15:14:11 10.118.72.224 ALUCE: 12623811 Base USER-MINOR-cli_user_login-2001 [Script Driven Session]:  User from 198.51.100.142 logged in

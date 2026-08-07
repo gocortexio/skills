@@ -93,7 +93,13 @@ filter
     xdm.event.outcome = if(
         tmp_result ~= "[Ss]uccess", XDM_CONST.OUTCOME_SUCCESS,
         tmp_result != null, XDM_CONST.OUTCOME_FAILED),
-    xdm.auth.service = "SSO",
+    xdm.auth.service = if(
+        lowercase(tmp_event) contains "sso", "SP",
+        tmp_event != null, "IDP"),
+    xdm.event.operation_sub_type = if(
+        lowercase(tmp_event) contains "sso", "Generic SSO",
+        tmp_factor = "PASSWORD", "password",
+        tmp_factor != null, "application"),
     xdm.source.user.upn = tmp_upn,
     xdm.source.user.identity_type = if(
         tmp_upn != null, XDM_CONST.IDENTITY_TYPE_USER,
@@ -182,7 +188,13 @@ alter
     xdm.event.outcome = if(
         tmp_result ~= "[Ss]uccess", XDM_CONST.OUTCOME_SUCCESS,
         tmp_result != null, XDM_CONST.OUTCOME_FAILED),
-    xdm.auth.service = "SSO",
+    xdm.auth.service = if(
+        lowercase(tmp_event) contains "sso", "SP",
+        tmp_event != null, "IDP"),
+    xdm.event.operation_sub_type = if(
+        lowercase(tmp_event) contains "sso", "Generic SSO",
+        tmp_factor = "PASSWORD", "password",
+        tmp_factor != null, "application"),
     xdm.source.user.upn = tmp_upn,
     xdm.source.user.identity_type = if(
         tmp_upn != null, XDM_CONST.IDENTITY_TYPE_USER,
@@ -220,9 +232,9 @@ alter
 ## Key decisions called out
 
 - Extraction differs, assignment does not. The only delta between the two rules is Stage 1: the syslog rule first runs `regextract(_raw_log, "(\{.*\})\s*$")` to recover the JSON body, then every downstream call matches the JSON rule. This is the whole point of a normalised schema -- once the payload is parsed, the wire format is irrelevant.
-- All 14 mandatory fields are mapped in both rules, so the authentication story is created from either feed. WARN-042 stays silent on both because nothing mandatory is missing. This includes the two `xdm.source.user` account-class fields: `identity_type` (`IDENTITY_TYPE_USER` for a real principal) and `user_type` (defaulting to `USER_TYPE_REGULAR`, with the `$` / `svc_` / `service` conventions catching machine and service accounts).
+- All 15 mandatory fields are mapped in both rules, so the authentication story is created from either feed. WARN-042 stays silent on both because nothing mandatory is missing. This includes the two `xdm.source.user` account-class fields: `identity_type` (`IDENTITY_TYPE_USER` for a real principal) and `user_type` (defaulting to `USER_TYPE_REGULAR`, with the `$` / `svc_` / `service` conventions catching machine and service accounts).
 - Placeholders are real, not omissions. Okta logs no source port and no target IP / port, so `xdm.source.port` and `xdm.target.port` take `to_integer(0)` and `xdm.target.ipv4` takes the empty string `""`. Per [authentication-mapping.md](../authentication-mapping.md), a mandatory field must be present even when the source has no value -- dropping it would drop the event from the story.
 - `xdm.source.user.upn`, not `username`. The mandatory correlation key is the UPN (`actor.alternateId`). The human-readable `actor.displayName` is mapped to the optional `xdm.source.user.username`; the two are never substituted for each other.
 - `xdm.event.type` contains `authentication`. The story keys on this substring, not on a `"AUTH"` category label. The classifier guards on `tmp_event != null`; a malformed row resolves to the `"GOCORTEX_UNMODELLED"` sentinel (with blank tags) rather than a false-positive auth event, and is discoverable via the REVIEW UNMODELLED query.
 - Tags are per record and multi-valued. A recognised login carries `arraycreate(XDM_CONST.EVENT_TAG_AUTHENTICATION, XDM_CONST.EVENT_TAG_SAAS)` -- authentication because it is a credential validation, SAAS because Okta is a SaaS identity provider -- from the closed six-member `EVENT_TAG` enum. An unrecognised record's tag if-chain ends with `null`, so it stays blank.
-- `xdm.event.operation` follows the credential type. `PASSWORD` maps to `OPERATION_TYPE_AUTH_LOGIN`; any other credential type (a second factor) maps to `OPERATION_TYPE_AUTH_MFA`. `xdm.auth.service = "SSO"` is the authentication service name -- Okta is an SSO service. (It is the service NAME, not an "SP"/"IDP" role; those values do not exist in XDM.)
+- `xdm.event.operation` follows the credential type. `PASSWORD` maps to `OPERATION_TYPE_AUTH_LOGIN`; any other credential type (a second factor) maps to `OPERATION_TYPE_AUTH_MFA`. `xdm.auth.service` carries the ROLE, decided per event type: an `eventType` naming the SSO leg is `"SP"` (Okta is issuing an assertion to a relying party), everything else on this feed is `"IDP"` (Okta validated the credential). One feed, both values -- upstream `OktaModelingRules_2_0.xif:97` does exactly this. The SSO fact itself moves to `xdm.event.operation_sub_type = "Generic SSO"`, a member of that field's closed list.

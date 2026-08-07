@@ -252,6 +252,45 @@ Explicitly rejected anti-patterns:
 
 Scratch temporaries use the `tmp_` prefix (`tmp_user`, `tmp_src_ip`, ...). The `_` prefix is reserved by the platform for internal / system-generated fields (`_raw_log`, `_time`, `_message`, ...), so a rule must never CREATE a `_`-prefixed field -- the bundled `lint_rule.py` raises ERR-028 if it does. No explicit `| fields -...` cleanup stage is needed: an XDM MODEL rule surfaces only `xdm.*` fields, so `tmp_` temporaries never reach the datamodel regardless of name. (The linter therefore also omits INFO-006, the missing-cleanup finding; ignore it if a downstream linter reports it.)
 
+Bare language keywords are reserved too, and the `tmp_` prefix is what keeps a temp clear of them. `tag` is the one that bites in practice, because it is the natural name for the `%FAC-SEV-MNEMONIC` token on a syslog source. It is rejected in SEARCH mode as well as in a rule:
+
+```
+// REJECTED -- bad query syntax: mismatched input 'tag'
+| alter tag = arrayindex(regextract(_raw_log, "%([\w\-]+) :"), 0)
+
+// CORRECT
+| alter tmp_mnemonic = arrayindex(regextract(_raw_log, "%([\w\-]+) :"), 0)
+```
+
+Prefixing every scratch name with `tmp_` avoids the whole class without having to memorise the keyword list, which is the main reason the convention exists.
+
+The prefix protects the name you CREATE and does nothing for the name you READ. A raw column whose own name is a language construct fails on the read alone, and no naming convention available to the rule can help, because the rule does not choose that name. This is the more expensive half of the class: it does not fail as a query, it fails the whole PACK INSTALL, with an opaque 101704 that names no field and no line, while the linter passes, `spellbook validate` passes, the modelling schema declares the column and the same read runs perfectly in SEARCH mode. Confirmed on a live tenant with two uploads differing by exactly one line:
+
+```
+// INSTALLED
+| alter tmp_v = api_key_id
+
+// FAILED the pack install -- the only change is reading a column named `view`
+| alter tmp_v = api_key_id,
+        tmp_view = view
+```
+
+Note that `tmp_view` is correctly prefixed.
+
+The escape is a BACKTICK, and it is the established idiom rather than a workaround. Measured across 328 shipped upstream modelling rules, every column of this kind is read inside backticks and not one is read bare: `target` appears 31 times, always quoted; `fields` 13, `in` 10, `transaction` 6, and `tag`, `table` and `filter` twice each. So a rule that must read one of these columns reads it like this:
+
+```
+| alter xdm.event.tags = arraycreate(`tag`)
+```
+
+Which names qualify was derived from that corpus rather than from how SQL-ish a word looks, and the guess is a bad guide. Reserved: `view` and `tag` (both confirmed by live-tenant bisection) plus `target`, `fields`, `transaction`, `table` and `filter` (never read bare in any shipped rule). `in` qualifies too but is excluded from the check, because it is also the membership operator and flagging it would fire on every `action in (...)`.
+
+Read the counterexample counts carefully, because it is easy to state them wrongly. `timestamp` is read bare in value position 39 times and `dst` 146, so both are demonstrably ordinary column names. `contains` and `call` are not evidence of anything: `contains` occurs 1429 times and 1428 of those are the OPERATOR, with zero value-position reads, so the corpus simply holds no column of that name. They are left out of the check because there is nothing to put them in on, which is a weaker claim than having measured them safe.
+
+The evidence is also uneven within the reserved set. `target` is attested by 31 backticked reads across 12 vendors, `fields` by 13, `in` by 10 across 10 distinct rules, `transaction` by 6; `table` and `filter` by 2 each; `tag` by 2; and `view` appears in the corpus in no form at all. The two thinnest are exactly the two that live-tenant bisection confirmed, which is why the bisection was necessary. Corpus silence is not evidence of safety.
+
+`lint_rule.py` raises ERR-034 on the unquoted read. Renaming the column at source is still preferable where you control what writes it, because the backtick must be repeated at every read and a missed one fails the same silent way.
+
 ## Category versus subcategory routing
 
 Both `xdm.alert.category` and `xdm.alert.subcategory` are valid sinks for vendor classification text, but they sit at different levels of the XDM hierarchy and the choice between them is not interchangeable:

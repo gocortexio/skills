@@ -15,6 +15,7 @@ Two halves:
 
 from __future__ import annotations
 
+import re
 import importlib.util
 import sys
 import unittest
@@ -92,7 +93,7 @@ class TestSyslogLint(unittest.TestCase):
         ids = _ids(rule)
         self.assertNotIn("WARN-040", ids)
         # The relay-aware envelope host is not a prepend-fragile body capture.
-        self.assertNotIn("WARN-047", ids)
+        self.assertNotIn("ERR-030", ids)
 
 
 class TestSyslogPriorityDecode(unittest.TestCase):
@@ -170,6 +171,91 @@ class TestSyslogPriorityDecode(unittest.TestCase):
         out = _verify.evaluate_rule(self.rule, direct)
         self.assertEqual(out["xdm.observer.name"], "originhost")
         self.assertEqual(out["xdm.event.id"], "6")
+
+
+class TestGreedyIsNotSufficientForAnOptionalToken(unittest.TestCase):
+    """A greedy `.*` prefix makes the regex PREFER the last match, which
+    on a relayed line is the origin's copy. That holds only while the
+    origin satisfies the whole pattern. Where it does not, the engine
+    backtracks to the relay's copy, which has the same shape by
+    construction -- so the field silently reports the relay's value.
+
+    The process tag is the case that bites, because a tagless record is
+    ordinary. These pin the forms documented in syslog-envelope.md."""
+
+    _RELAY = "<13>Jan  1 00:00:00 relay-host relayd[1]: "
+    _TAGGED = "<30>Jan  2 11:22:33 origin-host sshd[42]: msg"
+    _TAGLESS = "<30>Jan  2 11:22:33 origin-host plain message"
+
+    _NAIVE = r"\s([A-Za-z][A-Za-z0-9_\-]*)\[\d+\]:"
+    _GREEDY = r".*\s([A-Za-z][A-Za-z0-9_\-]*)\[\d+\]:"
+    _GUARDED = r".*\s([A-Za-z][A-Za-z0-9_\-]*)\[\d+\]:(?![^<]*<\d{1,3}>)"
+
+    def _cap(self, pattern: str, line: str):
+        m = re.search(pattern, line)
+        return m.group(1) if m else None
+
+    def test_naive_pattern_takes_the_relay_tag(self):
+        self.assertEqual(
+            self._cap(self._NAIVE, self._RELAY + self._TAGGED), "relayd"
+        )
+
+    def test_greedy_fixes_the_tagged_record(self):
+        self.assertEqual(
+            self._cap(self._GREEDY, self._RELAY + self._TAGGED), "sshd"
+        )
+
+    def test_greedy_still_leaks_on_a_tagless_record(self):
+        """The whole point: greedy is necessary but not sufficient."""
+        self.assertEqual(
+            self._cap(self._GREEDY, self._RELAY + self._TAGLESS), "relayd"
+        )
+
+    def test_the_guard_that_would_fix_it_is_unusable(self):
+        """A negative lookahead expresses the constraint exactly and
+        CANNOT be shipped: this engine does not support lookaround and
+        does not say so -- the query hangs instead of failing. Python
+        runs it, the platform does not, which is precisely why the
+        pattern must not appear in a recipe. Lint ERR-033."""
+        self.assertEqual(
+            self._cap(self._GUARDED, self._RELAY + self._TAGGED), "sshd"
+        )
+        self.assertIsNone(self._cap(self._GUARDED, self._RELAY + self._TAGLESS))
+        # ... and it is banned from shipped content for that reason
+        
+        rule = ('[MODEL: dataset=x_raw]\nfilter _raw_log != null\n| alter\n'
+                '    tmp_a = arrayindex(regextract(_raw_log, "a:(?!b)"), 0)\n'
+                '| alter\n    xdm.source.ipv4 = tmp_a,\n'
+                '    xdm.event.type = "x"\n;\n')
+        self.assertIn("ERR-033", [v["rule_id"] for v in _lint.lint(rule)])
+
+    def test_no_shipped_pattern_uses_lookaround(self):
+        doc = (bundle_root() / "references" / "syslog-envelope.md").read_text(
+            encoding="utf-8"
+        )
+        for m in re.finditer(r'regextract\([^,]+,\s*"((?:[^"\\]|\\.)*)"', doc):
+            self.assertNotRegex(m.group(1), r"\(\?[=!<]", m.group(1))
+
+    def test_a_fuller_header_anchor_does_not_fix_it(self):
+        """Re-anchoring on a fuller RFC 3164 header is the intuitive next
+        move and is worse: the relay's header matches that shape too, and
+        it additionally breaks when the origin PRI was stripped."""
+        anchored = (
+            r".*<\d{1,3}>[A-Za-z]{3}\s+\d+\s+[\d:]+\s+\S+\s+"
+            r"([A-Za-z][A-Za-z0-9_\-]*)\[\d+\]:"
+        )
+        self.assertEqual(
+            self._cap(anchored, self._RELAY + self._TAGLESS), "relayd"
+        )
+        stripped = self._RELAY + "Jan  2 11:22:33 origin-host sshd[42]: msg"
+        self.assertEqual(self._cap(anchored, stripped), "relayd")
+
+    def test_documented_forms_appear_in_the_reference(self):
+        doc = (bundle_root() / "references" / "syslog-envelope.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("necessary but NOT sufficient", doc)
+        self.assertIn("does not support lookaround", doc)
 
 
 if __name__ == "__main__":

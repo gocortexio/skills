@@ -66,6 +66,7 @@ _TOKEN_RE = re.compile(
   | (?P<lbracket>\[)
   | (?P<rbracket>\])
   | (?P<punct>[=<>(),.])
+  | (?P<quoted_ident>`[^`\n]+`)
   | (?P<ident>@?[A-Za-z_][A-Za-z0-9_]*)
     """,
     re.VERBOSE,
@@ -86,7 +87,17 @@ def _tokenise(s: str) -> List[Tuple[str, str]]:
         if kind == "ws":
             continue
         val = m.group()
-        if kind == "ident" and val in _KEYWORDS:
+        if kind == "quoted_ident":
+            # A backtick-quoted column name. This is the escape ERR-034
+            # prescribes for a column whose NAME is a query-language
+            # construct, and it is what shipped rules use, so the verifier
+            # has to read it or the bundle's own remediation makes a rule
+            # impossible to verify offline. Strip the backticks and emit a
+            # plain identifier -- and do NOT keyword-match the result, since
+            # the whole point of the quoting is that `in` here is a COLUMN
+            # and not the membership operator.
+            out.append(("ident", val[1:-1]))
+        elif kind == "ident" and val in _KEYWORDS:
             out.append(("kw", val))
         else:
             out.append((kind, val))
@@ -654,7 +665,14 @@ def evaluate_rule(rule_text: str, record: Any) -> Optional[Dict[str, Any]]:
         # does for a JSON-bodied dataset.
         for k, v in record.items():
             env[k] = v
-        env["_raw_log"] = json.dumps(record)
+        # An explicit _raw_log column wins. A syslog sample is most
+        # naturally handed over as {"_raw_log": "<190>Jul 29 ..."}, and
+        # overwriting that with the record's JSON text would silently
+        # change the subject of every regex: ^-anchored patterns stop
+        # matching and captures pick up trailing JSON syntax. Only
+        # synthesise _raw_log when the record does not carry one.
+        if "_raw_log" not in record:
+            env["_raw_log"] = json.dumps(record)
     elif isinstance(record, str):
         # A raw-text source (for example a syslog line): _raw_log is the
         # literal text, byte for byte, so regextract anchors such as
@@ -719,6 +737,245 @@ def _normalise(v: Any) -> Any:
     return v
 
 
+# A synthetic relay header, of the shape an intermediate syslog relay
+# prepends: its own priority, timestamp, hostname and tag. Deliberately
+# unlike anything a payload token would match, so a token-anchored
+# extraction is unaffected and a positional one shifts.
+_RELAY_PREFIX = "<13>Jan  1 00:00:00 relay-host relayd[1]: "
+
+# The catch-all classification sentinel. A field that falls back to it is
+# populated but carries no information, so coverage counts it separately.
+_CATCHALL_SENTINEL = "GOCORTEX_UNMODELLED"
+
+
+def prepend_relay(record: Any) -> Any:
+    """Return ``record`` as it would arrive behind a relay that prepends
+    its own syslog header. Only the raw text changes."""
+    if isinstance(record, str):
+        return _RELAY_PREFIX + record
+    if isinstance(record, dict) and isinstance(record.get("_raw_log"), str):
+        out = dict(record)
+        out["_raw_log"] = _RELAY_PREFIX + record["_raw_log"]
+        return out
+    return record
+
+
+def prepend_check(
+    rule_text: str, records: List[Any]
+) -> List[Dict[str, Any]]:
+    """Evaluate the rule against each record twice -- as supplied, and
+    with a relay header prepended -- and report every field whose value
+    differs.
+
+    Syslog reaches Cortex both direct off the device and behind a relay
+    that prepends its own header, and one rule has to model both. That is
+    a property of the rule which can be tested rather than reviewed: if
+    any mapped field changes when the header is added, the extraction is
+    anchored on position rather than on the payload's own tokens."""
+    diffs: List[Dict[str, Any]] = []
+    for i, rec in enumerate(records):
+        relayed = prepend_relay(rec)
+        if relayed is rec:
+            continue  # nothing to prepend to
+        try:
+            direct = evaluate_rule(rule_text, rec)
+            behind = evaluate_rule(rule_text, relayed)
+        except UnsupportedConstruct as exc:
+            diffs.append(
+                {"record": i, "field": None, "direct": None,
+                 "relayed": None, "error": str(exc)}
+            )
+            continue
+        if direct is None and behind is None:
+            continue
+        if direct is None or behind is None:
+            diffs.append(
+                {"record": i, "field": "(record dropped by filter)",
+                 "direct": "kept" if direct else "dropped",
+                 "relayed": "kept" if behind else "dropped"}
+            )
+            continue
+        for key in sorted(set(direct) | set(behind)):
+            a, b = direct.get(key), behind.get(key)
+            if a != b:
+                diffs.append(
+                    {"record": i, "field": key, "direct": a, "relayed": b}
+                )
+    return diffs
+
+
+def _format_prepend_check(diffs: List[Dict[str, Any]], n: int) -> str:
+    if not diffs:
+        return (
+            f"--- prepend check: {n} records, direct and relay-prepended "
+            "output identical ---\n"
+        )
+    lines = [
+        f"--- prepend check: {len(diffs)} difference(s) across {n} records ---",
+        "The rule does not model both arrival forms. A field below changes",
+        "when a relay header is prepended, so its extraction depends on",
+        "position rather than on the payload's own token.",
+        "",
+    ]
+    for d in diffs[:40]:
+        if d.get("error"):
+            lines.append(f"record {d['record']}: unsupported construct: {d['error']}")
+            continue
+        lines.append(
+            f"record {d['record']}  {d['field']}\n"
+            f"    direct  = {d['direct']!r}\n"
+            f"    relayed = {d['relayed']!r}"
+        )
+    if len(diffs) > 40:
+        lines.append(f"... and {len(diffs) - 40} more")
+    return "\n".join(lines) + "\n"
+
+
+# A rule file routinely holds several [MODEL: ...] blocks, one per
+# dataset. The evaluator models a single rule, so a multi-block file is
+# split and each block evaluated on its own. Kept local rather than
+# imported from lint_rule.py so the two CLIs stay independent.
+# Anchor on the header LINE. `\s*` would also swallow the preceding
+# newline(s), so a block with a blank line before it -- the normal way to
+# format a multi-block rule -- would start on that blank line and its
+# dataset name would parse as None. Horizontal whitespace only.
+_MODEL_BLOCK_RE = re.compile(r"^[ \t]*\[MODEL:", re.MULTILINE)
+_DATASET_RE = re.compile(r'\s*\[MODEL:\s*dataset\s*=\s*"?(\w+)')
+
+
+def split_model_blocks(source: str) -> List[Dict[str, Any]]:
+    """Return ``[{dataset, text}]``, one entry per MODEL block."""
+    starts = [m.start() for m in _MODEL_BLOCK_RE.finditer(source)]
+    if len(starts) <= 1:
+        header = source[starts[0]:].splitlines()[0] if starts else ""
+        m = _DATASET_RE.match(header)
+        return [{"dataset": m.group(1) if m else None, "text": source}]
+    bounds = starts + [len(source)]
+    out = []
+    for i, begin in enumerate(starts):
+        text = source[begin:bounds[i + 1]]
+        lines = text.splitlines()
+        m = _DATASET_RE.match(lines[0]) if lines else None
+        out.append({"dataset": m.group(1) if m else None, "text": text})
+    return out
+
+
+def coverage(results: List[Optional[Dict[str, Any]]]) -> Dict[str, Any]:
+    """Per-field population across the evaluated records.
+
+    A match count is not evidence that a capture works. A field has three
+    failure states that all read as populated:
+
+      * the empty string -- a pattern matched but captured nothing;
+      * the catch-all sentinel -- an extraction failed and the field fell
+        back to GOCORTEX_UNMODELLED, which IS a value, so a population
+        count reports it as healthy;
+      * a genuine value.
+
+    Counting only null against non-null therefore misses two of the three.
+    This reports all three per field so the failure is visible."""
+    mapped = [r for r in results if r is not None]
+    fields: Dict[str, Dict[str, int]] = {}
+    for res in mapped:
+        for key, val in res.items():
+            slot = fields.setdefault(
+                key, {"populated": 0, "empty": 0, "sentinel": 0}
+            )
+            if val is None:
+                continue
+            slot["populated"] += 1
+            if isinstance(val, str) and val.strip() == "":
+                slot["empty"] += 1
+            elif isinstance(val, str) and _CATCHALL_SENTINEL in val:
+                slot["sentinel"] += 1
+    return {
+        "records": len(results),
+        "mapped": len(mapped),
+        "dropped_by_filter": len(results) - len(mapped),
+        "fields": fields,
+    }
+
+
+def _format_coverage(cov: Dict[str, Any]) -> str:
+    lines = [
+        "--- coverage: {mapped} of {records} records mapped, "
+        "{dropped_by_filter} dropped by filter ---".format(**cov)
+    ]
+    mapped = cov["mapped"] or 1
+    width = max([len(k) for k in cov["fields"]] + [5])
+    for key in sorted(cov["fields"]):
+        slot = cov["fields"][key]
+        pop, empty = slot["populated"], slot["empty"]
+        sent = slot.get("sentinel", 0)
+        note = ""
+        if pop and empty == pop:
+            # Complete and useless: the field satisfies every mandatory-set
+            # and population check while carrying nothing. The usual cause
+            # is padding a field that could have been DERIVED from one
+            # already mapped, so point at that rather than reporting a
+            # statistic.
+            note = (
+                "  [DEFECT] populated on every record and empty on every "
+                "record -- if the value can be derived from another mapped "
+                "field, derive it"
+            )
+        elif pop and sent == pop:
+            note = "  [DEFECT] every value is the catch-all sentinel"
+        elif pop and empty > pop / 2:
+            note = "  [WARN] most values are the empty string"
+        elif pop and sent > pop / 2:
+            note = "  [WARN] most values are the catch-all sentinel"
+        elif pop and sent:
+            note = "  [WARN] some values fell back to the sentinel"
+        elif pop == 0:
+            # A field mapped in the rule and populated on no record means
+            # the capture never fired. That is usually a pattern that
+            # matches nothing -- and a pattern that matches nothing
+            # returns a clean zero, indistinguishable from a sample set
+            # that genuinely lacks the event. Point at the pattern.
+            note = (
+                "  [WARN] never populated -- read the pattern that feeds it "
+                "before concluding the samples lack the event"
+            )
+        lines.append(
+            f"{key:<{width}}  {pop:>5}/{mapped:<5} populated"
+            f"  {empty:>5} empty  {sent:>5} sentinel{note}"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def _run_one_block(
+    rule_text: str, records: List[Any], args: Any, name: str
+) -> int:
+    """Evaluate one MODEL block and emit its section of the report."""
+    try:
+        results = [evaluate_rule(rule_text, rec) for rec in records]
+    except UnsupportedConstruct as exc:
+        sys.stderr.write(f"error [{name}]: unsupported construct: {exc}\n")
+        return 1
+    diffs = prepend_check(rule_text, records) if args.prepend_check else None
+    if args.format == "json":
+        payload: Any = {"dataset": name, "records": results}
+        if args.coverage:
+            payload["coverage"] = coverage(results)
+        if diffs is not None:
+            payload["prepend_check"] = diffs
+        sys.stdout.write(json.dumps(payload, indent=2, default=str) + "\n")
+    else:
+        for i, res in enumerate(results):
+            sys.stdout.write(f"--- record {i} ---\n")
+            if res is None:
+                sys.stdout.write("(dropped by filter)\n")
+                continue
+            for k in sorted(res):
+                sys.stdout.write(f"{k} = {res[k]!r}\n")
+        if args.coverage:
+            sys.stdout.write("\n" + _format_coverage(coverage(results)))
+        if diffs is not None:
+            sys.stdout.write("\n" + _format_prepend_check(diffs, len(records)))
+    return 1 if diffs else 0
+
+
 def main(argv: List[str]) -> int:
     ap = argparse.ArgumentParser(
         description="Evaluate a MODEL rule against a sample offline."
@@ -731,6 +988,25 @@ def main(argv: List[str]) -> int:
         help="path to expected xdm.* maps (JSON array) to diff against",
     )
     ap.add_argument("--format", choices=("json", "text"), default="json")
+    ap.add_argument(
+        "--coverage",
+        action="store_true",
+        help="summarise per-field population, flagging fields whose values "
+        "are predominantly the empty string",
+    )
+    ap.add_argument(
+        "--dataset",
+        default=None,
+        help="when the file holds several [MODEL:] blocks, evaluate only "
+        "the block for this dataset",
+    )
+    ap.add_argument(
+        "--prepend-check",
+        action="store_true",
+        help="evaluate every record twice, as supplied and with a relay "
+        "header prepended, and report any field whose value differs. "
+        "Mandatory for a syslog rule: exits 1 on any difference",
+    )
     args = ap.parse_args(argv[1:])
 
     try:
@@ -747,13 +1023,43 @@ def main(argv: List[str]) -> int:
         return 2
 
     try:
+        blocks = split_model_blocks(rule_text)
+        if args.dataset:
+            blocks = [b for b in blocks if b["dataset"] == args.dataset]
+            if not blocks:
+                sys.stderr.write(
+                    f"error: no [MODEL:] block for dataset {args.dataset!r}\n"
+                )
+                return 1
+        if len(blocks) > 1:
+            # One rule file, several datasets. Evaluate each block on its
+            # own and label the output, rather than failing to parse the
+            # concatenation.
+            rc = 0
+            for blk in blocks:
+                name = blk["dataset"] or "(unnamed)"
+                sys.stdout.write(f"\n===== dataset {name} =====\n")
+                rc |= _run_one_block(blk["text"], records, args, name)
+            return rc
+        rule_text = blocks[0]["text"]
         results = [evaluate_rule(rule_text, rec) for rec in records]
     except UnsupportedConstruct as exc:
         sys.stderr.write(f"error: unsupported construct: {exc}\n")
         return 1
 
+    prepend_diffs: Optional[List[Dict[str, Any]]] = None
+    if args.prepend_check:
+        prepend_diffs = prepend_check(rule_text, records)
+
     if args.format == "json":
-        sys.stdout.write(json.dumps(results, indent=2, default=str) + "\n")
+        payload: Any = results
+        if args.coverage or prepend_diffs is not None:
+            payload = {"records": results}
+            if args.coverage:
+                payload["coverage"] = coverage(results)
+            if prepend_diffs is not None:
+                payload["prepend_check"] = prepend_diffs
+        sys.stdout.write(json.dumps(payload, indent=2, default=str) + "\n")
     else:
         for i, res in enumerate(results):
             sys.stdout.write(f"--- record {i} ---\n")
@@ -762,6 +1068,15 @@ def main(argv: List[str]) -> int:
                 continue
             for k in sorted(res):
                 sys.stdout.write(f"{k} = {res[k]!r}\n")
+        if args.coverage:
+            sys.stdout.write("\n" + _format_coverage(coverage(results)))
+        if prepend_diffs is not None:
+            sys.stdout.write(
+                "\n" + _format_prepend_check(prepend_diffs, len(records))
+            )
+
+    if prepend_diffs:
+        return 1
 
     if args.expect:
         try:

@@ -59,6 +59,29 @@ on a distinctive signal:
 - A complete transport 5-tuple: both endpoint addresses, a port, and a
   protocol all present in the same record.
 
+The converse matters as much: a record from a networking device is not a
+network event just because a networking device emitted it. An interface
+transition has no peer and is a device status change, not a flow.
+Confirm the record can supply the story's defining entity -- a peer
+address -- before tagging it NETWORK, and audit it after deploying with
+the ratio test:
+
+```
+datamodel dataset = <vendor>_<product>_raw
+| filter array_any(xdm.event.tags, "@element" = XDM_CONST.EVENT_TAG_NETWORK)
+| comp count() as claimed,
+       sum(if(xdm.source.ipv4 != null, 1, 0)) as with_peer
+```
+
+A large gap between the records claiming the story and the records
+carrying a peer means the classification is too broad. Interface
+transitions never carry one; SSH transport records do only when the line
+names a client. Keeping only the records with a peer leaves a smaller
+network story in which every record can supply the address the story is
+queried on. See
+[record-classification.md](record-classification.md) "Claim a story only
+where its mandatory set can be populated".
+
 One precision rule: the allow / deny action family is not proof on its
 own when the sample is ALSO an authentication event. An AAA gateway
 (TACACS+, RADIUS, Cisco ISE) logs PERMIT / DENY as the authentication
@@ -86,19 +109,19 @@ carries a definitive marker: `XDM_CONST.EVENT_TAG_NETWORK` in the
 `xdm.event.tags` assignment, or an `xdm.event.type` value containing
 `network`. The exit code stays 0; the author decides.
 
-## Mandatory fields (all 20 must be mapped)
+## Mandatory fields (all 17 must be mapped)
 
 Where the log simply does not carry a value, pad with the type-valid
-placeholder so the mandatory status is met.
+placeholder so the mandatory status is met. The three
+`xdm.network.http.*` leaves are NOT in this set -- they are mandatory
+only for a network event that carries an HTTP layer, covered in the
+section below.
 
 | XDM target | Type | Mapping / placeholder |
 | --- | --- | --- |
 | `xdm.event.outcome` | enum | Map the vendor action: allow / permit -> `XDM_CONST.OUTCOME_SUCCESS`, deny / drop / block -> `XDM_CONST.OUTCOME_FAILED`. Pad `XDM_CONST.OUTCOME_UNKNOWN`. |
 | `xdm.event.type` | string | Resolve to a value that contains `network`; pad the literal `"network"`. |
 | `xdm.event.tags` | array | Must include `XDM_CONST.EVENT_TAG_NETWORK` on the network records. Assign per record via one `if()` so non-network records in the same feed get their own tags (or blank). On a dual authentication + network event emit ONE merged `arraycreate(XDM_CONST.EVENT_TAG_AUTHENTICATION, XDM_CONST.EVENT_TAG_NETWORK)` -- add `EVENT_TAG_VPN` for a VPN tunnel -- never two tags assignments. See [record-classification.md](record-classification.md). |
-| `xdm.network.http.http_header.header` | string | The HTTP header name. Map when the source logs headers; otherwise `""`. (The bare `xdm.network.http.http_header` is a container node, not a mappable field -- some data models reject it -- and `xdm.network.http.response_headers` does not exist; map these two leaves.) |
-| `xdm.network.http.http_header.value` | string | The HTTP header value. Map when the source logs headers; otherwise `""`. |
-| `xdm.network.http.url_category` | enum | Map the vendor category via an `XDM_CONST.URL_CATEGORY_*` if-chain; pad `XDM_CONST.URL_CATEGORY_UNKNOWN`. Closed list in [xdm-const.md](xdm-const.md). |
 | `xdm.network.ip_protocol` | enum | Map the protocol via `XDM_CONST.IP_PROTOCOL_*`; pad `XDM_CONST.IP_PROTOCOL_IP` (the neutral network-layer default when the log carries no protocol). |
 | `xdm.network.protocol_layers` | array | `arraycreate(...)` over the known layers, highest last (content-pack idiom, e.g. the application protocol). Pure pad `arraycreate("IP")`, consistent with the `IP_PROTOCOL_IP` protocol pad. |
 | `xdm.source.host.device_id` | string | Map the stable client device id; otherwise `""`. |
@@ -117,7 +140,7 @@ placeholder so the mandatory status is met.
 Placeholder policy for the mandatory set:
 
 - Numbers (ports, byte counts) -> `to_integer(0)`.
-- Strings (device ids, both `http_header` leaves) -> the empty string `""`.
+- Strings (device ids) -> the empty string `""`.
 - The IPv4 / IPv6 pair -> map the observed family, pad the other with `""`.
 - Booleans -> prefer the `incidr()` derivation; the pure placeholder is
   `false`.
@@ -126,6 +149,37 @@ Placeholder policy for the mandatory set:
 - Arrays -> `arraycreate(...)` with at least one valid element.
 - The event time (generated time) is mapped automatically; do not set it
   manually.
+
+## The HTTP set: mandatory only where there IS an HTTP layer
+
+These three fields complete the network story for an HTTP-bearing event
+-- a proxy, web gateway, WAF, CASB or DNS-over-HTTPS record. They are
+NOT required of a network event with no HTTP layer.
+
+| XDM target | Type | Mapping / placeholder |
+| --- | --- | --- |
+| `xdm.network.http.http_header.header` | string | The HTTP header name. Map when the source logs headers; otherwise `""`. (The bare `xdm.network.http.http_header` is a container node, not a mappable field -- some data models reject it -- and `xdm.network.http.response_headers` does not exist; map these two leaves.) |
+| `xdm.network.http.http_header.value` | string | The HTTP header value. Map when the source logs headers; otherwise `""`. |
+| `xdm.network.http.url_category` | enum | Map the vendor category via an `XDM_CONST.URL_CATEGORY_*` if-chain; pad `XDM_CONST.URL_CATEGORY_UNKNOWN`. Closed list in [xdm-const.md](xdm-const.md). |
+
+The rule is all-or-nothing, and it is self-declared: claim an HTTP layer
+and the set must be complete; claim none and the leaves are not
+required. A rule claims an HTTP layer when it maps any other
+`xdm.network.http.*` field, maps a URL, or names HTTP among its protocol
+layers. Lint WARN-043 applies the same test.
+
+Do NOT pad these onto a router SSH login, an SNMP failure or a
+control-plane record. Padding a header name, a header value and a URL
+category onto a record with no HTTP anywhere asserts a protocol the
+source never saw. That is the semantically-empty pad the placeholder
+policy exists to prevent, not an instance of it: a placeholder stands in
+for a value the event HAS but the log did not carry, and a router SSH
+login does not have a URL category at all.
+
+A requirement that no honest router rule can satisfy is worse than no
+requirement, because a permanently unsatisfiable advisory trains authors
+to mute the checker that raises it -- and a muted checker protects
+nothing, including in the cases where it was right.
 
 ## Deriving the enum fields
 
@@ -157,8 +211,11 @@ or the vendor value has no clear XDM equivalent, use
 
 ## Worked shape (JSON source)
 
-A complete MODEL rule that maps all 20 mandatory fields. The extraction
-stage changes per format; the assignment stage does not. (On a syslog
+A complete MODEL rule that maps all 17 mandatory fields. This is a
+firewall flow with no HTTP layer, so it does not claim one and the three
+`xdm.network.http.*` leaves are correctly absent -- padding them here
+would assert a protocol the source never saw. The extraction stage
+changes per format; the assignment stage does not. (On a syslog
 source, insert the Stage 0 envelope between the null guard and the
 extraction -- see [syslog-envelope.md](syslog-envelope.md).)
 
@@ -190,9 +247,6 @@ filter
     xdm.network.protocol_layers = if(
         tmp_proto != null, arraycreate(uppercase(tmp_proto)),
         arraycreate("TCP")),
-    xdm.network.http.http_header.header = "",
-    xdm.network.http.http_header.value = "",
-    xdm.network.http.url_category = XDM_CONST.URL_CATEGORY_UNKNOWN,
     xdm.source.ipv4 = tmp_src_ip,
     xdm.source.ipv6 = "",
     xdm.source.is_internal_ip = if(
@@ -260,3 +314,63 @@ Rules for a dual event:
 
 Constants used above live in [xdm-const.md](xdm-const.md); every target
 path is defined in [xdm-schema.md](xdm-schema.md).
+
+## Cisco IOS-XE: which messages actually carry a flow
+
+Access-list logging is the traffic source, and the mnemonic SUFFIX
+declares which fields are present. One pattern cannot serve all six:
+
+| Mnemonic | Shape | Has ports | Has destination |
+| --- | --- | --- | --- |
+| `SEC-6-IPACCESSLOGP` | `list N ACTION PROTO SRC(SPORT) -> DST(DPORT), C packet(s)` | yes | yes |
+| `SEC-6-IPACCESSLOGDP` | `list N ACTION PROTO SRC -> DST (TYPE/CODE), C packet(s)` | no (ICMP type/code) | yes |
+| `SEC-6-IPACCESSLOGNP` | `list N ACTION PROTONUM SRC -> DST, C packet(s)` | no | yes |
+| `SEC-6-IPACCESSLOGRP` | `list N ACTION PROTO SRC -> DST, C packet(s)` | no | yes |
+| `SEC-6-IPACCESSLOGS` | `list N ACTION SRC, C packet(s)` | no | NO |
+| `SEC-6-IPACCESSLOGRL` | `access-list logging rate-limited or missed C packet(s)` | no | NO |
+
+`IPACCESSLOGS` has a source and nothing else. A rule that assumes the
+full tuple pads a destination that the record never carried -- the
+semantically-empty pad the placeholder policy exists to prevent.
+
+`IPACCESSLOGRL` is NOT a traffic record. It reports that ACL logging
+itself dropped records: a visibility gap, not a flow. Mapping it as a
+flow invents a connection. Route it to a diagnostic branch or the
+catch-all, and treat a rising count as a monitoring alarm, because every
+packet it counts is a flow the estate never saw.
+
+The IOS-XE data plane emits the same six events under
+`FMANFP-6-IPACCESSLOG*` (the forwarding manager). Both prefixes can
+appear in one estate depending on platform and whether the ACL is
+punted to the route processor, so a rule that handles only `SEC-6-*`
+silently loses the hardware-switched majority.
+
+### Zone-based firewall sessions carry the byte pair
+
+```
+FW-6-SESS_AUDIT_TRAIL_START  Start PROTO session: initiator IP:PORT -- responder IP:PORT
+FW-6-SESS_AUDIT_TRAIL        Stop PROTO session: initiator IP:PORT sent N bytes -- responder IP:PORT sent N bytes
+FW-6-LOG_SUMMARY             C packet(s) ACTION from POLICY SRC:PORT => DST:PORT target:class-C:C
+```
+
+`initiator` and `responder` are the vendor's words for source and target.
+The Stop record is the only one carrying `sent_bytes` in both directions,
+so it is the only one that can populate the network story's byte pair
+honestly. On the Start record leave both byte counts unmapped rather than
+padding zero, which would assert a session that transferred nothing.
+
+### Firewall messages that are findings, not flows
+
+```
+FW-5-IMAP_NON_SECURE_LOGIN          LOGON IMAP command from initiator IP:PORT: TEXT
+FW-5-POP3_NON_SECURE_LOGIN          LOGON POP3 command from initiator IP:PORT: TEXT
+FW-3-FTP_SESSION_NOT_AUTHENTICATED  Command issued before the session is authenticated -- FTP client IP, FTP server IP
+FW-4-TCP_MAJORDOMO_EXEC_BUG         Majordomo Execute Attack - from IP to IP
+```
+
+The two NON_SECURE_LOGIN records are cleartext-credential exposure
+observed on the wire. They are network events that also carry an
+authentication meaning, but the account is in the captured command TEXT
+and is attacker-visible by definition -- map the flow, and treat the
+credential as an alert rather than an identity.
+

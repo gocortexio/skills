@@ -135,8 +135,15 @@ _SYSLOG_ENVELOPE_TARGETS = {
 # to refine: the author replaces the pad with the name-convention match
 # idiom ($ -> MACHINE_ACCOUNT; svc_/service/gserviceaccount ->
 # SERVICE_ACCOUNT; else REGULAR) from references/authentication-mapping.md.
+# xdm.target.resource.name is NOT padded, and the contrast with
+# xdm.target.ipv4 just below it is the point. An empty xdm.target.ipv4
+# honestly says "this record has no target address"; the placeholder is
+# semantically empty. An empty xdm.target.resource.name would say "the
+# target of this authentication is known and it is nothing", which is
+# never true -- and a padded target is exactly how an inverted auth rule
+# (source and target the wrong way round) passes the linter. It is a
+# must-extract TODO, and WARN-055 flags a placeholder if one appears.
 _AUTH_PADDABLE = [
-    ("xdm.auth.service", '"Login"'),
     ("xdm.network.ip_protocol", "XDM_CONST.IP_PROTOCOL_IP"),
     ("xdm.source.port", "to_integer(0)"),
     ("xdm.source.user.identity_type", "XDM_CONST.IDENTITY_TYPE_USER"),
@@ -148,6 +155,13 @@ _AUTH_PADDABLE = [
 # from the raw log. Auto-wired by the normal anchor loop when the source
 # carries them; otherwise listed as TODO and flagged by WARN-042.
 _AUTH_MUST_EXTRACT = [
+    ("xdm.auth.service",
+     'the ROLE this system played, decided per event type: "IDP" when it '
+     'validates the credential, "SP" when it initiates and relies on '
+     'another to validate, "Universal" when the source is not a known '
+     "IdP provider (local auth, TACACS+, SSH onto a device). Never a "
+     "service name -- the protocol or mechanism goes to "
+     "xdm.auth.auth_method or xdm.network.application_protocol"),
     ("xdm.event.operation",
      "the specific XDM_CONST.OPERATION_TYPE_* (AUTH_LOGIN for a password "
      "login, AUTH_MFA for MFA); leave unmapped rather than guessing when "
@@ -163,6 +177,13 @@ _AUTH_MUST_EXTRACT = [
      'it to the sentinel: coalesce(tmp_vendor_event_type, "GOCORTEX_UNMODELLED")'),
     ("xdm.event.outcome",
      "XDM_CONST.OUTCOME_SUCCESS / OUTCOME_FAILED, on conclusive events only"),
+    ("xdm.target.resource.name",
+     "the device / application / service the principal authenticated TO "
+     "(an explicit target or application field, a Kerberos service "
+     "principal, the accessed device name, else its address); set it IN "
+     "ADDITION to xdm.target.host.hostname / xdm.target.application.name / "
+     "xdm.target.ipv4, and NEVER pad it -- a placeholder here leaves the "
+     "event targetless while satisfying WARN-042 (WARN-055)"),
 ]
 
 # Network-event mandatory mapping (references/network-mapping.md, the
@@ -613,12 +634,14 @@ def _build_header(
             "// NOTE: authentication event detected -- the XDM authentication "
             "story needs the full mandatory field set (see "
             "references/authentication-mapping.md). Paddable fields are seeded "
-            "with the official placeholders above; set xdm.auth.service to "
-            "the authentication service name from the log (Kerberos / NTLM / "
-            'OAuth2 / SSO / ...; padded "Login"). The AUTH MANDATORY entries '
-            "below MUST be mapped from the raw log -- derive the specific "
-            "xdm.event.operation (never default to a guess) -- and the "
-            "advisory WARN-042 flags any left unmapped."
+            "with the official placeholders above. The AUTH MANDATORY entries "
+            "below MUST be mapped from the raw log -- set xdm.auth.service to "
+            'the ROLE this system played per event type ("IDP" / "SP" / '
+            '"Universal"), never to a service name, and derive the specific '
+            "xdm.event.operation (never default to a guess), and name the "
+            "authentication TARGET in xdm.target.resource.name rather than "
+            "padding it (WARN-055) -- and the advisory WARN-042 flags any "
+            "left unmapped."
         )
     if is_network:
         lines.append("//")
@@ -667,7 +690,7 @@ def _build_header(
             "0 is already relay-aware (^.*); every payload field you extract "
             "below MUST anchor on its own token (regextract on key=/[field:]/ "
             "%MNEMONIC, never on ^ or 'everything after the header') so it "
-            "matches BOTH forms even if the sample showed only one -- WARN-047."
+            "matches BOTH forms even if the sample showed only one -- ERR-030."
         )
     if fmt in _POSITIONAL_FORMATS:
         lines.append(

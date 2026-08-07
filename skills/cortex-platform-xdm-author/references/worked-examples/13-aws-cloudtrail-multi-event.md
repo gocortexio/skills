@@ -73,6 +73,7 @@ filter
     xdm.source.port = to_integer(0),
     xdm.target.ipv4 = coalesce("", ""),
     xdm.target.port = to_integer(0),
+    xdm.target.resource.name = if(tmp_is_auth = "y", tmp_source),
     xdm.network.ip_protocol = XDM_CONST.IP_PROTOCOL_TCP,
     xdm.source.user.username = tmp_uid_name,
     xdm.source.user.upn = if(
@@ -87,7 +88,7 @@ filter
     xdm.source.user.user_type = if(
         tmp_uid_type contains "Service", XDM_CONST.USER_TYPE_MACHINE_ACCOUNT,
         XDM_CONST.USER_TYPE_REGULAR),
-    xdm.auth.service = if(tmp_is_auth = "y", "AWS Console"),
+    xdm.auth.service = if(tmp_is_auth = "y", "IDP"),
     xdm.source.user_agent = tmp_ua,
     xdm.observer.vendor = "Amazon",
     xdm.observer.product = "CloudTrail"

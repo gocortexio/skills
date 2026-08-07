@@ -217,6 +217,111 @@ arraymap(participants, ...)           // BLOCKED -- needs -> []
 | `in` | Set membership |
 | `or` / `and` | Combine conditions inside `if()` branches |
 
+### Matching is case-insensitive everywhere, and case cannot be tested
+
+XQL folds case throughout: string comparison, `contains`, and regex via
+`~=` and `regextract`. The consequences are worth stating plainly,
+because one of them is a silent trap:
+
+- `"value" = "VALUE"` is true.
+- `subject ~= "SHOW CONFIGURATION"` matches a lowercase subject.
+- `regextract(x, "([A-Z][A-Z0-9_]+)")` captures lowercase text. An
+  uppercase character class does NOT restrict a capture to uppercase.
+- `(?i)` is therefore redundant. It is harmless and reasonable to keep as
+  a statement of intent, but it changes nothing, and no rule may depend
+  on case-sensitivity because case-sensitivity cannot be requested.
+- `uppercase(x) = x` is always true, so there is no in-query way to TEST
+  for case either. Auditing a field for case means pulling the distinct
+  values out and testing them outside the query.
+
+The trap follows from the third point. An uppercase class is the obvious
+way to express "this token is an identifier, not prose", and it does not
+work -- see the hard rule below.
+
+### Case can never qualify a capture; structure must
+
+A capture is safe when the surrounding STRUCTURE identifies the token:
+
+```
+%FACILITY-SEVERITY-MNEMONIC:     anchored by the % sigil and the severity digit
+key="value"                       anchored by the key name
+AdminName=<value>                 anchored by the key name
+```
+
+A capture is NOT safe when it lifts an identifier out of free text and
+relies on a character class to qualify it:
+
+```
+// WRONG -- the intent is "an uppercase vendor tag", but [A-Z] folds, so
+// this captures whatever token sits in that position: a C function name,
+// a word, anything
+"%[A-Z]+-\d:\s+\S+\s+([A-Z][A-Z0-9_]{3,}):"
+```
+
+Where the position genuinely is free text, enumerate the documented
+vendor tags and let anything else fall back to a structural identity:
+
+```
+// RIGHT -- the alternation IS the qualifier
+"\s(PFE_FW_SYSLOG_ETH_IP|DDOS_PROTOCOL_VIOLATION_SET|DDOS_PROTOCOL_VIOLATION_CLEAR):"
+```
+
+That is not the sample-derived hardcoding WARN-049 forbids. These are
+documented vendor message tags, the same class of value as
+`UI_LOGIN_EVENT`, not literals observed in one customer's data. Lint
+WARN-052 flags a case-qualified capture that has no literal anchor.
+
+### Escape a metacharacter once, not twice
+
+A double-escaped metacharacter returns HTTP 500 from the API with no
+indication that escaping is the cause -- the failure reads as an
+unsupported construct rather than a quoting error, which sends you
+looking in the wrong place:
+
+```
+\\$\\{      rejected, 500 Internal Server Error
+\$\{        works
+```
+
+When a compound pattern fails this way, test it ONE TOKEN AT A TIME
+rather than trying to repair the whole expression. A single failing
+token is obvious; the same token inside an alternation is not.
+
+The 500 is the LUCKY version of this mistake. Double-escaping a
+character CLASS does not fail loudly -- it silently asks a different
+question:
+
+```
+\\s     a literal backslash followed by the letter s   -- matches nothing
+\s      whitespace                                     -- what was meant
+```
+
+That pattern returns a clean zero. A clean zero is indistinguishable
+from a true negative, so it reads as "the condition does not occur here"
+and closes the investigation, while the noisy 500 version at least
+announces that something is wrong.
+
+So a zero result from a pattern you have not read is not evidence of
+absence. Before acting on one, PRINT THE PATTERN AS THE PLATFORM
+RECEIVES IT and read it. This bites hardest when the query is built by a
+tool or a script, because the language building the string escapes it
+once before the platform sees it at all -- a non-raw Python string is
+the usual culprit. Where a mapped field comes back populated on no
+record, `verify_rule.py --coverage` reports it, but it cannot tell you
+whether the samples lack the event or the pattern was never capable of
+matching. Only reading the emitted pattern separates those.
+
+There is no negated regex operator. `not ~=` is rejected by the server
+with a 500; negate the whole comparison instead:
+
+```
+// REJECTED -- there is no `not ~=` operator
+filter tmp_msg not ~= "^debug"
+
+// CORRECT -- negate the expression
+filter not (tmp_msg ~= "^debug")
+```
+
 Do NOT combine null-comparisons with `and` / `or` inside `if()` predicates. Drop the guard (Cortex propagates null) or nest `if()` calls. See [parser-idioms.md](parser-idioms.md) idiom (ii) / ERR-013.
 
 ```

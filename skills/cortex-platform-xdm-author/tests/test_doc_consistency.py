@@ -54,6 +54,11 @@ ALLOW_KNOWN_BAD_XDM_PATHS = {
     "xdm.network.http.user_agent": "pitfall-traps Wrong column (right is xdm.source.user_agent)",
     "xdm.network.dns.response_code_text": "pitfall-traps OMIT-with-sink example (documented optional sink)",
     "xdm.source.cloud.account_id": "pitfall-traps Wrong column (right is xdm.source.cloud.project_id)",
+    # syslog-envelope.md documents that this field does NOT exist: the
+    # observer family carries no address, so the natural mapping of a
+    # sending device's address is rejected by ERR-020. Named so the reader
+    # recognises the failure, not recommended.
+    "xdm.observer.ipv4": "syslog-envelope absent-field counter-example",
     "xdm.source.user.email": "pitfall-traps Wrong column (right is xdm.source.user.upn)",
     "xdm.target.user.email": "pitfall-traps Wrong column (right is xdm.target.user.upn)",
     # compatibility-notes.md documents this as a deprecated path.
@@ -90,6 +95,11 @@ ALLOW_KNOWN_BAD_XDM_CONSTS = {
     "XDM_CONST.CLOUD_PROVIDER_ORACLE": "failure-modes.md #6 invented-constant counter-example",
     "XDM_CONST.OS_FAMILY_BSD": "failure-modes.md #6 invented-constant counter-example",
     "XDM_CONST.THREAT_CATEGORY_SECURITY": "failure-modes.md #6 invented-constant counter-example",
+    # virtualization-mapping.md -- cited as one of the two possible forms
+    # of the virtualization tag, in an explicitly unresolved TO CONFIRM
+    # block. Whether this member exists is the open question; if a tenant
+    # confirms it, add it to xdm-const.md and drop this entry.
+    "XDM_CONST.EVENT_TAG_VIRTUALIZATION": "virtualization-mapping.md unresolved tag-form counter-example",
 }
 
 # Token-prefix excludes -- match starts-with so we can ignore whole
@@ -384,6 +394,83 @@ class TestNetworkMappingWiring(unittest.TestCase):
             "network-mapping.md",
             read_text("SKILL.md"),
             "SKILL.md does not link to network-mapping.md",
+        )
+
+
+class TestSkillMdLintCodesExist(unittest.TestCase):
+    """SKILL.md names linter codes inline inside its hard rules. The
+    linter's own module docstring is the single registry of those codes,
+    so a code named in the always-loaded body must exist there.
+
+    This is the guard that stops the two drifting apart again: SKILL.md
+    previously carried a hand-maintained enumeration that fell 17 codes
+    behind the linter before anyone noticed. It now points at
+    `--list-codes` instead, and this test keeps the remaining inline
+    mentions honest."""
+
+    # ERR-001 / 002 / 003 / 005 are PARSER-conformance codes from
+    # references/modeling-rules.md, cited in the Scope section to say
+    # parsing rules are out of scope. They are not lint_rule.py codes and
+    # must not be required to appear in its registry.
+    #
+    # INFO-006 is the opposite case: SKILL.md names it in order to record
+    # that it is deliberately NOT emitted, so its absence from the
+    # registry is the documented state rather than drift.
+    _NON_LINTER_CODES = {
+        "ERR-001",
+        "ERR-002",
+        "ERR-003",
+        "ERR-005",
+        "INFO-006",
+    }
+
+    def setUp(self) -> None:
+        sys.path.insert(0, str(bundle_root() / "scripts"))
+        import lint_rule  # noqa: PLC0415
+
+        self.registry = {e["code"] for e in lint_rule.code_table()}
+
+    def test_registry_is_populated(self):
+        """A parser that silently returns nothing would make every other
+        assertion here vacuously true."""
+        self.assertGreater(len(self.registry), 35, self.registry)
+
+    def test_every_code_named_in_skill_md_exists(self):
+        named = set(re.findall(r"(?:ERR|WARN|INFO)-\d+", read_text("SKILL.md")))
+        unknown = sorted(named - self.registry - self._NON_LINTER_CODES)
+        self.assertEqual(
+            unknown,
+            [],
+            "SKILL.md names linter codes that lint_rule.py does not define: "
+            f"{unknown}. Either the check was renamed or removed, or the "
+            "reference is a typo.",
+        )
+
+    def test_skill_md_does_not_restate_the_code_list(self):
+        """One line carrying a dozen codes is an enumeration, and an
+        enumeration is what drifted last time. Inline mentions inside a
+        rule are fine; a restated list is not."""
+        worst = max(
+            (
+                (len(set(re.findall(r"(?:ERR|WARN|INFO)-\d+", line))), i + 1)
+                for i, line in enumerate(read_text("SKILL.md").splitlines())
+            ),
+            default=(0, 0),
+        )
+        count, line_no = worst
+        self.assertLessEqual(
+            count,
+            6,
+            f"SKILL.md line {line_no} names {count} distinct check codes, "
+            "which is a restated code list. Point at "
+            "`scripts/lint_rule.py --list-codes` instead.",
+        )
+
+    def test_list_codes_flag_is_documented_in_skill_md(self):
+        self.assertIn(
+            "--list-codes",
+            read_text("SKILL.md"),
+            "SKILL.md must tell the author how to get the current code list",
         )
 
 

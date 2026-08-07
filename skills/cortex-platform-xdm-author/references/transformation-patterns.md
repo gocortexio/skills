@@ -461,7 +461,7 @@ xdm.auth.mfa.method = tmp_mfa_method,
 xdm.auth.is_mfa_needed = to_boolean(tmp_mfa_required)
 ```
 
-An authentication event has a fixed mandatory XDM field set (12 fields) that the authentication story depends on. Map the full set per [authentication-mapping.md](authentication-mapping.md); the linter raises the advisory WARN-042 for each mandatory field an auto-detected authentication rule leaves unmapped.
+An authentication event has a fixed mandatory XDM field set (15 fields) that the authentication story depends on. Map the full set per [authentication-mapping.md](authentication-mapping.md); the linter raises the advisory WARN-042 for each mandatory field an auto-detected authentication rule leaves unmapped.
 
 Never bury `mfa_method` (or device / OS detail) in `xdm.event.description` -- these values have structured homes, and a description-only copy is invisible to downstream queries. The description summarises; it never substitutes (see "Structured event description" below).
 

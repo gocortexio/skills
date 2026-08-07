@@ -254,7 +254,8 @@ filter
     xdm.event.outcome = if(
         tmp_result = "success", XDM_CONST.OUTCOME_SUCCESS,
         XDM_CONST.OUTCOME_FAILED),
-    xdm.auth.service = "SSL-VPN",
+    xdm.auth.service = "Universal",
+    xdm.target.application.name = "SSL-VPN",
     xdm.source.user.upn = if(
         tmp_user contains "@", tmp_user,
         tmp_user != null, concat(tmp_user, "@localhost")),
@@ -269,9 +270,6 @@ filter
         XDM_CONST.USER_TYPE_REGULAR),
     xdm.network.ip_protocol = XDM_CONST.IP_PROTOCOL_IP,
     xdm.network.protocol_layers = arraycreate("IP"),
-    xdm.network.http.http_header.header = "",
-    xdm.network.http.http_header.value = "",
-    xdm.network.http.url_category = XDM_CONST.URL_CATEGORY_UNKNOWN,
     xdm.source.ipv4 = tmp_rem_ip,
     xdm.source.ipv6 = "",
     xdm.source.is_internal_ip = if(
@@ -287,7 +285,8 @@ filter
     xdm.target.is_internal_ip = true,
     xdm.target.port = to_integer(443),
     xdm.target.sent_bytes = to_integer(0),
-    xdm.target.host.device_id = tmp_devid
+    xdm.target.host.device_id = tmp_devid,
+    xdm.target.resource.name = tmp_devid
 ;
 ```
 
@@ -300,7 +299,7 @@ Dual-branch decisions worth copying:
 - `xdm.event.outcome` uses SUCCESS / FAILED only -- the authentication
   story forbids the network padding value OUTCOME_UNKNOWN, and the
   stricter story wins on a dual event.
-- `xdm.auth.service = "SSL-VPN"` is the authentication service name (the FortiGate SSL-VPN portal); it is the service NAME, not a role, and
+- `xdm.auth.service = "Universal"`: the FortiGate validates the credential itself and no known IdP provider is involved, so neither `"SP"` nor `"IDP"` describes it (see house-conventions.md). The portal name is not a role and moves to `xdm.target.application.name`, and
   the target side carries the appliance: `xdm.target.host.device_id`
   from `devid`, `xdm.target.port` 443 (the SSL-VPN listener),
   `xdm.target.is_internal_ip = true`. The login event logs no byte

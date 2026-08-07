@@ -11,7 +11,7 @@ Vendor / product: Microsoft / Windows Security auditing. Dataset:
 What this walkthrough shows: unlike the endpoint process / registry events
 (walkthroughs 9 and 10, which carry no story tag), Windows LOGON events ARE the
 authentication story. 4624 (success), 4625 (failure) and 4768 (a Kerberos TGT
-request) each take `EVENT_TAG_AUTHENTICATION` and the full 14-field
+request) each take `EVENT_TAG_AUTHENTICATION` and the full 15-field
 authentication mandatory set from
 [authentication-mapping.md](../authentication-mapping.md), classified PER
 RECORD by `event_id`. It also shows the two Windows-specific enums: the
@@ -35,7 +35,9 @@ filter
     _raw_log != null
 | alter
     tmp_channel   = json_extract_scalar(_raw_log, "$.channel"),
+    tmp_computer  = json_extract_scalar(_raw_log, "$.computer"),
     tmp_eid       = to_integer(to_number(json_extract_scalar(_raw_log, "$.event_id"))),
+    tmp_svcname   = json_extract_scalar(_raw_log, "$.event_data.ServiceName"),
     tmp_user      = json_extract_scalar(_raw_log, "$.event_data.TargetUserName"),
     tmp_domain    = json_extract_scalar(_raw_log, "$.event_data.TargetDomainName"),
     tmp_ip        = json_extract_scalar(_raw_log, "$.event_data.IpAddress"),
@@ -64,12 +66,16 @@ filter
         tmp_eid = 4768 and tmp_status = "0x0", XDM_CONST.OUTCOME_SUCCESS,
         tmp_eid = 4768, XDM_CONST.OUTCOME_FAILED),
     xdm.event.description = concat("windows ", to_string(tmp_eid), " for ", coalesce(tmp_user, "?")),
-    xdm.auth.service = coalesce(tmp_logonproc, if(tmp_eid = 4768, "Kerberos")),
+    xdm.auth.service = "IDP",
+    xdm.auth.auth_method = tmp_logonproc,
     xdm.source.ipv4 = if(tmp_ip = "-", null, to_string(tmp_ip) ~= ":", null, tmp_ip),
     xdm.source.ipv6 = if(to_string(tmp_ip) ~= ":", tmp_ip, null),
     xdm.source.port = coalesce(to_integer(to_number(tmp_ipport)), to_integer(0)),
     xdm.target.ipv4 = coalesce("", ""),
     xdm.target.port = to_integer(0),
+    xdm.target.resource.name = if(
+        tmp_eid = 4768, tmp_svcname,
+        tmp_is_auth = "y", tmp_computer),
     xdm.network.ip_protocol = XDM_CONST.IP_PROTOCOL_TCP,
     xdm.source.host.os_family = XDM_CONST.OS_FAMILY_WINDOWS,
     xdm.source.user.username = tmp_user,
@@ -126,7 +132,7 @@ filter
 
 - Logon is the authentication story. 4624 / 4625 / 4768 take
   `EVENT_TAG_AUTHENTICATION`, `operation OPERATION_TYPE_AUTH_LOGIN`, and the
-  full 14-field mandatory set -- unlike a Sysmon process event, which has no
+  full 15-field mandatory set -- unlike a Sysmon process event, which has no
   story tag. Classification is still per record (an unknown EventID falls to the
   catch-all).
 - LogonType over the COMPLETE list. `xdm.logon.type` maps the Windows
@@ -157,15 +163,17 @@ NOT MAPPED
                       xdm.source.host.hostname when the sample carries it
   event_data.SubStatus (4625) -- the granular failure sub-code; the primary
                       Status already drives outcome, keep SubStatus in the raw
-  event_data.ServiceName / ServiceSid (4768/4769) -- the requested service
-                      principal; revisit under a 4769 (TGS) branch
+  event_data.ServiceSid (4768/4769) -- the SID form of the requested service
+                      principal; ServiceName carries the readable form and is
+                      mapped to xdm.target.resource.name, so the SID adds
+                      nothing until a 4769 (TGS) branch needs it
 ```
 
 ## Checklist
 
 ```
 [ ] only filter is _raw_log != null (nothing dropped)
-[ ] logon events tagged EVENT_TAG_AUTHENTICATION; all 14 mandatory fields mapped/padded (WARN-042)
+[ ] logon events tagged EVENT_TAG_AUTHENTICATION; all 15 mandatory fields mapped/padded (WARN-042)
 [ ] classified per event_id; unknown EventID -> GOCORTEX_UNMODELLED
 [ ] LogonType mapped over the COMPLETE LOGON_TYPE list (not a partial subset)
 [ ] Kerberos encryption/error mapped (hex-string match; full chain via kerberos_map.py)

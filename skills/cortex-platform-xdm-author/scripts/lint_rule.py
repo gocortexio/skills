@@ -36,12 +36,34 @@ Schema-aware checks (XDM schema + XDM_CONST loaded from references):
     ERR-029  Assignment to a banned (internal-only) XDM field -- a real
              Cortex path that is not part of any event data model
              (assets/banned_fields.json).
+    WARN-051 Account captured from qualifier-bearing prose with no guard
+             against the qualifier itself being captured.
+    WARN-052 Capture qualified by letter case alone. XQL folds case, so an
+             uppercase class does not restrict what the group captures.
+    WARN-053 xdm.event.tags assigned more than once within one MODEL
+             block, so the later assignment overwrites the earlier.
+    WARN-054 Comparison-key field taken from a capture that runs to the
+             end of the line, so it inherits any trailing whitespace.
+    ERR-031  XDM_CONST member that does not exist (install-blocking).
+    ERR-032  regextract with more than one capturing group
+             (install-blocking).
+    ERR-033  Lookahead / lookbehind assertion; unsupported, and the
+             query hangs rather than failing.
+    ERR-034  UNQUOTED read of a raw column whose NAME is a query-language
+             construct (tag / view / target / fields / transaction /
+             table / filter). Fails the PACK INSTALL with an opaque 101704
+             naming no field and no line, while validate, the rest of this
+             linter and an ad-hoc SEARCH-mode query all pass. The READ is
+             the fault, not the assignment, so the tmp_ prefix is no
+             defence. The escape is a backtick, which the check accepts.
     WARN-014 Quoted XDM_CONST value (dropped as a string literal).
     WARN-035 Array-typed XDM field assigned a scalar value.
     WARN-037 Log-level word (warning / error / notice / debug) echoed into
              xdm.alert.severity instead of a proper band.
     WARN-038 Host named (host.hostname) with a known ipv4 but no
-             host.ipv4_addresses companion array.
+             host.ipv4_addresses companion array. Info-severity, and a
+             QUESTION: it applies only where both fields describe the
+             same entity, which field presence cannot establish.
     WARN-039 Whole payload (_raw_log / to_json_string) dumped into
              xdm.event.description instead of a concat() summary.
     WARN-040 Syslog header parsed with a vendor-anchored / positional
@@ -58,7 +80,7 @@ Schema-aware checks (XDM schema + XDM_CONST loaded from references):
              EVENT_TAG enum (advisory).
     WARN-046 Record-dropping content filter with no GOCORTEX_UNMODELLED
              catch-all sentinel (advisory).
-    WARN-047 Prepend-fragile syslog extraction: a body field captured with
+    ERR-030 Prepend-fragile syslog extraction: a body field captured with
              a ^-anchored / positional regex instead of a payload token, so
              it misses the direct or relay-prepended arrival form (advisory).
     WARN-048 Incomplete HTTP response-code mapping: xdm.network.http.
@@ -68,6 +90,12 @@ Schema-aware checks (XDM schema + XDM_CONST loaded from references):
              ID) baked into a contains / = branch (advisory).
     WARN-050 Endpoint event (process / file / registry / module entity mapped)
              with no xdm.event.operation verb assigned (advisory).
+    WARN-055 Authentication event whose xdm.target.resource.name is padded
+             with a placeholder rather than derived. The field names the
+             entity the principal authenticated TO, so a placeholder leaves
+             the event targetless while satisfying the mandatory-field
+             check -- the state an inverted rule passes the linter in. A
+             meaningful constant is not flagged (advisory).
     INFO-013 Advisory: one underscore temp mapped across 3+ XDM entity
              families (likely over-mapping; event / observer excluded).
 
@@ -109,6 +137,7 @@ from typing import Iterable, List, Tuple
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _xdm_schema import (  # noqa: E402
+    all_consts,
     banned_field,
     is_banned_field,
     load_banned_fields,
@@ -151,11 +180,20 @@ def _strip_line_comment(line: str) -> str:
     """Drop ``// ...`` line comments but preserve the original column
     layout for the surviving code prefix."""
     # Walk the line and cut at the first '//' that is outside a string.
+    # A backslash escapes the next character, so an escaped quote inside a
+    # literal must NOT toggle the in-string state. trim("@element", "\"")
+    # is the common shape: without this the walker leaves that literal
+    # believing it is still inside a string, and every '//' after it on the
+    # line reads as code instead of as a comment. Every check that strips
+    # line comments was affected, not only the one that found it.
     in_dq = False
     in_sq = False
     i = 0
     while i < len(line):
         ch = line[i]
+        if ch == "\\" and (in_dq or in_sq) and i + 1 < len(line):
+            i += 2
+            continue
         if ch == '"' and not in_sq:
             in_dq = not in_dq
         elif ch == "'" and not in_dq:
@@ -1715,11 +1753,44 @@ def _check_warn037(code_lines: List[str]) -> List[dict]:
 _HOST_SIDES = ("source", "target", "intermediate")
 
 
+_PAD_ADDRESS_RE = re.compile(r'^\s*""\s*$')
+
+
+def _is_pad_address(rhs: str) -> bool:
+    """True when the address expression can only ever yield the empty
+    string -- a bare "" or an if() whose every value branch is "".
+
+    An array built from a pad is arraycreate(""), which is junk. Asking
+    for it converts a correct semantically-empty pad into a populated but
+    meaningless value, so the advisory cannot apply."""
+    body = rhs.strip().rstrip(",").strip()
+    if _PAD_ADDRESS_RE.match(body):
+        return True
+    m = _IF_CALL_RE.match(body)
+    if not m:
+        return False
+    close = _matching_paren(body, m.end() - 1)
+    if close < 0:
+        return False
+    args = _split_top_level_args(body[m.end() : close])
+    values = [a for idx, a in enumerate(args) if idx % 2 == 1]
+    if len(args) % 2 == 1:
+        values.append(args[-1])
+    return bool(values) and all(_PAD_ADDRESS_RE.match(v) for v in values)
+
+
 def _check_warn038(code_lines: List[str]) -> List[dict]:
-    """When a host is named (`xdm.<side>.host.hostname`) and its IP is known
-    (`xdm.<side>.ipv4`), the `xdm.<side>.host.ipv4_addresses` array companion
-    should be populated too, so host-based correlation can pivot on either.
-    A pure assignment-target check."""
+    """A host is named (`xdm.<side>.host.hostname`) and an address is set
+    (`xdm.<side>.ipv4`) with no `xdm.<side>.host.ipv4_addresses` companion.
+
+    The companion only makes sense when both fields describe the SAME
+    entity, and field presence cannot establish that. Two cases where they
+    provably do not are suppressed: an address that is only ever a pad,
+    and a hostname that also names the observer (the emitting device),
+    which on a flow-bearing record is a different host from the flow
+    endpoint. Everything else is raised as a QUESTION, not an instruction:
+    a confident wrong fix here populates the field with a plausible but
+    wrong address that passes every count-based check."""
     if not _is_model(code_lines):
         return []
     targets: dict = {}
@@ -1729,23 +1800,48 @@ def _check_warn038(code_lines: List[str]) -> List[dict]:
         m = re.match(r"^\s*(xdm\.[\w.]+)\s*=(?!=)", raw.split("//", 1)[0])
         if m:
             targets.setdefault(m.group(1), i + 1)
+    rhs_by_path = {a["path"]: a["rhs"] for a in _top_level_xdm_assignments(code_lines)}
+    observer_temps = {
+        t
+        for path, rhs in rhs_by_path.items()
+        if path.startswith("xdm.observer.")
+        for t in re.findall(r"\b(\w+)\b", rhs)
+    }
     out: List[dict] = []
     for side in _HOST_SIDES:
         hostname = f"xdm.{side}.host.hostname"
         ipv4 = f"xdm.{side}.ipv4"
         arr = f"xdm.{side}.host.ipv4_addresses"
-        if hostname in targets and ipv4 in targets and arr not in targets:
-            out.append(
-                _violation(
-                    "WARN-038",
-                    "warning",
-                    targets[hostname],
-                    f"{hostname} and {ipv4} are both set but the companion "
-                    f"{arr} is missing. The host is named and its IP is known, "
-                    "so populate the address array for host-based correlation.",
-                    f"Add {arr} = if(<ip> != null, arraycreate(<ip>), null).",
-                )
+        if not (hostname in targets and ipv4 in targets and arr not in targets):
+            continue
+        if _is_pad_address(rhs_by_path.get(ipv4, "")):
+            continue
+        # The hostname also names the observer, so it is the device that
+        # EMITTED the record. On a flow-bearing record the flow endpoint
+        # is a different host, and hanging its address off the emitter
+        # would be wrong.
+        host_temps = set(re.findall(r"\b(\w+)\b", rhs_by_path.get(hostname, "")))
+        if host_temps & observer_temps:
+            continue
+        out.append(
+            _violation(
+                "WARN-038",
+                "info",
+                targets[hostname],
+                f"{hostname} and {ipv4} are both set but the companion "
+                f"{arr} is missing. IF the two name the SAME host, the "
+                "array is a useful companion for host-based correlation. "
+                "If they do not -- the hostname is the emitting device and "
+                "the address is a flow endpoint, say -- this advisory does "
+                "NOT apply and the array must not be added.",
+                f"Name the entity each field describes before acting. Only "
+                f"where they are the same host, add {arr} = if(<ip> != null, "
+                "arraycreate(<ip>), null). Where they are not, record why in "
+                "the rule header and leave the array unset: an address "
+                "hung off the wrong host is populated, non-empty and "
+                "wrong, and every host-based join would silently use it.",
             )
+        )
     return out
 
 
@@ -1789,6 +1885,105 @@ def _top_level_xdm_assignments(code_lines: List[str]) -> List[dict]:
     return out
 
 
+_IF_CALL_RE = re.compile(r"\bif\s*\(", re.IGNORECASE)
+
+
+def _matching_paren(s: str, open_idx: int) -> int:
+    """Index of the ')' closing the '(' at open_idx, ignoring parens that
+    sit inside a double-quoted string. -1 when unbalanced."""
+    depth = 0
+    in_str = False
+    i = open_idx
+    while i < len(s):
+        c = s[i]
+        if in_str:
+            if c == "\\":
+                i += 2
+                continue
+            if c == '"':
+                in_str = False
+        elif c == '"':
+            in_str = True
+        elif c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    return -1
+
+
+def _split_top_level_args(s: str) -> List[str]:
+    """Split on commas at paren depth zero, outside quoted strings."""
+    args: List[str] = []
+    cur: List[str] = []
+    depth = 0
+    in_str = False
+    i = 0
+    while i < len(s):
+        c = s[i]
+        if in_str:
+            cur.append(c)
+            if c == "\\" and i + 1 < len(s):
+                cur.append(s[i + 1])
+                i += 2
+                continue
+            if c == '"':
+                in_str = False
+        elif c == '"':
+            in_str = True
+            cur.append(c)
+        elif c == "(":
+            depth += 1
+            cur.append(c)
+        elif c == ")":
+            depth -= 1
+            cur.append(c)
+        elif c == "," and depth == 0:
+            args.append("".join(cur))
+            cur = []
+        else:
+            cur.append(c)
+        i += 1
+    args.append("".join(cur))
+    return args
+
+
+def _value_positions_only(expr: str) -> str:
+    """Return expr with the CONDITION arguments of every if() removed, so
+    only the positions whose VALUE reaches the field remain.
+
+    A temp that appears solely in a condition is a gate: it decides
+    WHETHER a field is populated, never what the field holds. Conditional
+    padding is the prescribed idiom for claiming a story only where its
+    mandatory set can be populated, and one boolean gate legitimately
+    conditions fields across several entity families. Counting a gate by
+    the families it conditions therefore flags correct code."""
+    out: List[str] = []
+    i = 0
+    while i < len(expr):
+        m = _IF_CALL_RE.search(expr, i)
+        if not m:
+            out.append(expr[i:])
+            break
+        out.append(expr[i : m.start()])
+        open_idx = m.end() - 1
+        close_idx = _matching_paren(expr, open_idx)
+        if close_idx < 0:
+            out.append(expr[m.start() :])
+            break
+        args = _split_top_level_args(expr[open_idx + 1 : close_idx])
+        # if(cond, val [, cond, val]... [, default]) -- values sit at the
+        # odd indices, and an odd argument count means a trailing default.
+        values = [a for idx, a in enumerate(args) if idx % 2 == 1]
+        if len(args) % 2 == 1:
+            values.append(args[-1])
+        out.append("if(" + ", ".join(_value_positions_only(v) for v in values) + ")")
+        i = close_idx + 1
+    return "".join(out)
+
+
 def _check_info013(code_lines: List[str]) -> List[dict]:
     """A single underscore temp consumed by xdm.* assignments across 3+
     distinct top-level XDM categories is usually over-mapping (forcing one
@@ -1807,7 +2002,7 @@ def _check_info013(code_lines: List[str]) -> List[dict]:
         cat = parts[1] if len(parts) > 1 else a["path"]
         if cat in metadata_cats:
             continue
-        for m in _TEMP_TOKEN.finditer(a["rhs"]):
+        for m in _TEMP_TOKEN.finditer(_value_positions_only(a["rhs"])):
             name = m.group(1)
             temp_cats.setdefault(name, set()).add(cat)
             temp_line.setdefault(name, a["line"])
@@ -1904,8 +2099,13 @@ _PRI_CAPTURE_PREFIX_RELAY = "^.*<("
 # A syslog envelope capture opens either on the priority token (^<...) or
 # behind a greedy relay-prefix (^.*...) that absorbs any prepended
 # relay/transport header. Either way it is prepend-robust, so it must never
-# be flagged as vendor-anchored (WARN-040) or prepend-fragile (WARN-047).
-_ENVELOPE_ANCHOR_RE = re.compile(r"^\^(?:<|\.\*)")
+# be flagged as vendor-anchored (WARN-040) or prepend-fragile (ERR-030).
+# A sanctioned envelope anchor: ^< (the PRI at the start of a direct
+# line) or ^.* (the greedy relay-skipping prefix). The `<` is commonly
+# written escaped as `\<` in XQL, which is the same anchor, so tolerate
+# the backslash -- otherwise a correctly written envelope capture is
+# flagged as prepend-fragile.
+_ENVELOPE_ANCHOR_RE = re.compile(r"^\^(?:\\?<|\.\*)")
 
 # A greedy rest-of-line capture group -- (.*), (.+), (.*?) etc. Combined
 # with a ^ anchor this is the "everything after the header" body grab that
@@ -1993,13 +2193,13 @@ def _check_warn041(code_lines: List[str]) -> List[dict]:
     ]
 
 
-# ----- WARN-047  prepend-fragile syslog extraction (support both forms)
+# ----- ERR-030  prepend-fragile syslog extraction (support both forms)
 
 
 def _rule_is_syslog(code_lines: List[str]) -> bool:
     """True when the rule parses a syslog transport: it carries a
     PRI/envelope capture (^<... or ^.*<...) or a regextract pattern with a
-    syslog timestamp-header signature. Used to gate WARN-047 so non-syslog
+    syslog timestamp-header signature. Used to gate ERR-030 so non-syslog
     shapes (CLF web access, CSV, JSON) are never touched."""
     for raw in code_lines:
         cp = _strip_line_comment(raw)
@@ -2046,8 +2246,8 @@ def _check_warn047(code_lines: List[str]) -> List[dict]:
                 continue  # sanctioned host / PRI / tag envelope capture
             out.append(
                 _violation(
-                    "WARN-047",
-                    "warning",
+                    "ERR-030",
+                    "error",
                     i + 1,
                     "Prepend-fragile syslog extraction: a body field is "
                     "captured with a ^-anchored / positional regex (or an "
@@ -2272,6 +2472,572 @@ def _check_warn050(code_lines: List[str]) -> List[dict]:
     ]
 
 
+# ----- WARN-051  unguarded account captured from qualifier-bearing prose
+
+# The dangerous shape: an UNQUOTED capture group directly after a
+# qualifier word. `password for (\S+)` captures `invalid` on
+# "Failed password for invalid user Masked(...)", and `Masked` if the
+# qualifier is skipped. Neither is an account.
+#
+# A quote-delimited capture (`User '(\S+)'`) and a key= capture
+# (`user=([^\s]+)`) are both safe: the delimiter bounds the value, so a
+# qualifier word cannot be captured in its place. Only the bare form is
+# flagged, which keeps this check quiet on ordinary structured sources.
+_PROSE_ACCOUNT_RE = re.compile(r"\b(?:for|user)\b(?:\\s[*+]|\s)+\(")
+_USER_FIELD_RE = re.compile(r"^xdm\.\w+\.user\.(?:username|upn)$")
+# Qualifier / redaction vocabulary a prose capture can return instead of
+# an account. A rule that compares against any of these has a guard.
+_REDACTION_TOKENS = ("invalid", "masked", "unknown", "nobody")
+
+
+def _temp_var_patterns(text: str) -> Dict[str, str]:
+    """Map each temp variable to the regextract pattern that produced its
+    value.
+
+    A rule commonly passes a capture through a plain rename stage
+    (tmp_user = tmp_user_raw) before mapping it, so bare aliases are
+    followed back to the pattern that produced the value. A stage that
+    TRANSFORMS the value is not a bare alias and is not followed."""
+    temp_pattern: Dict[str, str] = {}
+    for m in re.finditer(
+        r'(\w+)\s*=\s*[^\n]*?regextract\([^,]+,\s*"((?:\\.|[^"\\])*)"', text
+    ):
+        temp_pattern.setdefault(m.group(1), m.group(2))
+    aliases: Dict[str, str] = {}
+    for m in re.finditer(r"^\s*(\w+)\s*=\s*(\w+)\s*,?\s*$", text, re.MULTILINE):
+        if m.group(1) != m.group(2):
+            aliases[m.group(1)] = m.group(2)
+    for name in list(aliases):
+        seen_alias, cur = {name}, aliases[name]
+        while cur in aliases and cur not in seen_alias:
+            seen_alias.add(cur)
+            cur = aliases[cur]
+        if cur in temp_pattern:
+            temp_pattern.setdefault(name, temp_pattern[cur])
+    return temp_pattern
+
+
+def _check_warn051(code_lines: List[str]) -> List[dict]:
+    """An account captured from qualifier-bearing prose with no guard
+    against the qualifier itself being captured.
+
+    A null actor is correct; a plausible fictional one is a correlation
+    defect, because a correlation keyed on the account collapses unrelated
+    attempts from different hosts onto one invented identity. Advisory:
+    the absence of a guard is inferred, and a source may be known never
+    to emit a qualifier."""
+    if not _is_model(code_lines):
+        return []
+    text = "\n".join(_strip_line_comment(ln) for ln in code_lines)
+    if any(
+        re.search(r'!=\s*"' + re.escape(t) + r'"', text, re.IGNORECASE)
+        for t in _REDACTION_TOKENS
+    ):
+        return []  # a guard is present
+    temp_pattern = _temp_var_patterns(text)
+    out: List[dict] = []
+    seen: set = set()
+    for a in _top_level_xdm_assignments(code_lines):
+        if not _USER_FIELD_RE.match(a["path"]):
+            continue
+        for name in re.findall(r"\b(\w+)\b", a["rhs"]):
+            pat = temp_pattern.get(name)
+            if not pat or not _PROSE_ACCOUNT_RE.search(pat):
+                continue
+            # One finding per unguarded capture, not per field it feeds:
+            # username and upn commonly take the same temp, and the root
+            # cause is the single missing guard.
+            if pat in seen:
+                break
+            seen.add(pat)
+            out.append(
+                _violation(
+                    "WARN-051",
+                    "warning",
+                    a["line"],
+                    f"'{a['path']}' takes an account captured from prose "
+                    f'("{pat}") with an unquoted group directly after a '
+                    "qualifier word, and the rule has no guard against the "
+                    "qualifier being captured instead. A masked line yields "
+                    "'invalid' or 'Masked', which is not an account.",
+                    "Guard the capture before mapping it, so the field stays "
+                    "null when the qualifier matched: "
+                    'tmp_actor = if(tmp_actor_raw != "invalid" and '
+                    'tmp_actor_raw != "Masked", tmp_actor_raw). A null actor '
+                    "is the truth; a fictional one collapses unrelated "
+                    "attempts onto one identity. See "
+                    "references/extraction-recipes.md Recipe 13.",
+                )
+            )
+            break
+    return out
+
+
+
+# ----- ERR-031 / ERR-032 / ERR-033  install-blocking constructs
+#
+# All three were isolated by bisection against a live tenant: the pack
+# install fails with an opaque 101704 that names no field and no line, or
+# (ERR-033) the query never returns at all. None of them is visible in
+# the rule's behaviour offline, which is why they are errors here.
+
+# Members proven ABSENT on a live tenant. Kept separate from the
+# family gate below because their family is one this bundle does not
+# document completely, so the gate alone would not catch them.
+_ABSENT_CONST_MEMBERS = {
+    "LOG_LEVEL_EMERGENCY": "syslog severity 0; XDM_CONST.LOG_LEVEL has no "
+    "EMERGENCY member. Floor 0 and 1 to LOG_LEVEL_CRITICAL.",
+    "LOG_LEVEL_ALERT": "syslog severity 1; XDM_CONST.LOG_LEVEL has no ALERT "
+    "member. Floor 0 and 1 to LOG_LEVEL_CRITICAL.",
+    "LOG_LEVEL_DEBUG": "syslog severity 7; XDM_CONST.LOG_LEVEL has no DEBUG "
+    "member. Map 7 to LOG_LEVEL_INFORMATIONAL.",
+    "OPERATION_TYPE_AUTH_LOGOUT": "there is no logout verb. A logout is not "
+    "a login: leave xdm.event.operation unset and let xdm.event.type and "
+    "the vendor token carry it.",
+}
+
+# Families this bundle documents COMPLETELY, established by measuring the
+# reference against a corpus of shipped rules: no shipped rule uses a
+# member of these families that the reference does not list. Families
+# where the reference is a subset (IP_PROTOCOL, OPERATION_TYPE,
+# IDENTITY_TYPE) are deliberately NOT gated -- flagging there would be
+# reporting our own incompleteness as the author's error.
+_CLOSED_CONST_FAMILIES = (
+    "LOG_LEVEL", "EVENT_TAG", "OUTCOME", "USER_TYPE",
+    "SIGNATURE_STATUS", "URL_CATEGORY", "LOGON_TYPE",
+)
+
+_CONST_USE_RE = re.compile(r"XDM_CONST\.([A-Z][A-Z0-9_]*)")
+
+
+def _check_err031(code_lines: List[str]) -> List[dict]:
+    """An XDM_CONST member that does not exist. Cortex rejects the pack
+    install with an opaque 101704 naming no field and no line.
+
+    The trap is that the closed lists LOOK like well-known external
+    enumerations and are not. Syslog severity has eight levels and
+    XDM_CONST.LOG_LEVEL has five; six of the eight share a name, so
+    writing the remaining two reads as completing a table rather than
+    inventing a constant."""
+    if not _is_model(code_lines):
+        return []
+    known = {c.split(".", 1)[1] for c in all_consts() if "." in c}
+    out: List[dict] = []
+    seen: set = set()
+    for i, raw in enumerate(code_lines):
+        cp = _strip_line_comment(raw)
+        for m in _CONST_USE_RE.finditer(cp):
+            member = m.group(1)
+            if member in seen:
+                continue
+            reason = _ABSENT_CONST_MEMBERS.get(member)
+            if reason is None:
+                fam = next(
+                    (f for f in _CLOSED_CONST_FAMILIES
+                     if member.startswith(f + "_")), None)
+            
+                if fam is None or not known or member in known:
+                    continue
+                reason = (f"XDM_CONST.{fam} is a closed list and this member "
+                          "is not in it")
+            seen.add(member)
+            out.append(
+                _violation(
+                    "ERR-031", "error", i + 1,
+                    f"XDM_CONST.{member} does not exist -- {reason} Assigning "
+                    "a non-existent member fails the pack install with an "
+                    "opaque 101704 that names no field and no line, so it "
+                    "cannot be diagnosed from the error.",
+                    "Use a member from the closed list in "
+                    "references/xdm-const.md. Where the source enumeration is "
+                    "larger than the XDM one, BAND into it rather than "
+                    "extending it by name.",
+                )
+            )
+    return out
+
+
+_CAPTURE_GROUP_LIMIT = 1
+
+
+def _capturing_groups(pattern: str) -> int:
+    """Count groups that CAPTURE: not escaped, not (?...), and not a
+    parenthesis sitting inside a character class."""
+    n = 0
+    i = 0
+    in_class = False
+    while i < len(pattern):
+        c = pattern[i]
+        if c == "\\":
+            i += 2
+            continue
+        if in_class:
+            if c == "]":
+                in_class = False
+        elif c == "[":
+            in_class = True
+        elif c == "(" and pattern[i + 1 : i + 2] != "?":
+            n += 1
+        i += 1
+    return n
+
+
+def _check_err032(code_lines: List[str]) -> List[dict]:
+    """More than one capturing group in a regextract pattern. Cortex
+    rejects the install; and since arrayindex() reads one element the
+    extra group was never going to be read anyway."""
+    if not _is_model(code_lines):
+        return []
+    out: List[dict] = []
+    for i, raw in enumerate(code_lines):
+        cp = _strip_line_comment(raw)
+        for m in _REGEXTRACT_RAW_RE.finditer(cp):
+            pat = m.group(1)
+            n = _capturing_groups(pat)
+            if n > _CAPTURE_GROUP_LIMIT:
+                out.append(
+                    _violation(
+                        "ERR-032", "error", i + 1,
+                        f'regextract pattern has {n} capturing groups: "{pat}". '
+                        "Cortex rejects the pack install with an opaque 101704. "
+                        "The extra group is also dead weight, because "
+                        "arrayindex() reads a single element -- so the value it "
+                        "captures was never going to be used.",
+                        "Demote every group but the one you read to "
+                        "non-capturing (?:...), or extract each value with its "
+                        "own regextract. Adjacent values -- an address and its "
+                        "port -- read as economical to capture together and "
+                        "are not.",
+                    )
+                )
+    return out
+
+
+_LOOKAROUND_RE = re.compile(r"\(\?[=!]|\(\?<[=!]")
+
+
+def _check_err033(code_lines: List[str]) -> List[dict]:
+    """A lookahead or lookbehind assertion. The engine does not support
+    them and does not say so: the query HANGS rather than failing, so the
+    caller sees a timeout with no error and no partial result."""
+    if not _is_model(code_lines):
+        return []
+    out: List[dict] = []
+    for i, raw in enumerate(code_lines):
+        cp = _strip_line_comment(raw)
+        for m in _REGEXTRACT_RAW_RE.finditer(cp):
+            pat = m.group(1)
+            if _LOOKAROUND_RE.search(pat):
+                out.append(
+                    _violation(
+                        "ERR-033", "error", i + 1,
+                        f'Lookaround assertion in a regex: "{pat}". This engine '
+                        "does not support lookahead or lookbehind, and does not "
+                        "report that it does not: the query HANGS instead of "
+                        "failing. There is no error and no partial result, so "
+                        "the caller sees only a timeout -- which reads like a "
+                        "crash in whatever ran the query, not like a rejected "
+                        "pattern.",
+                        "Express the constraint positionally instead. Where a "
+                        "value must be excluded, capture what IS there and "
+                        "filter or guard it in a later alter stage, or require "
+                        "the delimiter that must follow it.",
+                    )
+                )
+    return out
+
+
+# ----- ERR-034  unquoted read of a raw column named for a language construct
+
+# A MODEL rule that READS a raw column whose NAME is a query-language
+# construct, without backticks, fails the whole PACK INSTALL with the
+# opaque 101704. The READ is the fault, not the assignment and not the
+# value, and every other signal says the pack is fine: spellbook validate
+# passes, this linter passed before the check existed, the modelling schema
+# declares the column, and XQL SEARCH mode reads the same column happily --
+# so an ad-hoc query does NOT reproduce it.
+#
+# Confirmed on a live tenant by single-variable bisection, two uploads
+# differing by exactly one line:
+#
+#     | alter tmp_v = api_key_id                      <- INSTALLED
+#     | alter tmp_v = api_key_id, tmp_view = view     <- FAILED the install
+#
+# Note that tmp_view is correctly tmp_-prefixed. The tmp_ convention
+# protects the name a rule CREATES and does nothing for the name it READS,
+# so it is no defence here -- which corrects a claim this bundle used to
+# make about its own convention.
+#
+# THE ESCAPE IS A BACKTICK, so the check demands the quoted form rather
+# than forbidding the column. That was measured, not deduced: across 328
+# shipped upstream modelling rules every column of this kind is read inside
+# backticks and not one is read bare -- `target` 31 times, `fields` 13,
+# `in` 10, `transaction` 6, and `tag`, `table` and `filter` twice each.
+#
+# The flagged set comes from that corpus rather than from how SQL-ish a
+# word looks, which is a bad guide -- but the counts that make that case
+# have to be read carefully, and an earlier statement of this comment got
+# them wrong. `timestamp` is read bare in value position 39 times and
+# `dst` 146, so those two are demonstrably ordinary column names. `call`,
+# `contains` and `values` are NOT: `contains` occurs 1429 times and 1428
+# of those are the OPERATOR, with zero value-position reads, so the corpus
+# holds no column of that name and neither supports nor refutes reserving
+# it. They are left out because there is no evidence to put them in, which
+# is a weaker claim than "measured safe" and should not be restated as
+# one.
+#
+# `in` IS reserved as of 1.9.1, and the reason it was not before does not
+# survive measurement. This comment used to say it was excluded "because
+# it is also the membership operator and flagging it would fire on every
+# `action in (...)`". That was true of a cruder check and is not true of
+# this one: the read patterns only match in VALUE position -- after `=`,
+# `(` or `,` -- and the operator never appears there, it follows an
+# identifier. Re-measured against the corpus with strings and comments
+# stripped, exactly as the check runs: 570 membership-operator uses of
+# `in`, ZERO of them matched, and 9 backticked reads that the check
+# correctly accepts. That is the same evidence shape as every other
+# member of this set. It arrived from a FortiGate CEF source, where `in`
+# and `out` are the standard byte-count extension keys, so this recurs on
+# every CEF firewall rather than being a one-off.
+#
+# `out` is NOT reserved, and the same measurement is why. It is read BARE
+# in value position 8 times in shipped upstream rules -- `to_integer(out)`
+# on the sent-bytes mapping -- and never backticked. That is the
+# `timestamp` and `dst` pattern, i.e. demonstrably an ordinary column
+# name, not the `target` pattern. Reserving it would invent a hazard and
+# would call 8 shipped rules broken when they demonstrably install. It is
+# named here only because it always arrives paired with `in`, and the
+# pairing is exactly what makes it tempting to add on symmetry rather
+# than on evidence.
+#
+# Evidence is uneven across the set, and that is worth knowing before
+# changing it. `target` (31 backticked reads, 12 vendors), `fields` (13),
+# `in` (10) and `transaction` (6) are strongly attested. `table` and
+# `filter` rest on 2 each. `tag` rests on 2 backticked reads, and `view`
+# does not appear in the corpus in ANY form -- both of those are here on
+# the strength of live-tenant bisection instead, which is the stronger
+# evidence anyway. Corpus silence is not evidence of safety.
+#
+# Kept deliberately identical to RESERVED_COLUMNS in the content-pack
+# bundle's scripts/preflight_release.py, which gates the same fault at
+# upload time. The two must not disagree: a rule this check passes and that
+# gate rejects costs a burned version number per upload.
+_ERR034_RESERVED = (
+    "tag", "view",                                          # confirmed by bisection
+    "target", "fields", "transaction", "table", "filter",   # never read bare in a shipped rule
+    "in",                                                   # 9 backticked reads, 0 bare, 570 operator uses all unmatched
+)
+_ERR034_ALT = "|".join(sorted(_ERR034_RESERVED))
+# Value position: after '=', '(' or ','. The negative lookahead for '('
+# keeps a function call of the same name from reading as a column; \b keeps
+# view_name, preview, etag, header_fields and xdm.event.tags out of it; and
+# the optional leading backtick plus the lookahead for a trailing one keep
+# the ESCAPED form out, which is the form shipped rules use.
+_ERR034_READ = re.compile(
+    rf"[=(,]\s*`?({_ERR034_ALT})\b(?!\s*[(`])", re.IGNORECASE
+)
+# Creating a field of that name, which SEARCH mode rejects too.
+_ERR034_TARGET = re.compile(
+    rf"\balter\s+`?({_ERR034_ALT})\b(?!`)\s*=", re.IGNORECASE
+)
+# A filter reads the column as its first operand, where nothing precedes it.
+_ERR034_FILTER = re.compile(
+    rf"\bfilter\s+`?({_ERR034_ALT})\b(?!\s*[(`])", re.IGNORECASE
+)
+# Nothing else in this linter strips block comments. Upstream rules carry
+# long block headers naming the very fields they map, so a check that scans
+# for bare identifiers cannot read them as code. Blanking preserves the
+# newlines, or every line number after a block comment would be wrong.
+_ERR034_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.S)
+
+
+def _check_err034(code_lines: List[str]) -> List[dict]:
+    """An UNQUOTED read of a raw column whose NAME is a query-language
+    construct. Fails the pack install with an opaque 101704 that names no
+    field and no line, while every other check passes and the same read
+    works in SEARCH mode. The escape is a backtick, which is what shipped
+    rules use, so the quoted form is accepted."""
+    if not _is_model(code_lines):
+        return []
+    # Block comments first, then strings, then line comments -- in that
+    # order, so a JSON path or a URL inside a literal cannot leave a '//'
+    # behind for the line-comment strip, and so a literal never reads as a
+    # column.
+    text = _ERR034_BLOCK_COMMENT.sub(
+        lambda m: "".join(c if c == "\n" else " " for c in m.group(0)),
+        "\n".join(code_lines),
+    )
+    out: List[dict] = []
+    for i, raw in enumerate(text.split("\n")):
+        line = _strip_line_comment(_strip_strings(raw))
+        m = (_ERR034_READ.search(line) or _ERR034_TARGET.search(line)
+             or _ERR034_FILTER.search(line))
+        if not m:
+            continue
+        name = m.group(1)
+        out.append(
+            _violation(
+                "ERR-034", "error", i + 1,
+                f"Reads a raw column named '{name}' UNQUOTED, and that name is "
+                "a query-language construct. The pack WILL NOT INSTALL, and "
+                "the error is the opaque 101704 naming no field and no line, "
+                "while spellbook validate, the rest of this linter and an "
+                "ad-hoc XQL query in SEARCH mode all pass. The READ is the "
+                "fault, not the assignment: a correctly tmp_-prefixed target "
+                "is no defence, because the prefix protects the name the rule "
+                "CREATES and this is the name it READS.",
+                f"Backtick it -- `{name}` -- which is how all 328 shipped "
+                "upstream rules read these columns. Better, rename it in the "
+                f"COLLECTOR ('dimension_{name}') so the escape is not needed "
+                "at every read and a missed one cannot fail the same silent "
+                "way.",
+            )
+        )
+    return out
+
+
+# ----- WARN-054  a comparison key captured to the end of the line
+
+# A capture that runs to end-of-line inherits whatever the device put
+# there. Devices commonly emit a trailing space after a CLI command, and
+# a greedy tail keeps it: the field is populated, non-empty, not the
+# sentinel, and reads correctly in every sample and table. It differs
+# from the same value written without the space only under exact
+# comparison -- so a comp by the field shows the command, and a filter
+# written the obvious way against those same records returns nothing.
+# The correlation is then structurally incapable of matching, and it
+# fails as an empty result set rather than an error.
+#
+# Scoped deliberately to fields that are COMPARED rather than displayed.
+# A free-text description legitimately wants the tail; flagging every
+# greedy capture would be noise. Advisory, because a source may be known
+# never to emit trailing whitespace.
+_GREEDY_TAIL_RE = re.compile(r"\((?:\.\+|\.\*)\)(?:\$)?$")
+_COMPARISON_KEY_RE = re.compile(
+    r"^xdm\.(?:[\w]+\.)*process\.command_line$"
+    r"|^xdm\.event\.original_event_type$"
+)
+
+
+def _check_warn054(code_lines: List[str]) -> List[dict]:
+    """A comparison-key field taking a capture that runs to the end of
+    the line, so any trailing whitespace the device emitted is retained
+    and every exact comparison against the field silently fails."""
+    if not _is_model(code_lines):
+        return []
+    text = "\n".join(_strip_line_comment(ln) for ln in code_lines)
+    temp_pattern = _temp_var_patterns(text)
+    out: List[dict] = []
+    seen: set = set()
+    for a in _top_level_xdm_assignments(code_lines):
+        if not _COMPARISON_KEY_RE.match(a["path"]):
+            continue
+        for name in re.findall(r"\b(\w+)\b", a["rhs"]):
+            pat = temp_pattern.get(name)
+            if not pat or not _GREEDY_TAIL_RE.search(pat):
+                continue
+            # One finding per fragile capture, not per field it feeds:
+            # source and target command_line commonly take the same temp.
+            if pat in seen:
+                break
+            seen.add(pat)
+            fixed = _GREEDY_TAIL_RE.sub(r"(.*\\S)", pat)
+            out.append(
+                _violation(
+                    "WARN-054",
+                    "warning",
+                    a["line"],
+                    f"'{a['path']}' takes a capture that runs to the end of "
+                    f'the line ("{pat}"), so it inherits any trailing '
+                    "whitespace the device emitted. The field still looks "
+                    "correct in a sample and in a comp, but an exact "
+                    "comparison against it fails silently -- a filter for "
+                    "the command returns zero rows rather than an error, "
+                    "and nobody investigates an empty result set.",
+                    "Terminate the capture on CONTENT rather than on the "
+                    f'line ending: "{fixed}". The required final \\S is '
+                    "greedy up to the last non-space character, so it takes "
+                    "the whole value and drops the trailing whitespace "
+                    "without needing a trim. See "
+                    "references/process-mapping.md.",
+                )
+            )
+            break
+    return out
+
+
+# ----- WARN-052  a capture qualified by letter case alone
+
+# XQL matches case-insensitively, so an uppercase character class does NOT
+# restrict a capture to uppercase text: [A-Z] matches lowercase too. A
+# pattern that lifts an identifier out of free text and relies on the
+# class to mean "this token is a message tag, not prose" therefore
+# captures whatever sits in that position -- a function name, a word --
+# and the field ends up populated with a plausible but wrong value, which
+# passes a null check, an empty check and a sentinel check alike.
+#
+# Structure is what qualifies a capture. A group introduced by a literal
+# (a % sigil, a key name, a quote) is anchored and safe; only a group
+# reached through nothing but whitespace and positional wildcards is
+# flagged. A pattern containing any literal word is treated as anchored.
+_CASE_GROUP_RE = re.compile(r"(?:\\s[*+]|\s)\(\[A-Z")
+_CLASS_STRIP_RE = re.compile(r"\[[^\]]*\]")
+_ESCAPE_STRIP_RE = re.compile(r"\\[A-Za-z]")
+_LITERAL_WORD_RE = re.compile(r"[A-Za-z]{3,}")
+
+
+def _pattern_has_literal_anchor(pattern: str) -> bool:
+    """True when the pattern contains a literal word outside a character
+    class -- a key name, a vendor token, a phrase -- which identifies the
+    position structurally rather than by case."""
+    stripped = _CLASS_STRIP_RE.sub("", pattern)
+    stripped = _ESCAPE_STRIP_RE.sub("", stripped)
+    return bool(_LITERAL_WORD_RE.search(stripped))
+
+
+def _check_warn052(code_lines: List[str]) -> List[dict]:
+    """A capture group whose only qualifier is an uppercase character
+    class, reached through whitespace and positional wildcards with no
+    literal anchor. Case cannot qualify a capture because XQL folds case;
+    structure must. Advisory."""
+    if not _is_model(code_lines):
+        return []
+    out: List[dict] = []
+    seen: set = set()
+    for i, raw in enumerate(code_lines):
+        cp = _strip_line_comment(raw)
+        for m in _REGEXTRACT_RAW_RE.finditer(cp):
+            pat = m.group(1)
+            if not _CASE_GROUP_RE.search(pat):
+                continue
+            if _pattern_has_literal_anchor(pat):
+                continue
+            if pat in seen:
+                continue
+            seen.add(pat)
+            out.append(
+                _violation(
+                    "WARN-052",
+                    "warning",
+                    i + 1,
+                    f'Capture qualified by letter case alone: "{pat}". XQL '
+                    "matches case-insensitively, so [A-Z] also matches "
+                    "lowercase text and the class does not restrict what "
+                    "the group captures. Reached through whitespace with no "
+                    "literal anchor, this takes whatever token sits in that "
+                    "position -- and the field is then populated with a "
+                    "plausible but wrong value, which passes a null, empty "
+                    "and sentinel check alike.",
+                    "Qualify the capture STRUCTURALLY: anchor it on a sigil "
+                    "or key that identifies the token (%FACILITY-SEV-MNEMONIC, "
+                    "key=value). Where the position is free text, enumerate "
+                    "the documented vendor tags explicitly and let anything "
+                    "else fall back, rather than relying on case.",
+                )
+            )
+    return out
+
+
 # ----- WARN-042  authentication-story mandatory mapping (auto-detected)
 
 
@@ -2280,6 +3046,7 @@ _AUTH_MANDATORY = [
     "xdm.source.port",
     "xdm.target.ipv4",
     "xdm.target.port",
+    "xdm.target.resource.name",
     "xdm.network.ip_protocol",
     "xdm.event.type",
     "xdm.event.tags",
@@ -2299,6 +3066,12 @@ _AUTH_FIELD_HINT = {
     "xdm.target.ipv4": 'map the value, else xdm.target.ipv4 = "" '
     "(string here, never a list)",
     "xdm.target.port": "map the value, else xdm.target.port = to_integer(0)",
+    "xdm.target.resource.name": "name the device / application / service "
+    "the principal authenticated TO, derived from the raw log (an explicit "
+    "target or application field, a Kerberos service principal, the "
+    "accessed device name, else its address); set it IN ADDITION to "
+    "xdm.target.host.hostname / xdm.target.application.name / "
+    "xdm.target.ipv4, and never pad it",
     "xdm.network.ip_protocol": "assign XDM_CONST.IP_PROTOCOL_* "
     "(pad IP_PROTOCOL_IP when the protocol is absent)",
     "xdm.event.type": 'resolve to a value containing "authentication"',
@@ -2310,9 +3083,13 @@ _AUTH_FIELD_HINT = {
     "xdm.event.original_event_type": "carry the raw vendor event name",
     "xdm.event.outcome": "XDM_CONST.OUTCOME_SUCCESS / OUTCOME_FAILED only, "
     "on conclusive events",
-    "xdm.auth.service": "the authentication service name (Kerberos / "
-    "NTLM / OAuth2 / SAML / SSO / RADIUS / TACACS+ / LDAP); normalise the "
-    'vendor protocol field, pad "Login" when absent',
+    "xdm.auth.service": "the ROLE this system played in the "
+    'authentication flow, decided per event type: "IDP" when it '
+    'validates the credential, "SP" when it initiates and relies on '
+    'another to validate, "Universal" when the source is not a known IdP '
+    "provider (local auth, TACACS+, SSH onto a device). Never a service "
+    "name -- the protocol or mechanism belongs in xdm.auth.auth_method, "
+    "xdm.network.application_protocol or xdm.logon.package_name",
     "xdm.source.user.upn": "the authenticated identity in UPN format "
     "(the authentication-story correlation key)",
     "xdm.source.user.identity_type": "derive the XDM_CONST.IDENTITY_TYPE_* "
@@ -2365,11 +3142,53 @@ _AUTH_SIGNAL_FIELDS = (
 _AUTH_ANY_OPERATION_RE = re.compile(r"OPERATION_TYPE_[A-Z_]+")
 _AUTH_OUTCOME_RE = re.compile(r"OUTCOME_[A-Z_]+")
 _AUTH_OUTCOME_OK = {"OUTCOME_SUCCESS", "OUTCOME_FAILED"}
-# xdm.auth.service is a free-string service NAME, so there is no allowed
-# vocabulary to enforce. The only definite error is the deprecated
-# "SP"/"IDP" role token from the retired v1 guidance -- flagged so old
-# rules are migrated to a real service name.
-_AUTH_SERVICE_DEPRECATED = {"SP", "IDP"}
+# xdm.auth.service is the ROLE the logging system played in the
+# authentication flow, not a service name. The official page "XDM fields
+# for mapping authentication events" documents "SP" (the system
+# initiating the request) and "IDP" (the system that validates the
+# authentication), mapped per event type. "Universal" is GoCortexIO house
+# law for a source that is not a known IdP provider (local auth, TACACS+,
+# SSH onto a device); it is deliberately absent from the published page,
+# so do NOT drop it on the strength of that page listing only two values.
+# See references/house-conventions.md.
+#
+# The schema types this field as a plain String, and that is exactly how
+# an earlier version of this check came to have the rule backwards: it
+# reasoned from the String type to the absence of a vocabulary and
+# flagged the two correct values as deprecated. A String-typed field can
+# still carry a documented closed vocabulary.
+_AUTH_SERVICE_ROLES = {"SP", "IDP", "UNIVERSAL"}
+# Literals seen in shipped rules that are service NAMES rather than
+# roles. Used only to make the remedy concrete when one is found; the
+# check flags any non-role literal, not merely these.
+_AUTH_SERVICE_KNOWN_NAMES = {
+    "KERBEROS", "NTLM", "OAUTH2", "SAML", "SSO", "RADIUS", "TACACS+",
+    "LDAP", "LOGIN", "MFA", "SSH", "TELNET", "SNMP", "SNMPV3", "CLI",
+    "GUI", "DASHBOARD", "API", "LOCAL",
+}
+# xdm.target.resource.name carries the identity of the entity the
+# principal authenticated TO, so it must never be padded. A MEANINGFUL
+# constant is legitimate -- a dedicated SSL-VPN portal or console feed
+# where every record targets the same named thing really does have a
+# constant target, and "AWS Console" is information. What is never
+# legitimate is a PLACEHOLDER: it satisfies the mandatory-field check
+# while asserting that the target is known and is nothing, which is how
+# an inverted authentication rule passes the linter. Only placeholders
+# are flagged (WARN-055), so the check has nothing to say about an
+# honest constant.
+_AUTH_TARGET_PLACEHOLDERS = {
+    "",
+    "-",
+    "--",
+    "n/a",
+    "na",
+    "none",
+    "null",
+    "nil",
+    "unknown",
+    "unspecified",
+    "not applicable",
+}
 
 
 def _rhs_has_dynamic(rhs: str) -> bool:
@@ -2541,24 +3360,134 @@ def _auth_value_issues(path: str, rhs: str) -> List[tuple]:
                 "conclusive events only.",
             ))
     elif path == "xdm.auth.service":
-        # xdm.auth.service is the authentication service NAME (a free
-        # String: Kerberos, NTLM, OAuth2, SSO, ...), not a role. The only
-        # value error we can be certain of is the deprecated "SP"/"IDP"
-        # role token from the retired v1 guidance -- flag it so old rules
-        # get migrated. Any other free-string service name is accepted.
-        if _rhs_is_static_literal(rhs):
-            body = rhs.strip().rstrip(",").strip()
-            if body.strip('"').upper() in _AUTH_SERVICE_DEPRECATED:
-                issues.append((
-                    "This rule models an authentication event, but "
-                    "xdm.auth.service is the deprecated SP/IDP role token. "
-                    "xdm.auth.service is the authentication service NAME "
-                    "(a free String), not a role.",
-                    "Map the authentication service name from the vendor "
-                    "protocol field (Kerberos / NTLM / OAuth2 / SAML / SSO "
-                    '/ RADIUS / TACACS+ / LDAP), or pad "Login".',
-                ))
+        # xdm.auth.service is the ROLE the system played in the
+        # authentication flow: SP / IDP / Universal. A service NAME here
+        # (Kerberos, SSH, TACACS+, "Login", ...) is the defect, and it is
+        # the one this bundle itself taught for several versions.
+        #
+        # Two shapes are judged. A self-contained literal is decided
+        # outright. An if()-chain is decided only when EVERY literal it
+        # can return is a non-role value: a chain mixing roles and
+        # non-roles is left alone, because the non-role branch may be a
+        # deliberate passthrough the linter cannot evaluate. Without the
+        # chain case the check would be nearly inert -- shipped rules
+        # assign this field from an if()-chain far more often than from a
+        # bare literal.
+        bad = _auth_service_bad_literals(rhs)
+        if bad:
+            shown = ", ".join(f'"{b}"' for b in bad)
+            issues.append((
+                "This rule models an authentication event, but "
+                f"xdm.auth.service is assigned {shown}. That is an "
+                "authentication service NAME; the field carries the ROLE "
+                "the system played in the authentication flow.",
+                'Use "IDP" when this system validates the credential, '
+                '"SP" when it initiates the request and relies on another '
+                'to validate, or "Universal" when the source is not a '
+                "known IdP provider (local auth, TACACS+, SSH onto a "
+                "device). Move the protocol or mechanism to "
+                "xdm.auth.auth_method, xdm.network.application_protocol "
+                "or xdm.logon.package_name -- see "
+                "references/authentication-mapping.md.",
+            ))
     return issues
+
+
+def _auth_service_bad_literals(rhs: str) -> List[str]:
+    """Return the non-role string literals xdm.auth.service can resolve
+    to, or [] when the value is acceptable or cannot be judged.
+
+    Judged conservatively, in the same spirit as the rest of WARN-042:
+
+    - a self-contained literal is judged directly;
+    - an if()-chain is judged only when every literal it can return is a
+      non-role value, so a chain that already returns a role on some
+      branch is never second-guessed;
+    - anything else (a bare column, a temp, a function result) returns []
+      because the linter cannot see its runtime value.
+    """
+    body = rhs.strip().rstrip(",").strip()
+    if not body:
+        return []
+    if _rhs_is_static_literal(body):
+        lit = body.strip('"')
+        if lit.upper() in _AUTH_SERVICE_ROLES:
+            return []
+        return [lit] if lit else []
+    m = re.match(r"^([A-Za-z_]\w*)\s*\((.*)\)\s*$", body, re.DOTALL)
+    if not m:
+        return []
+    fn, inner = m.group(1).lower(), m.group(2)
+    args = _split_top_level_args(inner)
+    if fn == "if":
+        # if(pred1, val1, pred2, val2, ..., [default]) -- only the odd
+        # positions, plus a trailing default on an odd argument count,
+        # are values the field can actually receive. Reading predicate
+        # literals as returned values would put "yes" and "23" in the
+        # finding and send the author looking for a field that never
+        # holds them.
+        vals = [a for i, a in enumerate(args) if i % 2 == 1]
+        if len(args) % 2 == 1:
+            vals.append(args[-1])
+    elif fn in ("coalesce", "arrayindex"):
+        vals = args
+    else:
+        # concat(), to_string(), lowercase() and friends BUILD a value
+        # rather than select one, so their literals are fragments of the
+        # result rather than the result. Not judged.
+        return []
+    lits = []
+    for v in vals:
+        v = v.strip()
+        if re.fullmatch(r'"[^"]*"', v):
+            lit = v.strip('"')
+            if lit:
+                lits.append(lit)
+    if not lits:
+        return []
+    if any(x.upper() in _AUTH_SERVICE_ROLES for x in lits):
+        return []
+    seen, out = set(), []
+    for x in lits:
+        if x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
+
+
+def _split_top_level_args(inner: str) -> List[str]:
+    """Split a function argument list on commas that are not nested
+    inside parentheses or a string literal."""
+    args, buf, depth, in_str = [], [], 0, False
+    i = 0
+    while i < len(inner):
+        ch = inner[i]
+        if in_str:
+            buf.append(ch)
+            if ch == "\\" and i + 1 < len(inner):
+                buf.append(inner[i + 1])
+                i += 2
+                continue
+            if ch == '"':
+                in_str = False
+        elif ch == '"':
+            in_str = True
+            buf.append(ch)
+        elif ch == "(":
+            depth += 1
+            buf.append(ch)
+        elif ch == ")":
+            depth -= 1
+            buf.append(ch)
+        elif ch == "," and depth == 0:
+            args.append("".join(buf))
+            buf = []
+        else:
+            buf.append(ch)
+        i += 1
+    if buf:
+        args.append("".join(buf))
+    return [a.strip() for a in args if a.strip()]
 
 
 def _check_warn042(code_lines: List[str]) -> List[dict]:
@@ -2641,16 +3570,50 @@ def _check_warn042(code_lines: List[str]) -> List[dict]:
     if len(tags_assigns) > 1 and not network_marked:
         out.append(
             _violation(
-                "WARN-042",
+                "WARN-053",
                 "warning",
                 tags_assigns[1]["line"],
-                "xdm.event.tags is assigned more than once; the later "
+                "xdm.event.tags is assigned more than once IN THIS BLOCK; "
+                "the later "
                 "assignment overwrites the earlier one, dropping its story "
                 "tag.",
                 "Emit ONE merged xdm.event.tags = arraycreate(...) carrying "
                 "every story tag.",
             )
         )
+    # WARN-055: the no-pad rule for the authentication target. The
+    # PRESENCE of xdm.target.resource.name is WARN-042's business (the
+    # field is in _AUTH_MANDATORY); this is the separate, separately
+    # promotable rule that a placeholder does not count as mapping it.
+    # Emitted from here, like WARN-053 above, so it reuses the auth-marker
+    # detection rather than repeating it.
+    resource_rhs = rhs_by_path.get("xdm.target.resource.name")
+    if resource_rhs is not None and _rhs_is_static_literal(resource_rhs):
+        body = resource_rhs.strip().rstrip(",").strip().strip('"')
+        if body.strip().lower() in _AUTH_TARGET_PLACEHOLDERS:
+            out.append(
+                _violation(
+                    "WARN-055",
+                    "warning",
+                    targets["xdm.target.resource.name"],
+                    "This rule models an authentication event and pads "
+                    "xdm.target.resource.name with a placeholder. That field "
+                    "carries the identity of the device / application / "
+                    "service the principal authenticated TO, so a "
+                    "placeholder asserts that the target is known and is "
+                    "nothing, which is never true. Padding it satisfies the "
+                    "mandatory-field check while leaving the event "
+                    "targetless -- the state in which an inverted "
+                    "authentication rule passes the linter.",
+                    "Derive xdm.target.resource.name from the raw log (an "
+                    "explicit target or application field, a Kerberos "
+                    "service principal, the accessed device name, else its "
+                    "address), or let an if() resolve it to null on records "
+                    "that genuinely have no target. A null is visible in a "
+                    "population count; a pad is not. See "
+                    "references/authentication-mapping.md.",
+                )
+            )
     # Value conformance: a mandatory field that is mapped but carries a
     # forbidden value is as damaging as one left unmapped.
     for field in _AUTH_MANDATORY:
@@ -2680,9 +3643,6 @@ _NETWORK_MANDATORY = [
     "xdm.event.outcome",
     "xdm.event.type",
     "xdm.event.tags",
-    "xdm.network.http.http_header.header",
-    "xdm.network.http.http_header.value",
-    "xdm.network.http.url_category",
     "xdm.network.ip_protocol",
     "xdm.network.protocol_layers",
     "xdm.source.host.device_id",
@@ -2698,6 +3658,50 @@ _NETWORK_MANDATORY = [
     "xdm.target.port",
     "xdm.target.sent_bytes",
 ]
+
+# Mandatory only for a network event that CARRIES an HTTP layer (proxy,
+# web gateway, WAF, CASB, DNS-over-HTTPS).
+#
+# These were originally mandatory for every network event, which asked a
+# router SSH login or an SNMP failure to pad a header name, a header
+# value and a URL category -- asserting a protocol the source never saw.
+# A requirement no honest router rule can satisfy is worse than absent,
+# because a permanently unsatisfiable advisory trains authors to mute the
+# checker that raises it, and a muted checker protects nothing.
+#
+# The HTTP set is therefore conditional on the rule itself claiming an
+# HTTP layer. Claim one and the set must be complete; claim none and the
+# leaves are not required.
+_NETWORK_HTTP_MANDATORY = [
+    "xdm.network.http.http_header.header",
+    "xdm.network.http.http_header.value",
+    "xdm.network.http.url_category",
+]
+
+# Evidence that the record has an HTTP layer at all.
+_HTTP_LAYER_FIELD_RE = re.compile(
+    r"xdm\.network\.http\.\w+\s*=|xdm\.target\.url\s*=|xdm\.source\.url\s*="
+)
+_HTTP_LAYER_LITERAL_RE = re.compile(r'"(?:HTTPS?)"')
+
+
+def _rule_claims_http_layer(code_lines: List[str], targets: dict) -> bool:
+    """True when the rule already asserts an HTTP layer: it maps some
+    other xdm.network.http.* field or a URL, or names HTTP among the
+    protocol layers."""
+    if any(f in targets for f in _NETWORK_HTTP_MANDATORY):
+        return True
+    text = "\n".join(_strip_line_comment(ln) for ln in code_lines)
+    if _HTTP_LAYER_FIELD_RE.search(text):
+        return True
+    layers = targets.get("xdm.network.protocol_layers")
+    if layers is not None:
+        for ln in code_lines:
+            cp = _strip_line_comment(ln)
+            if "protocol_layers" in cp and _HTTP_LAYER_LITERAL_RE.search(cp):
+                return True
+    return False
+
 
 _NETWORK_FIELD_HINT = {
     "xdm.event.outcome": "map allow -> OUTCOME_SUCCESS, deny/drop/block -> "
@@ -2848,9 +3852,18 @@ def _check_warn043(code_lines: List[str]) -> List[dict]:
     if marker_line is None:
         return []
     out: List[dict] = []
-    for field in _NETWORK_MANDATORY:
+    required = list(_NETWORK_MANDATORY)
+    if _rule_claims_http_layer(code_lines, targets):
+        required += _NETWORK_HTTP_MANDATORY
+    for field in required:
         if field in targets:
             continue
+        http_note = (
+            " This rule claims an HTTP layer, so the HTTP set must be "
+            "complete; a network event with no HTTP layer does not need it."
+            if field in _NETWORK_HTTP_MANDATORY
+            else ""
+        )
         out.append(
             _violation(
                 "WARN-043",
@@ -2858,7 +3871,7 @@ def _check_warn043(code_lines: List[str]) -> List[dict]:
                 marker_line,
                 f"This rule models a network event, so {field} is mandatory "
                 "for the XDM network story but is not mapped. A mandatory "
-                "field left unmapped drops the event from the story.",
+                f"field left unmapped drops the event from the story.{http_note}",
                 f"Map {field}: {_NETWORK_FIELD_HINT[field]} "
                 "(see references/network-mapping.md).",
             )
@@ -2869,10 +3882,11 @@ def _check_warn043(code_lines: List[str]) -> List[dict]:
     if len(tags_assigns) > 1:
         out.append(
             _violation(
-                "WARN-043",
+                "WARN-053",
                 "warning",
                 tags_assigns[1]["line"],
-                "xdm.event.tags is assigned more than once; the later "
+                "xdm.event.tags is assigned more than once IN THIS BLOCK; "
+                "the later "
                 "assignment overwrites the earlier one, dropping its story "
                 "tag.",
                 "Emit ONE merged xdm.event.tags = arraycreate(...) carrying "
@@ -2882,7 +3896,9 @@ def _check_warn043(code_lines: List[str]) -> List[dict]:
         )
     # Value conformance: a mandatory field mapped to a forbidden value is
     # as damaging as one left unmapped.
-    for field in _NETWORK_MANDATORY:
+    # Value conformance covers the HTTP leaves too: they are conditionally
+    # required, but a leaf that IS mapped must still hold a legal value.
+    for field in _NETWORK_MANDATORY + _NETWORK_HTTP_MANDATORY:
         if field not in rhs_by_path:
             continue
         for msg, fix in _network_value_issues(field, rhs_by_path[field]):
@@ -3086,6 +4102,18 @@ _CATCHALL_SENTINEL = "GOCORTEX_UNMODELLED"
 _NULL_GUARD_RE = re.compile(r"_raw_log\s*!=\s*null", re.IGNORECASE)
 
 
+def _count_pipelines(code_lines: List[str]) -> int:
+    """Number of ``;``-terminated pipelines in the rule. A MODEL block may
+    hold several, each selecting and mapping one record kind."""
+    n = 0
+    for raw in code_lines:
+        if raw.lstrip().startswith("//"):
+            continue
+        if _strip_strings(_strip_line_comment(raw)).rstrip().endswith(";"):
+            n += 1
+    return n
+
+
 def _check_warn046(code_lines: List[str]) -> List[dict]:
     """Advisory when a MODEL rule narrows records with a content filter
     (anything beyond the `_raw_log != null` guard) yet carries no catch-all
@@ -3097,6 +4125,14 @@ def _check_warn046(code_lines: List[str]) -> List[dict]:
         return []
     if _CATCHALL_SENTINEL in "\n".join(code_lines):
         return []
+    # A MODEL block can hold several `;`-terminated pipelines, each
+    # selecting the record kind it maps (the extract-a-[RULE:]-and-call
+    # shape). There the per-pipeline predicate ROUTES records rather than
+    # dropping them, and the concern is whether the rule as a whole ends
+    # with a catch-all -- not whether each pipeline narrows. Report once
+    # for the rule instead of once per pipeline, or a thirty-pipeline rule
+    # produces thirty copies of one finding.
+    multi_pipeline = _count_pipelines(code_lines) > 1
     stage_of, start_idx = _classify_stages(code_lines)
     out: List[dict] = []
     seen_starts: set = set()
@@ -3118,6 +4154,24 @@ def _check_warn046(code_lines: List[str]) -> List[dict]:
         remainder = re.sub(r"\b(and|or|not)\b", " ", stripped, flags=re.IGNORECASE)
         remainder = re.sub(r"[()\s\"']", "", remainder)
         if remainder:
+            if multi_pipeline:
+                out.append(
+                    _violation(
+                        "WARN-046",
+                        "warning",
+                        start + 1,
+                        "This rule routes records across several pipelines "
+                        "with per-pipeline content filters, but no pipeline "
+                        "supplies the catch-all, so any record matching none "
+                        "of them is dropped and a datamodel search returns "
+                        "fewer rows than the raw dataset.",
+                        "Add a final pipeline that matches the records the "
+                        "others do not and gives them "
+                        'xdm.event.original_event_type = "GOCORTEX_UNMODELLED" '
+                        "(see references/record-classification.md).",
+                    )
+                )
+                break
             out.append(
                 _violation(
                     "WARN-046",
@@ -3136,8 +4190,69 @@ def _check_warn046(code_lines: List[str]) -> List[dict]:
     return out
 
 
+# Anchor on the header LINE. `\s*` would also swallow the preceding
+# newline(s), so a block with a blank line before it -- the normal way to
+# format a multi-block rule -- would start on that blank line and its
+# dataset name would parse as None. Horizontal whitespace only.
+_MODEL_BLOCK_RE = re.compile(r"^[ \t]*\[MODEL:", re.MULTILINE)
+
+
+def split_model_blocks(source: str) -> List[dict]:
+    """Split a rule file into its ``[MODEL: ...]`` blocks.
+
+    A pack routinely ships several blocks in one file, one per dataset.
+    Every check reasons about a single rule -- its temps, its stages, its
+    assignments -- so analysing the concatenation of several blocks is
+    wrong in both directions: a temp unused in its own block looks used
+    because a LATER block happens to define the same name, and a field
+    assigned once per block looks assigned repeatedly.
+
+    Returns ``[{dataset, line_offset, text}]``, one entry per block.
+    """
+    starts = [m.start() for m in _MODEL_BLOCK_RE.finditer(source)]
+    if len(starts) <= 1:
+        ds = _GC_RAW_HEADER_RE.match(source[starts[0]:].splitlines()[0]) if starts else None
+        return [{
+            "dataset": ds.group(1) if ds else None,
+            "line_offset": 0,
+            "text": source,
+        }]
+    blocks = []
+    bounds = starts + [len(source)]
+    for i, begin in enumerate(starts):
+        text = source[begin:bounds[i + 1]]
+        header = text.splitlines()[0] if text.splitlines() else ""
+        m = _GC_RAW_HEADER_RE.match(header)
+        blocks.append({
+            "dataset": m.group(1) if m else None,
+            "line_offset": source[:begin].count("\n"),
+            "text": text,
+        })
+    return blocks
+
+
 def lint(source: str) -> List[dict]:
-    """Return the ordered list of violations for ``source``."""
+    """Return the ordered list of violations for ``source``.
+
+    A file holding several ``[MODEL: ...]`` blocks is linted block by
+    block, because every check reasons about one rule. Findings carry the
+    dataset they belong to and line numbers relative to the whole file."""
+    blocks = split_model_blocks(source)
+    if len(blocks) <= 1:
+        return _lint_block(source)
+    findings: List[dict] = []
+    for blk in blocks:
+        for v in _lint_block(blk["text"]):
+            v = dict(v)
+            v["line"] += blk["line_offset"]
+            if blk["dataset"]:
+                v["dataset"] = blk["dataset"]
+            findings.append(v)
+    return sorted(findings, key=lambda v: (v["line"], v["rule_id"]))
+
+
+def _lint_block(source: str) -> List[dict]:
+    """Run every check over exactly ONE model block."""
     code_lines = source.splitlines()
     stage_of, stage_start = _classify_stages(code_lines)
     joined, line_starts = _join_with_offsets(
@@ -3182,6 +4297,13 @@ def lint(source: str) -> List[dict]:
     findings += _check_warn048(code_lines)
     findings += _check_warn049(code_lines)
     findings += _check_warn050(code_lines)
+    findings += _check_warn051(code_lines)
+    findings += _check_warn052(code_lines)
+    findings += _check_warn054(code_lines)
+    findings += _check_err031(code_lines)
+    findings += _check_err032(code_lines)
+    findings += _check_err033(code_lines)
+    findings += _check_err034(code_lines)
     findings += _check_info013(code_lines)
 
     findings.sort(key=lambda v: (v["line"], v["rule_id"]))
@@ -3203,19 +4325,115 @@ def _format_text(violations: Iterable[dict]) -> str:
     return "\n".join(parts)
 
 
+_CODE_ENTRY_RE = re.compile(r"^ {4}((?:ERR|WARN|INFO)-\d+)\s+(\S.*)$")
+_CODE_CONT_RE = re.compile(r"^ {8,}(\S.*)$")
+_CODE_SECTION_RE = re.compile(r"^(\S.*:)\s*$")
+
+
+def code_table() -> List[dict]:
+    """Parse the module docstring into [{section, code, description}].
+
+    The docstring is the single registry of check codes: every check
+    documents itself there, so nothing else needs to carry a second copy
+    that can drift out of date. SKILL.md points at --list-codes rather
+    than restating the list."""
+    out: List[dict] = []
+    section = ""
+    for line in (__doc__ or "").splitlines():
+        sec = _CODE_SECTION_RE.match(line)
+        if sec and not _CODE_ENTRY_RE.match(line):
+            section = sec.group(1).rstrip(":")
+            continue
+        entry = _CODE_ENTRY_RE.match(line)
+        if entry:
+            out.append(
+                {
+                    "section": section,
+                    "code": entry.group(1),
+                    "description": entry.group(2).strip(),
+                }
+            )
+            continue
+        cont = _CODE_CONT_RE.match(line)
+        if cont and out:
+            out[-1]["description"] += " " + cont.group(1).strip()
+    return out
+
+
+def _format_code_table(entries: List[dict]) -> str:
+    lines: List[str] = []
+    section = None
+    for e in entries:
+        if e["section"] != section:
+            section = e["section"]
+            lines.append(("" if not lines else "\n") + section + ":")
+        lines.append(f"  {e['code']:<9} {e['description']}")
+    lines.append(f"\n{len(entries)} checks.")
+    return "\n".join(lines)
+
+
+def bundle_version() -> str:
+    """The version in SKILL.md's frontmatter, or "unknown".
+
+    Reported on every run because an author cannot otherwise see which
+    bundle they are linting against, and a pinned worktree silently keeps
+    them on the version they started from. That is not hypothetical: a
+    FortiGate rule was authored in full against 1.8.24's authentication
+    guidance while 1.9.0 reversed it on main, and nothing in the authoring
+    path said so. A stale version is indistinguishable from a current one
+    until it is hand-copied into the provenance block, by which point the
+    rule is written.
+    """
+    try:
+        skill = Path(__file__).resolve().parent.parent / "SKILL.md"
+        for line in skill.read_text(encoding="utf-8").splitlines()[:20]:
+            if line.startswith("version:"):
+                return line.split(":", 1)[1].strip()
+    except OSError:
+        pass
+    return "unknown"
+
+
 def main(argv: List[str]) -> int:
     ap = argparse.ArgumentParser(
         description="Standalone syntactic linter for Cortex XSIAM XQL "
         "Data Model Rules. JSON on stdout."
     )
-    ap.add_argument("rule_file", help="path to a single .xql file")
+    ap.add_argument(
+        "rule_file", nargs="?", help="path to a single .xql file"
+    )
     ap.add_argument(
         "--format",
         choices=("json", "text"),
         default="json",
         help="output format (default: json)",
     )
+    ap.add_argument(
+        "--list-codes",
+        action="store_true",
+        help="list every check code with its description and exit",
+    )
+    ap.add_argument(
+        "--version",
+        action="store_true",
+        help="print the bundle version and exit",
+    )
     args = ap.parse_args(argv[1:])
+
+    if args.version:
+        sys.stdout.write(bundle_version() + "\n")
+        return 0
+
+    if args.list_codes:
+        entries = code_table()
+        if args.format == "json":
+            sys.stdout.write(json.dumps(entries, indent=2) + "\n")
+        else:
+            sys.stdout.write(_format_code_table(entries) + "\n")
+        return 0
+
+    if args.rule_file is None:
+        ap.error("rule_file is required unless --list-codes is given")
 
     path = Path(args.rule_file)
     if not path.is_file():
@@ -3228,6 +4446,13 @@ def main(argv: List[str]) -> int:
         return 2
 
     findings = lint(source)
+
+    # To STDERR, so it reaches the author without corrupting the JSON on
+    # stdout that other tooling parses.
+    sys.stderr.write(
+        f"cortex-platform-xdm-author {bundle_version()} -- "
+        f"check this matches the bundle you mean to be using\n"
+    )
 
     if args.format == "json":
         sys.stdout.write(json.dumps(findings, indent=2) + "\n")

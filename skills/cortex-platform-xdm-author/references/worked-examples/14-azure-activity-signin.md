@@ -65,6 +65,7 @@ filter
     xdm.source.port = to_integer(0),
     xdm.target.ipv4 = coalesce("", ""),
     xdm.target.port = to_integer(0),
+    xdm.target.resource.name = if(tmp_is_signin = "y", coalesce(tmp_app, tmp_resource)),
     xdm.network.ip_protocol = XDM_CONST.IP_PROTOCOL_TCP,
     xdm.source.user.username = tmp_user,
     xdm.source.user.upn = if(
@@ -76,7 +77,7 @@ filter
     xdm.source.user.user_type = if(
         lowercase(to_string(tmp_user)) ~= "^svc[-_.]|service", XDM_CONST.USER_TYPE_SERVICE_ACCOUNT,
         XDM_CONST.USER_TYPE_REGULAR),
-    xdm.auth.service = if(tmp_is_signin = "y", coalesce(tmp_app, "Entra ID")),
+    xdm.auth.service = if(tmp_is_signin = "y", "IDP"),
     xdm.network.http.browser = if(tmp_is_signin = "y", tmp_client),
     xdm.observer.vendor = "Microsoft",
     xdm.observer.product = "Azure"

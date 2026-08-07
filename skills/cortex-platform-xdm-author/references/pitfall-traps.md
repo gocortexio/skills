@@ -56,12 +56,16 @@ For each mapping in your draft rule, verify the XDM path exists in [xdm-schema.m
 
 A physical or named asset is a host, not a resource. Do NOT route an OT asset name into `xdm.target.resource.*`; that field is for cloud resources. The same split applies on the `source` and `intermediate` sides.
 
+AUTHENTICATION EVENTS ARE THE EXCEPTION, and it is a deliberate one. On an authentication event `xdm.target.resource.name` is MANDATORY and carries whatever the principal authenticated to -- a cloud resource, an application, a named host, or a bare address. It is set IN ADDITION to the type-correct field, so the split above still holds: the router keeps `xdm.target.host.hostname` and gains `xdm.target.resource.name` as well. This is a house convention that supersedes the cloud-only reading for this one event class; see [house-conventions.md](house-conventions.md) for the reason and [authentication-mapping.md](authentication-mapping.md) for the derivation.
+
 ### `xdm.target.resource.name` vs `xdm.target.application.name`
 
 - `xdm.target.resource.name` -- cloud resource name (S3 bucket, VM name).
 - `xdm.target.application.name` -- software application name (`"Nginx"`, `"MSSQL"`).
 
 Choose based on what the log field represents. Do not use one for the other.
+
+Again, authentication is the exception: a login to an application takes BOTH, `xdm.target.application.name` for the software identity and `xdm.target.resource.name` for the mandatory authentication target. Dual-mapping is correct here, not sloppy.
 
 ### `xdm.event.outcome_reason` vs `xdm.observer.action`
 
@@ -159,3 +163,52 @@ RULE: The first stage of the rule MUST be `alter`. Do NOT prefix the rule with a
 A legitimate `filter` stage may appear LATER in the pipeline only when it expresses a non-trivial conditional projection (e.g. dropping audit subtypes that should not be modelled). It must never be the first stage and must never have a predicate that is always true.
 
 This applies to ALL data sources -- no vendor for which a no-op leading filter is valid.
+
+## An advisory is not a defect list: name the ENTITY before satisfying one
+
+Every companion-field and mandatory-set check reasons about which FIELDS
+are present. None of them can reason about which ENTITY each field
+describes, and that is the one thing that decides whether the advice
+applies.
+
+`xdm.target.*` is not one object per record. On a device that both emits
+telemetry and forwards traffic, the target of the FLOW and the target of
+the LOG RECORD are routinely different hosts:
+
+```
+// the syslog HOSTNAME field -- the device that EMITTED the record
+xdm.target.host.hostname = tmp_syslog_host,
+// the destination inside the firewall flow tuple -- some other host
+xdm.target.ipv4 = tmp_fw_dip,
+```
+
+A checker sees a hostname, an address, and no `ipv4_addresses`
+companion, and suggests adding one. Doing so would assert that the
+firewall's own host record carries whatever address the traffic happened
+to be going to. That value is populated, non-empty and not the sentinel,
+so it passes every count-based check, and every host-based correlation
+join would silently use it.
+
+This is the fourth failure mode -- a plausible but WRONG value --
+arriving through a linter recommendation. It is the most dangerous route
+to it, because the author who introduces it is being conscientious.
+
+So, before satisfying ANY companion-field advisory:
+
+1. Name the entity each field belongs to, out loud. "The hostname is the
+   emitting device. The address is the flow destination."
+2. Confirm they are the same entity. If they are not, the advisory does
+   not apply.
+3. Where it does not apply, record the false premise in the rule header
+   rather than leaving a bare advisory for the next reader to "fix"
+   confidently.
+
+The same reasoning retires an advisory that would build an array from a
+pad. Where the address is the prescribed semantically-empty `""`,
+`arraycreate("")` is junk, and satisfying the check converts a correct
+pad into a populated but meaningless value.
+
+Note which way the asymmetry runs. Declining a companion field leaves a
+gap that is visible: the field is absent, and anyone can see it is
+absent. Satisfying it wrongly leaves no trace at all. Prefer the visible
+gap.

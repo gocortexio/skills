@@ -32,7 +32,7 @@ filter
     tmp_runas = arrayindex(regextract(_raw_log, "USER=(\S+)"), 0),
     tmp_tty = arrayindex(regextract(_raw_log, "TTY=(\S+)"), 0),
     tmp_pwd = arrayindex(regextract(_raw_log, "PWD=(\S+)"), 0),
-    tmp_command = arrayindex(regextract(_raw_log, "COMMAND=(.+)$"), 0)
+    tmp_command = arrayindex(regextract(_raw_log, "COMMAND=(.*\S)"), 0)
 | alter
     xdm.event.type = coalesce(tmp_tag, "linux"),
     xdm.event.original_event_type = if(

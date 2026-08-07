@@ -1,0 +1,4 @@
+<187>Jul 30 23:25:19 172.25.127.224 host-c9e773f1: 7539824 vprn170 SECURITY-MINOR-ssh_user_login-2009 [user_575b9419]:  User user_575b9419 from 172.30.18.99 logged in
+<187>Jul 30 23:25:20 172.20.209.230 host-4746bb28: 18249532 vprn170 USER-MINOR-cli_user_login-2001 [user_575b9419]:  User from 172.25.220.157 logged in
+<187>Jul 30 13:42:25 10.14.21.201 ALUCE: 11397316 Base SECURITY-MINOR-tmnxMD5AuthFailure-2036 [TCP MD5 digest match Failure]:  Incoming packet from source address 172.21.42.209 virtual router 1 dropped due to MD5 digest mismatch
+<188>Jul 30 15:14:11 10.118.72.224 ALUCE: 12623811 Base USER-WARNING-cli_config_io-2011 [user_7a0224ca]:  User from 198.51.100.142: host-f43b299e>config>system#  ptp

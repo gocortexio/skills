@@ -1,0 +1,32 @@
+<189>Aug  1 09:14:22 rtr-core-01 %SEC_LOGIN-5-LOGIN_SUCCESS: Login Success [user: opsuser] [Source: 198.51.100.24] [localport: 22] at 09:14:22 UTC Fri Aug 1 2026
+<188>Aug  1 09:15:03 rtr-core-01 %SEC_LOGIN-4-LOGIN_FAILED: Login failed [user: opsuser] [Source: 198.51.100.24] [localport: 22] [Reason: Login Authentication Failed] at 09:15:03 UTC Fri Aug 1 2026
+<185>Aug  1 09:15:44 rtr-core-01 %SEC_LOGIN-1-QUIET_MODE_ON: Still timeleft for watching failures is 158 secs [user: opsuser] [Source: 198.51.100.24] [localport: 22] [Reason: Login Authentication Failed] [ACL: MGMT-IN] at 09:15:44 UTC Fri Aug 1 2026
+<187>Aug  1 09:15:45 rtr-core-01 %LOGIN-3-TOOMANY_AUTHFAILS: Too many Login Authentication failures have occurred in the last one minute on the line 2.
+<189>Aug  1 09:16:10 rtr-core-01 %SEC_LOGIN-5-WEBLOGIN_SUCCESS: Login Success [user: webadmin] [Source: 198.51.100.90] at 09:16:10 UTC Fri Aug 1 2026
+<189>Aug  1 09:17:02 rtr-core-01 %SYS-5-PRIV_AUTH_PASS: Privilege level set to 15 by opsuser on vty0 (198.51.100.24)
+<189>Aug  1 09:17:40 rtr-core-01 %SYS-5-CONFIG_I: Configured from console by opsuser on vty0 (198.51.100.24)
+<189>Aug  1 09:17:55 rtr-core-01 %PARSER-5-CFGLOG_LOGGEDCMD: User:opsuser  logged command:interface GigabitEthernet0/1
+<189>Aug  1 09:18:01 rtr-core-01 %PARSER-5-HIDDEN: Warning!!! ' service internal' is a hidden command. Use of this command is not recommended/supported and will be removed in future.
+<190>Aug  1 09:20:11 sw-access-04 %SEC-6-IPACCESSLOGP: list MGMT-IN denied tcp 203.0.113.51(50412) -> 192.0.2.10(23), 4 packets
+<190>Aug  1 09:20:30 sw-access-04 %SEC-6-IPACCESSLOGS: list GUEST-OUT denied 203.0.113.77, 12 packets
+<190>Aug  1 09:20:31 sw-access-04 %SEC-6-IPACCESSLOGRL: access-list logging rate-limited or missed 218 packets
+<190>Aug  1 09:21:04 sw-access-04 %AUTHMGR-5-START: Starting 'dot1x' for client (aabb.ccdd.eeff) on Interface Gi1/0/12 AuditSessionID 0A0A0A0A0000000100000001
+<189>Aug  1 09:21:06 sw-access-04 %DOT1X-5-SUCCESS: Authentication successful for client (aabb.ccdd.eeff) on Interface Gi1/0/12
+<189>Aug  1 09:21:06 sw-access-04 %AUTHMGR-5-SUCCESS: Authorization succeeded for client (aabb.ccdd.eeff) on Interface Gi1/0/12
+<189>Aug  1 09:22:18 sw-access-04 %AUTHMGR-5-SECURITY_VIOLATION: Security violation on the interface Gi1/0/22 new MAC address 1122.3344.5566 is seen.
+<190>Aug  1 09:23:00 sw-core-02 %DIAG-SP-STDBY-6-RUN_MINIMUM: Module 5: Running Minimum Diagnostics from the Supervisor
+<187>Aug  1 09:23:40 sw-core-02 %VIP-3-MSG:SLOT5 %LINK-3-UPDOWN: Interface GigabitEthernet5/1, changed state to down
+<190>Aug  1 09:24:00 rtr-edge-07 %FW-6-SESS_AUDIT_TRAIL: Stop tcp session: initiator (198.51.100.31:44012) sent 4821 bytes -- responder (203.0.113.9:443) sent 90233 bytes
+<190>Aug  1 09:24:30 rtr-edge-07 **MSG 00042 CONTINUATION #02 remaining text of a split message
+<190>Aug  1 10:02:11 wlc-01 %PEM-6-GUESTIN: Guest user logged in with user account (guest_4471) MAC address 00:1a:2b:3c:4d:5e, IP address 198.51.100.140
+<190>Aug  1 10:02:11 wlc-01 %APF-6-GUEST_ASSIGNED_IP: Guest User (guest_4471) with MAC Address (00:1a:2b:3c:4d:5e) assigned IP Address (198.51.100.140)
+<187>Aug  1 10:03:02 wlc-01 %PEM-1-WEBAUTHFAIL: Web authentication failure for station 00:1a:2b:3c:4d:5e
+<187>Aug  1 10:03:40 wlc-01 %PEM-1-SETNAME: Unable to allow user guest_4471 into the system - perhaps the user is already logged onto the system?
+<185>Aug  1 10:04:19 wlc-01 %MM-1-CLIENT_SHUNNED: Adding client 00:1a:2b:3c:4d:5e to exclusion list as a result of an IDS shun event for 198.51.100.140
+<185>Aug  1 10:05:00 wlc-01 %APF-1-AUTH_FAILED: Authentication failure (status 1) from STA 00:1a:2b:3c:4d:5e. Max retries exceeded.
+<190>Aug  1 10:06:30 wlc-01 %MM-6-MEMBER_ADDED: Adding Mobility member (Index:3, MAC:aa:bb:cc:dd:ee:01, IP: 192.0.2.60) in group CAMPUS.
+<190>Aug  1 10:41:52 wlc-01 %PEM-6-GUESTOUT: Guest user logged out with user account (guest_4471) MAC address 00:1a:2b:3c:4d:5e, IP address 198.51.100.140
+<188>Aug  1 11:10:04 wlc-01 %WPS-4-SIG_ALARM_OFF: AP aa:bb:cc:dd:ee:02 : Alarm OFF, standard sig Deauth flood, track=per-signature preced=2 hits=140 slot=0 channel=6
+<188>Aug  1 11:10:04 wlc-01 %WPS-4-SIG_ALARM_OFF_CONT: ...continue, source mac= 00:1a:2b:3c:4d:5e
+<185>Aug  1 11:11:20 wlc-01 %CIDS-1-SHUN_LIST_ENTRY_CREATE_FAIL: Unable to create shun-list entry for ip 198.51.100.140
+<187>Aug  1 11:12:45 wlc-01 %CAPWAP-3-DISC_MAX_JOIN: Rejecting discovery request from AP aa:bb:cc:dd:ee:03 - maximum AP joins (500) exceeded

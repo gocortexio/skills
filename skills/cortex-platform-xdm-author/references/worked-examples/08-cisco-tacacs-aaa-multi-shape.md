@@ -17,7 +17,7 @@ through a single shared assignment stage while classifying PER RECORD.
 It applies the AAA topology and vocabulary rules from
 [authentication-mapping.md](../authentication-mapping.md) (AAA gateways
 section), the Stage 0 envelope from
-[syslog-envelope.md](../syslog-envelope.md), the full 14-field
+[syslog-envelope.md](../syslog-envelope.md), the full 15-field
 authentication mandatory set, and the record-level classification and
 catch-all from
 [record-classification.md](../record-classification.md). Not every
@@ -65,9 +65,13 @@ Three parties, not two. The principal (`user=`) is the source; the
 principal's workstation (`src_ip=`) is the source address; the network
 device being accessed (`dvc_ip=` / `at <ip>`) is the target; and the
 AAA server that validates the request is the observer (its name comes
-from the Stage 0 envelope host). `xdm.auth.service = "TACACS+"` is the
-authentication service name -- the AAA protocol itself (it is the
-service NAME, not an "SP"/"IDP" role; those values do not exist in XDM).
+from the Stage 0 envelope host). `xdm.auth.service = "Universal"`: the
+field carries the ROLE, and TACACS+ is not a known IdP provider, so
+neither `"SP"` nor `"IDP"` describes this flow (see
+[../house-conventions.md](../house-conventions.md)). The AAA protocol
+is a mechanism, not a role: it goes to `xdm.auth.auth_method`, and to
+`xdm.network.application_protocol` as well, because on this feed the
+TACACS+ transaction IS the session being logged.
 
 TACACS+ principals (`svc_nms1`, `alice.admin`) are not UPN-shaped,
 but `xdm.source.user.upn` is the mandatory correlation key and cannot
@@ -163,7 +167,9 @@ filter
         tmp_kv_reason != null, tmp_kv_reason),
     xdm.event.duration = to_integer(multiply(to_number(tmp_kv_elapsed), 1000)),
     xdm.event.description = concat("TACACS+ ", tmp_oet, " for ", tmp_user),
-    xdm.auth.service = "TACACS+",
+    xdm.auth.service = "Universal",
+    xdm.auth.auth_method = "TACACS+",
+    xdm.network.application_protocol = "tacacs-plus",
     xdm.auth.privilege_level = if(
         tmp_kv_priv = "15", XDM_CONST.PRIVILEGE_LEVEL_ADMIN,
         tmp_kv_priv != null, XDM_CONST.PRIVILEGE_LEVEL_USER),
@@ -185,6 +191,7 @@ filter
     xdm.source.port = to_integer(0),
     xdm.target.ipv4 = coalesce(tmp_dvc_ip, ""),
     xdm.target.port = to_integer(0),
+    xdm.target.resource.name = tmp_dvc_ip,
     xdm.network.ip_protocol = XDM_CONST.IP_PROTOCOL_TCP,
     xdm.network.session_id = tmp_kv_task,
     xdm.network.rule = tmp_kv_rule
@@ -269,7 +276,7 @@ NOT MAPPED
 [ ] command accounting -> event.type "process", cmd -> target.process.command_line, no auth tag
 [ ] REVIEW UNMODELLED query present with the real dataset
 [ ] Stage 0 envelope: PRI-anchored host + priority decode (WARN-040/041)
-[ ] all 14 authentication mandatory fields mapped or padded (WARN-042)
+[ ] all 15 authentication mandatory fields mapped or padded (WARN-042)
 [ ] auth shapes carry EVENT_TAG_AUTHENTICATION only -- no network tag without a transport flow
 [ ] outcome null on accounting lifecycle rows; SUCCESS / FAILED elsewhere
 [ ] upn ALWAYS UPN-shaped: contains-@ passthrough, else concat(tmp_user, "@localhost")

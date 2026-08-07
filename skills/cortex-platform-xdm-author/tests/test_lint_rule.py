@@ -81,6 +81,23 @@ def _mandatory_fields_from_reference(reference: Path) -> set:
     return fields
 
 
+def _fields_from_reference_section(reference: Path, heading: str) -> set:
+    """Extract the backtick-quoted ``xdm.*`` fields from one named section
+    of a reference doc. Used for sets that are conditionally rather than
+    unconditionally mandatory, which live outside the main table."""
+    fields = set()
+    in_section = False
+    for line in reference.read_text(encoding="utf-8").splitlines():
+        if line.startswith("## "):
+            in_section = line.startswith(heading)
+            continue
+        if in_section:
+            match = _REF_FIELD_RE.match(line)
+            if match:
+                fields.add(match.group(1))
+    return fields
+
+
 class TestCleanFixture(unittest.TestCase):
     """A well-formed rule must produce zero violations."""
 
@@ -108,6 +125,7 @@ class TestSyntacticRules(unittest.TestCase):
         ("err027_anchor_read.xql", "ERR-027"),
         ("err028_underscore_temp.xql", "ERR-028"),
         ("err029_banned_cloud_source_type.xql", "ERR-029"),
+        ("err034_unquoted_reserved_read.xql", "ERR-034"),
         ("warn014_quoted_const.xql", "WARN-014"),
         ("warn035_scalar_into_array.xql", "WARN-035"),
         ("warn037_loglevel_severity.xql", "WARN-037"),
@@ -118,6 +136,7 @@ class TestSyntacticRules(unittest.TestCase):
         ("warn042_auth_mandatory.xql", "WARN-042"),
         ("warn043_network_mandatory.xql", "WARN-043"),
         ("warn049_hardcoded_path.xql", "WARN-049"),
+        ("warn055_auth_target_resource.xql", "WARN-055"),
         ("info013_overmapping.xql", "INFO-013"),
     ]
 
@@ -192,11 +211,11 @@ class TestAuthMandatoryListsInSync(unittest.TestCase):
             / "authentication-mapping.md"
         )
         cls.expected = _mandatory_fields_from_reference(reference)
-        # The reference heading promises exactly 14 mandatory fields; a
+        # The reference heading promises exactly 15 mandatory fields; a
         # mismatch means the table itself drifted.
-        if len(cls.expected) != 14:
+        if len(cls.expected) != 15:
             raise AssertionError(
-                "expected 14 mandatory fields in the reference table, "
+                "expected 15 mandatory fields in the reference table, "
                 "found %d" % len(cls.expected)
             )
 
@@ -221,6 +240,7 @@ filter _raw_log != null
     tmp_sport = json_extract_scalar(_raw_log, "$.src_port"),
     tmp_dport = json_extract_scalar(_raw_log, "$.dst_port"),
     tmp_svc = json_extract_scalar(_raw_log, "$.service"),
+    tmp_app = json_extract_scalar(_raw_log, "$.target_app"),
     tmp_action = json_extract_scalar(_raw_log, "$.action"),
     tmp_result = json_extract_scalar(_raw_log, "$.result")
 | alter
@@ -243,14 +263,15 @@ filter _raw_log != null
     xdm.source.port = to_integer(to_number(tmp_sport)),
     xdm.target.ipv4 = tmp_dst,
     xdm.target.port = to_integer(to_number(tmp_dport)),
+    xdm.target.resource.name = tmp_app,
     xdm.network.ip_protocol = XDM_CONST.IP_PROTOCOL_TCP
 ;
 """
 
     def test_fires_for_each_missing_mandatory_field(self):
         ids = _rule_ids("warn042_auth_mandatory.xql")
-        # The fixture maps 5 of 14 mandatory fields, so 9 should be flagged.
-        self.assertEqual(ids.count("WARN-042"), 9, ids)
+        # The fixture maps 5 of 15 mandatory fields, so 10 should be flagged.
+        self.assertEqual(ids.count("WARN-042"), 10, ids)
 
     def test_only_warning_severity_so_exit_stays_zero(self):
         source = (FIXTURES / "warn042_auth_mandatory.xql").read_text(
@@ -268,7 +289,7 @@ filter _raw_log != null
         self.assertNotIn("WARN-042", ids)
 
     def test_value_conformance_flags_forbidden_literals(self):
-        # All 14 mandatory fields are present, so none should be flagged as
+        # All 15 mandatory fields are present, so none should be flagged as
         # missing. Eight, however, carry a value the authentication story
         # forbids (event.type, event.operation, event.outcome, auth.service,
         # source.ipv4, target.ipv4, network.ip_protocol, and the bare
@@ -305,6 +326,7 @@ filter _raw_log != null
     xdm.source.port = to_integer(to_number(sport_col)),
     xdm.target.ipv4 = dst_ip,
     xdm.target.port = to_integer(to_number(dport_col)),
+    xdm.target.resource.name = target_app_col,
     xdm.network.ip_protocol = proto_col
 ;
 """
@@ -367,30 +389,100 @@ filter _raw_log != null
             ]
             self.assertEqual(vios, [], (field, rhs, vios))
 
-    def test_auth_service_deprecated_role_token_flagged(self):
-        # xdm.auth.service is the service NAME, not a role. The retired
-        # "SP"/"IDP" literal must be flagged so old rules are migrated.
-        for rhs in ('"IDP"', '"SP"', '"idp"'):
-            vios = [
-                v for v in lint(self._account_class_rule(
-                    "xdm.auth.service", rhs))
-                if v["rule_id"] == "WARN-042"
-                and "deprecated SP/IDP role token" in v["message"]
-            ]
-            self.assertEqual(len(vios), 1, (rhs, vios))
-            self.assertEqual(vios[0]["severity"], "warning")
-
-    def test_auth_service_real_name_not_flagged(self):
-        # A real authentication service name (or a temp) is a valid free
-        # string and must never trip value conformance.
-        for rhs in ('"Kerberos"', '"TACACS+"', '"OAuth2"', '"Login"',
-                    "svc_col"):
+    def test_auth_service_role_token_accepted(self):
+        # xdm.auth.service carries the ROLE the system played in the
+        # authentication flow. "SP" / "IDP" are the documented values and
+        # "Universal" is the house value for a non-IdP source; matching
+        # folds case, as XQL does.
+        for rhs in ('"IDP"', '"SP"', '"Universal"', '"idp"', '"universal"'):
             vios = [
                 v for v in lint(self._account_class_rule(
                     "xdm.auth.service", rhs))
                 if v["rule_id"] == "WARN-042" and "auth.service" in v["message"]
             ]
             self.assertEqual(vios, [], (rhs, vios))
+
+    def test_auth_service_name_flagged(self):
+        # A service NAME in the role field is the defect this check
+        # exists for -- it is what this bundle itself taught until 1.9.0.
+        for rhs in ('"Kerberos"', '"TACACS+"', '"OAuth2"', '"Login"',
+                    '"SSH"'):
+            vios = [
+                v for v in lint(self._account_class_rule(
+                    "xdm.auth.service", rhs))
+                if v["rule_id"] == "WARN-042"
+                and "authentication service NAME" in v["message"]
+            ]
+            self.assertEqual(len(vios), 1, (rhs, vios))
+            self.assertEqual(vios[0]["severity"], "warning")
+
+    def test_auth_service_dynamic_value_not_flagged(self):
+        # The linter must never guess a runtime value. A raw column, a
+        # temp, and an if()-chain that already returns a role on some
+        # branch are all left alone.
+        for rhs in ("svc_col", "tmp_svc",
+                    'if(tmp_a = "x", "IDP", "SSH")'):
+            vios = [
+                v for v in lint(self._account_class_rule(
+                    "xdm.auth.service", rhs))
+                if v["rule_id"] == "WARN-042" and "auth.service" in v["message"]
+            ]
+            self.assertEqual(vios, [], (rhs, vios))
+
+    def test_auth_service_if_chain_of_names_flagged(self):
+        # Shipped rules assign this field from an if()-chain far more
+        # often than from a bare literal, so a check that only reads
+        # static literals would be nearly inert. Predicate literals are
+        # not values and must not appear in the finding.
+        rhs = ('if(tmp_is_ssh = "yes", "SSH", '
+               'tmp_login_port = "23", "Telnet")')
+        vios = [
+            v for v in lint(self._account_class_rule(
+                "xdm.auth.service", rhs))
+            if v["rule_id"] == "WARN-042"
+            and "authentication service NAME" in v["message"]
+        ]
+        self.assertEqual(len(vios), 1, vios)
+        self.assertIn('"SSH", "Telnet"', vios[0]["message"])
+        self.assertNotIn('"yes"', vios[0]["message"])
+        self.assertNotIn('"23"', vios[0]["message"])
+
+    def test_target_resource_placeholder_flagged_as_warn055(self):
+        # The no-pad rule for the authentication target. A placeholder
+        # satisfies the mandatory-field check while leaving the event with
+        # no record of what was logged into -- the state an inverted rule
+        # passes the linter in -- so it is flagged separately.
+        for rhs in ('""', '"-"', '"N/A"', '"unknown"', '"null"'):
+            vios = [
+                v for v in lint(self._account_class_rule(
+                    "xdm.target.resource.name", rhs))
+                if v["rule_id"] == "WARN-055"
+            ]
+            self.assertEqual(len(vios), 1, (rhs, vios))
+            self.assertEqual(vios[0]["severity"], "warning")
+
+    def test_target_resource_real_value_not_flagged(self):
+        # A derived value is the norm; a MEANINGFUL constant is legitimate
+        # too (a dedicated portal or console feed really does have one
+        # constant target). Neither may trip WARN-055.
+        for rhs in ("app_col", "tmp_app", '"AWS Console"', '"SSL-VPN"',
+                    'if(tmp_eid = 4768, tmp_svc, tmp_computer)'):
+            vios = [
+                v for v in lint(self._account_class_rule(
+                    "xdm.target.resource.name", rhs))
+                if v["rule_id"] == "WARN-055"
+            ]
+            self.assertEqual(vios, [], (rhs, vios))
+
+    def test_target_resource_padding_fixture_exits_zero(self):
+        # Advisory only: the padded fixture reports WARN-055 and nothing
+        # else, and the exit code stays 0.
+        ids = _rule_ids("warn055_auth_target_resource.xql")
+        self.assertEqual(ids, ["WARN-055"], ids)
+
+    def test_warn055_silent_on_non_auth_rule(self):
+        ids = _rule_ids("clean_rule.xql")
+        self.assertNotIn("WARN-055", ids)
 
     _SIGNAL_ONLY_AUTH = """[MODEL: dataset=acme_idp_raw]
 filter _raw_log != null
@@ -698,6 +790,74 @@ class TestWarn038HostCompanion(unittest.TestCase):
     def _w38(self, source: str) -> list:
         return [v for v in lint(source) if v["rule_id"] == "WARN-038"]
 
+    def test_silent_when_the_hostname_names_the_observer(self):
+        """On a flow-bearing record the hostname is routinely the device
+        that EMITTED the log while the address is a flow endpoint. Hanging
+        the flow address off the emitter is populated, non-empty and
+        WRONG, and every host-based join would silently use it."""
+        source = (
+            "[MODEL: dataset=router_raw]\n"
+            "filter _raw_log != null\n"
+            "| alter\n"
+            '    tmp_syslog_host = arrayindex(regextract(_raw_log, "> (\\S+) "), 0),\n'
+            '    tmp_fw_dip = arrayindex(regextract(_raw_log, "TCP \\S+ (\\S+)"), 0)\n'
+            "| alter\n"
+            "    xdm.observer.name = tmp_syslog_host,\n"
+            "    xdm.target.host.hostname = tmp_syslog_host,\n"
+            "    xdm.target.ipv4 = tmp_fw_dip\n"
+            ";\n"
+        )
+        self.assertEqual(self._w38(source), [])
+
+    def test_silent_when_the_address_is_a_pad(self):
+        """arraycreate("") is junk -- satisfying the advisory would turn a
+        correct semantically-empty pad into a meaningless value."""
+        source = (
+            "[MODEL: dataset=ise_raw]\n"
+            "filter _raw_log != null\n"
+            "| alter\n"
+            '    tmp_server = json_extract_scalar(_raw_log, "$.server"),\n'
+            '    tmp_is_auth = if(_raw_log contains "AUTHEN", "y")\n'
+            "| alter\n"
+            "    xdm.target.host.hostname = tmp_server,\n"
+            '    xdm.target.ipv4 = if(tmp_is_auth != null, "")\n'
+            ";\n"
+        )
+        self.assertEqual(self._w38(source), [])
+
+    def test_silent_on_a_bare_empty_string_address(self):
+        source = (
+            "[MODEL: dataset=ise_raw]\n"
+            "filter _raw_log != null\n"
+            "| alter\n"
+            '    tmp_server = json_extract_scalar(_raw_log, "$.server")\n'
+            "| alter\n"
+            "    xdm.target.host.hostname = tmp_server,\n"
+            '    xdm.target.ipv4 = ""\n'
+            ";\n"
+        )
+        self.assertEqual(self._w38(source), [])
+
+    def test_is_advisory_and_phrased_as_a_question(self):
+        """A confident wrong fix here is invisible, so the finding must
+        not read as an instruction."""
+        source = (
+            "[MODEL: dataset=agent_raw]\n"
+            "filter _raw_log != null\n"
+            "| alter\n"
+            '    tmp_host = json_extract_scalar(_raw_log, "$.host"),\n'
+            '    tmp_ip = json_extract_scalar(_raw_log, "$.host_ip")\n'
+            "| alter\n"
+            "    xdm.target.host.hostname = tmp_host,\n"
+            "    xdm.target.ipv4 = tmp_ip\n"
+            ";\n"
+        )
+        vios = self._w38(source)
+        self.assertEqual(len(vios), 1)
+        self.assertEqual(vios[0]["severity"], "info")
+        self.assertIn("IF the two name the SAME host", vios[0]["message"])
+        self.assertIn("does NOT apply", vios[0]["message"])
+
     def test_silent_when_companion_present(self):
         source = (
             "[MODEL: dataset=demo_raw]\n"
@@ -765,6 +925,62 @@ class TestInfo013OverMapping(unittest.TestCase):
         )
         self.assertEqual(self._i13(source), [])
 
+    def test_silent_on_a_gate_conditioning_many_families(self):
+        """A boolean gate decides WHETHER the story is padded, never what
+        the fields hold. Conditional padding is the prescribed idiom for
+        claiming a story only where its mandatory set can be populated,
+        so one gate legitimately conditions several entity families."""
+        source = (
+            "[MODEL: dataset=demo_raw]\n"
+            "filter _raw_log != null\n"
+            "| alter\n"
+            '    tmp_src_ip = arrayindex(regextract(_raw_log, "from (\\S+)"), 0)\n'
+            "| alter\n"
+            '    tmp_has_peer = if(tmp_src_ip != null, "y")\n'
+            "| alter\n"
+            "    xdm.network.protocol_layers = "
+            'if(tmp_has_peer != null, arraycreate("IP")),\n'
+            '    xdm.source.ipv6 = if(tmp_has_peer != null, ""),\n'
+            '    xdm.target.ipv6 = if(tmp_has_peer != null, ""),\n'
+            "    xdm.source.sent_bytes = if(tmp_has_peer != null, to_integer(0))\n"
+            ";\n"
+        )
+        self.assertEqual(self._i13(source), [])
+
+    def test_fires_when_the_gate_value_itself_is_mapped(self):
+        """The exemption is positional, not name-based: the same temp used
+        in a VALUE position across three families is still over-mapping."""
+        source = (
+            "[MODEL: dataset=demo_raw]\n"
+            "filter _raw_log != null\n"
+            "| alter\n"
+            '    tmp_v = json_extract_scalar(_raw_log, "$.v")\n'
+            "| alter\n"
+            "    xdm.network.rule = tmp_v,\n"
+            "    xdm.source.ipv6 = tmp_v,\n"
+            "    xdm.target.ipv6 = tmp_v\n"
+            ";\n"
+        )
+        self.assertEqual(len(self._i13(source)), 1)
+
+    def test_counts_the_default_branch_as_a_value(self):
+        """if(c, v, default) -- the trailing default reaches the field."""
+        source = (
+            "[MODEL: dataset=demo_raw]\n"
+            "filter _raw_log != null\n"
+            "| alter\n"
+            '    tmp_g = json_extract_scalar(_raw_log, "$.g"),\n'
+            '    tmp_v = json_extract_scalar(_raw_log, "$.v")\n'
+            "| alter\n"
+            '    xdm.network.rule = if(tmp_g != null, "x", tmp_v),\n'
+            '    xdm.source.ipv6 = if(tmp_g != null, "x", tmp_v),\n'
+            '    xdm.target.ipv6 = if(tmp_g != null, "x", tmp_v)\n'
+            ";\n"
+        )
+        vios = self._i13(source)
+        self.assertEqual(len(vios), 1)
+        self.assertIn("tmp_v", vios[0]["message"])
+
     def test_fires_on_three_entity_families(self):
         source = (
             "[MODEL: dataset=demo_raw]\n"
@@ -827,10 +1043,18 @@ class TestNetworkMandatoryListsInSync(unittest.TestCase):
     def setUpClass(cls) -> None:
         reference = bundle_root() / "references" / "network-mapping.md"
         cls.expected = _mandatory_fields_from_reference(reference)
-        if len(cls.expected) != 20:
+        if len(cls.expected) != 17:
             raise AssertionError(
-                "expected 20 mandatory fields in the network reference "
+                "expected 17 mandatory fields in the network reference "
                 "table, found %d" % len(cls.expected)
+            )
+        cls.expected_http = _fields_from_reference_section(
+            reference, "## The HTTP set"
+        )
+        if len(cls.expected_http) != 3:
+            raise AssertionError(
+                "expected 3 conditional HTTP fields in the network "
+                "reference, found %d" % len(cls.expected_http)
             )
 
     def test_linter_list_matches_reference(self):
@@ -839,6 +1063,102 @@ class TestNetworkMandatoryListsInSync(unittest.TestCase):
     def test_profiler_list_matches_reference(self):
         prof = _load_profiler()
         self.assertEqual(set(prof._NETWORK_MANDATORY), self.expected)
+
+    def test_http_set_is_not_in_the_unconditional_set(self):
+        """The three HTTP leaves are conditional, so a rule with no HTTP
+        layer must never be asked for them."""
+        self.assertEqual(
+            self.expected & self.expected_http, set(),
+            "an HTTP leaf leaked back into the unconditional mandatory set",
+        )
+
+    def test_linter_http_list_matches_reference(self):
+        self.assertEqual(
+            set(_lint_mod._NETWORK_HTTP_MANDATORY), self.expected_http
+        )
+
+    def test_profiler_http_list_matches_reference(self):
+        prof = _load_profiler()
+        self.assertEqual(
+            set(prof._NETWORK_HTTP_MANDATORY), self.expected_http
+        )
+
+
+class TestWarn043HttpSetIsConditional(unittest.TestCase):
+    """The three xdm.network.http.* leaves complete the story for an
+    HTTP-bearing event. A router SSH login or an SNMP failure has no HTTP
+    layer, and padding a header name, header value and URL category onto
+    it asserts a protocol the source never saw."""
+
+    def _rule(self, extra: str = "") -> str:
+        return (
+            "[MODEL: dataset=router_raw]\n"
+            "filter _raw_log != null\n"
+            "| alter\n"
+            "    xdm.event.tags = arraycreate(XDM_CONST.EVENT_TAG_NETWORK),\n"
+            '    xdm.event.type = "network",\n'
+            "    xdm.event.outcome = XDM_CONST.OUTCOME_SUCCESS,\n"
+            "    xdm.network.ip_protocol = XDM_CONST.IP_PROTOCOL_TCP,\n"
+            '    xdm.network.protocol_layers = arraycreate("IP", "TCP"),\n'
+            '    xdm.source.host.device_id = "",\n'
+            '    xdm.source.ipv4 = "192.0.2.1",\n'
+            '    xdm.source.ipv6 = "",\n'
+            "    xdm.source.is_internal_ip = false,\n"
+            "    xdm.source.port = to_integer(1024),\n"
+            "    xdm.source.sent_bytes = to_integer(0),\n"
+            '    xdm.target.host.device_id = "",\n'
+            '    xdm.target.ipv4 = "192.0.2.9",\n'
+            '    xdm.target.ipv6 = "",\n'
+            "    xdm.target.is_internal_ip = false,\n"
+            "    xdm.target.port = to_integer(22),\n"
+            "    xdm.target.sent_bytes = to_integer(0)"
+            + extra
+            + "\n;\n"
+        )
+
+    def _http_findings(self, source: str) -> list:
+        return [
+            v
+            for v in lint(source)
+            if v["rule_id"] == "WARN-043"
+            and "network.http" in v["message"]
+        ]
+
+    def test_no_http_layer_is_not_asked_for_the_http_set(self):
+        self.assertEqual(self._http_findings(self._rule()), [])
+
+    def test_a_url_claims_an_http_layer(self):
+        vios = self._http_findings(
+            self._rule(',\n    xdm.target.url = "http://example.test/a"')
+        )
+        self.assertEqual(len(vios), 3, [v["message"] for v in vios])
+
+    def test_another_http_field_claims_an_http_layer(self):
+        vios = self._http_findings(
+            self._rule(",\n    xdm.network.http.method = XDM_CONST.HTTP_METHOD_GET")
+        )
+        self.assertEqual(len(vios), 3, [v["message"] for v in vios])
+
+    def test_http_in_protocol_layers_claims_an_http_layer(self):
+        source = self._rule().replace(
+            'arraycreate("IP", "TCP")', 'arraycreate("IP", "TCP", "HTTP")'
+        )
+        self.assertEqual(len(self._http_findings(source)), 3)
+
+    def test_partial_http_set_is_completed(self):
+        """Claim the layer and the set is all-or-nothing."""
+        vios = self._http_findings(
+            self._rule(',\n    xdm.network.http.url_category = '
+                       "XDM_CONST.URL_CATEGORY_UNKNOWN")
+        )
+        self.assertEqual(len(vios), 2, [v["message"] for v in vios])
+        self.assertTrue(all("http_header" in v["message"] for v in vios))
+
+    def test_http_finding_explains_the_condition(self):
+        vios = self._http_findings(
+            self._rule(',\n    xdm.target.url = "http://example.test/a"')
+        )
+        self.assertIn("claims an HTTP layer", vios[0]["message"])
 
 
 class TestWarn043NetworkMandatory(unittest.TestCase):
@@ -893,7 +1213,7 @@ filter _raw_log != null
             encoding="utf-8"
         )
         findings = self._w43(source)
-        self.assertEqual(len(findings), 17, [f["message"] for f in findings])
+        self.assertEqual(len(findings), 14, [f["message"] for f in findings])
         self.assertTrue(all(f["severity"] == "warning" for f in findings))
 
     def test_event_type_marker_alone_fires(self):
@@ -933,8 +1253,9 @@ filter _raw_log != null
             "    xdm.event.tags = arraycreate(XDM_CONST.EVENT_TAG_NETWORK)\n"
             ";\n"
         )
-        dup = [v for v in self._w43(source) if "more than once" in v["message"]]
+        dup = [v for v in lint(source) if "more than once" in v["message"]]
         self.assertEqual(len(dup), 1)
+        self.assertEqual(dup[0]["rule_id"], "WARN-053")
 
     def test_outcome_conformance_allows_unknown_pad(self):
         # OUTCOME_UNKNOWN is the documented network padding value; only a
@@ -1092,13 +1413,17 @@ class TestStoryMarkerEdgeCases(unittest.TestCase):
         )
         dups = [v for v in lint(rule) if "more than once" in v["message"]]
         self.assertEqual(len(dups), 1)
-        self.assertEqual(dups[0]["rule_id"], "WARN-042")
-        # On a dual rule the finding belongs to WARN-043 and is reported
-        # exactly once, never doubled.
+        # The duplicate-tags hazard is a tag-shape defect, not a member of
+        # either story's mandatory set, so it carries its own id: sharing
+        # one made the two impossible to filter or suppress separately.
+        self.assertEqual(dups[0]["rule_id"], "WARN-053")
+        # On a dual rule the finding is still reported exactly once,
+        # never doubled by both story checks.
         dual = rule.replace("EVENT_TAG_MFA", "EVENT_TAG_NETWORK")
         dups2 = [v for v in lint(dual) if "more than once" in v["message"]]
         self.assertEqual(len(dups2), 1)
-        self.assertEqual(dups2[0]["rule_id"], "WARN-043")
+        # Same id on a dual rule too: one hazard, one code, reported once.
+        self.assertEqual(dups2[0]["rule_id"], "WARN-053")
 
 
 def _rule_ids_from(source: str) -> list:
@@ -1501,13 +1826,199 @@ class TestWarn049HardcodedLiteral(unittest.TestCase):
         self.assertNotIn("WARN-049", self._ids(rule))
 
 
+class TestWarn051UnguardedProseAccount(unittest.TestCase):
+    """An account captured from qualifier-bearing prose, with an unquoted
+    group directly after the qualifier word and no guard, yields the
+    qualifier itself on a masked line -- 'invalid' or 'Masked', neither an
+    account. A quote-delimited or key= capture is bounded and safe, and a
+    rule that guards the value is fine, so both stay silent. Advisory: the
+    absence of a guard is inferred."""
+
+    def _rule(self, pattern: str, guard: bool = False) -> str:
+        mid = (
+            '    tmp_a = if(tmp_raw != "invalid" and tmp_raw != "Masked", tmp_raw)\n'
+            if guard
+            else "    tmp_a = tmp_raw\n"
+        )
+        return (
+            "[MODEL: dataset=x_raw]\n"
+            "filter\n    _raw_log != null\n"
+            "| alter\n"
+            f'    tmp_raw = arrayindex(regextract(_raw_log, "{pattern}"), 0)\n'
+            "| alter\n" + mid + "| alter\n"
+            "    xdm.source.user.username = tmp_a\n;\n"
+        )
+
+    def test_unquoted_capture_after_qualifier_flagged(self):
+        ids = _rule_ids_from(self._rule(r"password for (\S+)"))
+        self.assertIn("WARN-051", ids)
+
+    def test_bare_user_prefix_flagged(self):
+        self.assertIn("WARN-051", _rule_ids_from(self._rule(r"user (\S+)")))
+
+    def test_guarded_capture_is_silent(self):
+        ids = _rule_ids_from(self._rule(r"password for (\S+)", guard=True))
+        self.assertNotIn("WARN-051", ids)
+
+    def test_quote_delimited_capture_is_silent(self):
+        """The quotes bound the value, so a qualifier word cannot be
+        captured in its place."""
+        ids = _rule_ids_from(self._rule(r"User\s+'(\S+)'"))
+        self.assertNotIn("WARN-051", ids)
+
+    def test_key_anchored_capture_is_silent(self):
+        ids = _rule_ids_from(self._rule(r"\buser=([^\s]+)"))
+        self.assertNotIn("WARN-051", ids)
+
+    def test_reported_once_per_capture_not_per_field(self):
+        """username and upn commonly take the same temp; the root cause is
+        the one missing guard, so it is reported once."""
+        rule = (
+            "[MODEL: dataset=x_raw]\n"
+            "filter\n    _raw_log != null\n"
+            "| alter\n"
+            '    tmp_raw = arrayindex(regextract(_raw_log, "password for (\\S+)"), 0)\n'
+            "| alter\n"
+            "    xdm.source.user.username = tmp_raw,\n"
+            "    xdm.source.user.upn = tmp_raw\n;\n"
+        )
+        vios = [v for v in lint(rule) if v["rule_id"] == "WARN-051"]
+        self.assertEqual(len(vios), 1, vios)
+        self.assertEqual(vios[0]["severity"], "warning")
+
+    def test_non_syslog_structured_source_is_silent(self):
+        rule = (
+            "[MODEL: dataset=x_raw]\n"
+            "filter\n    _raw_log != null\n"
+            "| alter\n"
+            '    tmp_a = json_extract_scalar(_raw_log, "$.user")\n'
+            "| alter\n    xdm.source.user.username = tmp_a\n;\n"
+        )
+        self.assertNotIn("WARN-051", _rule_ids_from(rule))
+
+
+class TestWarn052CaseQualifiedCapture(unittest.TestCase):
+    """XQL folds case, so an uppercase character class does not restrict
+    what a group captures. A capture reached through whitespace with no
+    literal anchor and qualified only by case takes whatever token sits in
+    that position, leaving the field populated with a plausible but wrong
+    value. A group introduced by a literal is structurally anchored and
+    stays silent."""
+
+    def _rule(self, pattern: str) -> str:
+        return (
+            "[MODEL: dataset=x_raw]\n"
+            "filter\n    _raw_log != null\n"
+            "| alter\n"
+            f'    tmp_tag = arrayindex(regextract(_raw_log, "{pattern}"), 0)\n'
+            "| alter\n    xdm.event.original_event_type = tmp_tag\n;\n"
+        )
+
+    def test_positional_case_qualified_capture_flagged(self):
+        ids = _rule_ids_from(self._rule(r"\s+\S+\s+([A-Z][A-Z0-9_]{3,}):"))
+        self.assertIn("WARN-052", ids)
+
+    def test_purely_positional_uppercase_capture_flagged(self):
+        ids = _rule_ids_from(self._rule(r"^\S+\s+\S+\s+([A-Z]+)"))
+        self.assertIn("WARN-052", ids)
+
+    def test_sigil_anchored_capture_is_silent(self):
+        """A % sigil plus the severity digit identify the token."""
+        ids = _rule_ids_from(self._rule(r"%([\w\-]+) :"))
+        self.assertNotIn("WARN-052", ids)
+
+    def test_literal_word_anchored_capture_is_silent(self):
+        ids = _rule_ids_from(self._rule(r"CHECK_HOST\s*\S*\s*([A-Z]+)\s*"))
+        self.assertNotIn("WARN-052", ids)
+
+    def test_label_anchored_capture_is_silent(self):
+        ids = _rule_ids_from(self._rule(r"descr: ([A-Z]{2,})\s/"))
+        self.assertNotIn("WARN-052", ids)
+
+    def test_enumerated_vendor_tags_are_silent(self):
+        """The alternation IS the qualifier, so no case reliance remains."""
+        ids = _rule_ids_from(
+            self._rule(r"\s(PFE_FW_SYSLOG_ETH_IP|DDOS_PROTOCOL_VIOLATION_SET):")
+        )
+        self.assertNotIn("WARN-052", ids)
+
+    def test_severity_is_advisory(self):
+        vios = [
+            v
+            for v in lint(self._rule(r"\s+\S+\s+([A-Z][A-Z0-9_]{3,}):"))
+            if v["rule_id"] == "WARN-052"
+        ]
+        self.assertEqual(len(vios), 1, vios)
+        self.assertEqual(vios[0]["severity"], "warning")
+
+
+class TestWarn054GreedyTailComparisonKey(unittest.TestCase):
+    """A capture that runs to the end of the line inherits any trailing
+    whitespace the device emitted. The field stays populated, non-empty
+    and non-sentinel, so only an exact comparison reveals it -- and that
+    fails as an empty result set rather than an error. Scoped to fields
+    that are compared, not displayed."""
+
+    def _rule(self, pattern: str, field: str = "xdm.target.process.command_line") -> str:
+        return (
+            "[MODEL: dataset=x_raw]\n"
+            "filter\n    _raw_log != null\n"
+            "| alter\n"
+            f'    tmp_v = arrayindex(regextract(_raw_log, "{pattern}"), 0)\n'
+            f"| alter\n    {field} = tmp_v\n;\n"
+        )
+
+    def test_greedy_tail_into_command_line_flagged(self):
+        ids = _rule_ids_from(self._rule(r":\s+\S*[#>]\s+(.+)$"))
+        self.assertIn("WARN-054", ids)
+
+    def test_star_tail_without_dollar_flagged(self):
+        ids = _rule_ids_from(self._rule(r"cmd_data=(.*)"))
+        self.assertIn("WARN-054", ids)
+
+    def test_greedy_tail_into_original_event_type_flagged(self):
+        ids = _rule_ids_from(
+            self._rule(r"STP State \->\s*(.+)", "xdm.event.original_event_type")
+        )
+        self.assertIn("WARN-054", ids)
+
+    def test_delimiter_closed_capture_is_silent(self):
+        """A group closed by a quote cannot take whitespace outside it."""
+        ids = _rule_ids_from(self._rule(r"command\s+'(.+)'"))
+        self.assertNotIn("WARN-054", ids)
+
+    def test_content_terminated_capture_is_silent(self):
+        ids = _rule_ids_from(self._rule(r":\s+\S*[#>]\s+(.*\S)"))
+        self.assertNotIn("WARN-054", ids)
+
+    def test_displayed_field_is_silent(self):
+        """A description legitimately wants the tail."""
+        ids = _rule_ids_from(self._rule(r"reason=(.+)$", "xdm.event.description"))
+        self.assertNotIn("WARN-054", ids)
+
+    def test_alias_is_followed_and_reported_once(self):
+        rule = (FIXTURES / "warn054_greedy_tail_comparison_key.xql").read_text()
+        vios = [v for v in lint(rule) if v["rule_id"] == "WARN-054"]
+        self.assertEqual(len(vios), 1, vios)
+        self.assertEqual(vios[0]["severity"], "warning")
+        self.assertIn("command_line", vios[0]["message"])
+
+    def test_recommendation_carries_the_corrected_pattern(self):
+        vios = [
+            v for v in lint(self._rule(r":\s+\S*[#>]\s+(.+)$"))
+            if v["rule_id"] == "WARN-054"
+        ]
+        self.assertIn(r"(.*\S)", vios[0]["recommendation"])
+
+
 class TestWarn047PrependFragile(unittest.TestCase):
     """A syslog rule must extract identically whether the record arrives
     direct or behind a relay-prepended header. A ^-anchored / positional
     body capture (or an everything-after-the-header grab) breaks on the
-    other form, so it is flagged WARN-047 (advisory). The relay-aware
-    envelope captures and token-anchored bodies are exempt; non-syslog
-    rules are never examined."""
+    other form, so it is BLOCKED as ERR-030 (error severity, exit 1 --
+    modelling both arrival forms in one rule is a hard requirement, not
+    an advisory). The relay-aware envelope captures and token-anchored
+    bodies are exempt; non-syslog rules are never examined."""
 
     def _syslog_head(self) -> str:
         # A rule is 'syslog' once it carries the PRI/envelope capture.
@@ -1529,9 +2040,26 @@ class TestWarn047PrependFragile(unittest.TestCase):
             "    xdm.event.log_level = if(tmp_pri != null, "
             "XDM_CONST.LOG_LEVEL_INFORMATIONAL)\n;\n"
         )
-        vios = [v for v in lint(rule) if v["rule_id"] == "WARN-047"]
+        vios = [v for v in lint(rule) if v["rule_id"] == "ERR-030"]
         self.assertEqual(len(vios), 1, vios)
-        self.assertEqual(vios[0]["severity"], "warning")
+        self.assertEqual(vios[0]["severity"], "error")
+
+    def test_escaped_angle_bracket_envelope_is_exempt(self):
+        """`^\\<` is the same envelope anchor as `^<` -- XQL rules commonly
+        escape it -- so it must not be flagged. Before this was fixed the
+        escape defeated the exemption and a correctly written envelope
+        capture was reported as prepend-fragile, which now blocks."""
+        rule = (
+            "[MODEL: dataset=x_raw]\n"
+            "filter\n    _raw_log != null\n"
+            "| alter\n"
+            '    tmp_pri = to_integer(arrayindex(regextract('
+            '_raw_log, "^\\<(\\d{1,3})\\>"), 0))\n'
+            "| alter\n"
+            "    xdm.event.log_level = if(tmp_pri != null, "
+            "XDM_CONST.LOG_LEVEL_INFORMATIONAL)\n;\n"
+        )
+        self.assertNotIn("ERR-030", _rule_ids_from(rule))
 
     def test_everything_after_header_grab_flagged(self):
         rule = (
@@ -1543,7 +2071,7 @@ class TestWarn047PrependFragile(unittest.TestCase):
             "    xdm.event.log_level = if(tmp_pri != null, "
             "XDM_CONST.LOG_LEVEL_INFORMATIONAL)\n;\n"
         )
-        self.assertIn("WARN-047", _rule_ids_from(rule))
+        self.assertIn("ERR-030", _rule_ids_from(rule))
 
     def test_token_anchored_body_not_flagged(self):
         rule = (
@@ -1555,7 +2083,7 @@ class TestWarn047PrependFragile(unittest.TestCase):
             "    xdm.event.log_level = if(tmp_pri != null, "
             "XDM_CONST.LOG_LEVEL_INFORMATIONAL)\n;\n"
         )
-        self.assertNotIn("WARN-047", _rule_ids_from(rule))
+        self.assertNotIn("ERR-030", _rule_ids_from(rule))
 
     def test_relay_aware_envelope_not_flagged(self):
         rule = (
@@ -1567,7 +2095,7 @@ class TestWarn047PrependFragile(unittest.TestCase):
             "| alter\n"
             "    xdm.observer.name = tmp_host\n;\n"
         )
-        self.assertNotIn("WARN-047", _rule_ids_from(rule))
+        self.assertNotIn("ERR-030", _rule_ids_from(rule))
 
     def test_non_syslog_positional_capture_not_flagged(self):
         # A CLF web-access rule anchors the client IP on ^ but is not syslog,
@@ -1581,7 +2109,164 @@ class TestWarn047PrependFragile(unittest.TestCase):
             "| alter\n"
             "    xdm.source.ipv4 = tmp_ip\n;\n"
         )
-        self.assertNotIn("WARN-047", _rule_ids_from(rule))
+        self.assertNotIn("ERR-030", _rule_ids_from(rule))
+
+
+class TestErr034UnquotedReservedRead(unittest.TestCase):
+    """ERR-034: reading a raw column whose NAME is a query-language
+    construct, without backticks, fails the pack install with an opaque
+    101704. The escape is a backtick, so the quoted form is correct and
+    must stay silent."""
+
+    def _rule(self, body: str) -> str:
+        return (
+            "[MODEL: dataset=acme_demo_raw]\n"
+            "filter\n    _raw_log != null\n"
+            "| alter\n"
+            f"    {body}\n"
+            "| alter\n"
+            "    xdm.event.id = tmp_x\n;\n"
+        )
+
+    def test_fixture_fires_once_at_error_severity(self):
+        source = (FIXTURES / "err034_unquoted_reserved_read.xql").read_text(
+            encoding="utf-8"
+        )
+        vios = [v for v in lint(source) if v["rule_id"] == "ERR-034"]
+        self.assertEqual(len(vios), 1, [v["message"] for v in vios])
+        self.assertEqual(vios[0]["severity"], "error")
+
+    def test_every_reserved_name_flagged_bare(self):
+        # The set is corpus-derived, not guessed. Each must fire when read
+        # bare in value position.
+        for name in ("tag", "view", "target", "fields", "transaction",
+                     "table", "filter", "in"):
+            ids = _rule_ids_from(self._rule(f"tmp_x = {name}"))
+            self.assertIn("ERR-034", ids, f"{name} should fire: {ids}")
+
+    def test_backticked_read_is_the_correct_form_and_silent(self):
+        # 328 shipped upstream rules read these columns backticked and never
+        # bare. Flagging the escape would flag the fix.
+        for name in ("tag", "view", "target", "fields", "transaction",
+                     "table", "filter", "in"):
+            ids = _rule_ids_from(self._rule(f"tmp_x = `{name}`"))
+            self.assertNotIn("ERR-034", ids, f"`{name}` must be silent: {ids}")
+
+    def test_membership_operator_in_is_not_a_column_read(self):
+        # `in` is reserved AND is the membership operator, and the reason it
+        # was excluded from the set until 1.9.1 was a fear of exactly this
+        # firing. It does not: the read patterns only match in VALUE
+        # position, and the operator follows an identifier. Measured at 570
+        # operator uses in the corpus with zero matches.
+        for expr in ('tmp_x = if(evt in ("a", "b"), "y")',
+                     'tmp_x = if(evt not in ("a"), "y")'):
+            ids = _rule_ids_from(self._rule(expr))
+            self.assertNotIn("ERR-034", ids, f"{expr} must be silent: {ids}")
+
+    def test_out_is_an_ordinary_column_name(self):
+        # `out` always arrives paired with `in` on a CEF firewall source, so
+        # it is tempting to reserve it on symmetry. The corpus says no: it
+        # is read BARE in value position 8 times in shipped upstream rules
+        # (to_integer(out) on the sent-bytes mapping) and never backticked,
+        # which is the timestamp/dst pattern rather than the target one.
+        # Reserving it would call 8 rules that demonstrably install broken.
+        ids = _rule_ids_from(self._rule("tmp_x = to_number(out)"))
+        self.assertNotIn("ERR-034", ids, ids)
+
+    def test_controls_not_flagged(self):
+        # Words that merely LOOK like query constructs. timestamp (39 bare
+        # value-position reads) and dst (146) are demonstrably ordinary
+        # column names. contains, call and values are untested rather than
+        # proven safe -- the corpus holds no column of those names at all
+        # (1428 of contains's 1429 occurrences are the OPERATOR) -- but
+        # flagging any of them would still be a false positive, so the
+        # check must stay silent on all six.
+        for name in ("timestamp", "call", "contains", "dst", "values",
+                     "count"):
+            ids = _rule_ids_from(self._rule(f"tmp_x = {name}"))
+            self.assertNotIn("ERR-034", ids, f"{name} must be silent: {ids}")
+
+    def test_longer_identifiers_not_flagged(self):
+        # The word boundary must keep these out: the name is a prefix or a
+        # suffix, not the whole column.
+        for name in ("view_name", "preview", "etag", "header_fields",
+                     "target_ip", "tagging"):
+            ids = _rule_ids_from(self._rule(f"tmp_x = {name}"))
+            self.assertNotIn("ERR-034", ids, f"{name} must be silent: {ids}")
+
+    def test_function_call_of_the_same_name_not_flagged(self):
+        ids = _rule_ids_from(self._rule('tmp_x = filter(a, "b")'))
+        self.assertNotIn("ERR-034", ids, ids)
+
+    def test_arraycreate_position_flagged_bare(self):
+        # After "(" is a read position too, not just after "=".
+        ids = _rule_ids_from(self._rule("tmp_x = arraycreate(tag)"))
+        self.assertIn("ERR-034", ids, ids)
+
+    def test_xdm_target_path_not_flagged(self):
+        # xdm.target.* is a field path, not a column read.
+        rule = (
+            "[MODEL: dataset=acme_demo_raw]\n"
+            "filter\n    _raw_log != null\n"
+            "| alter\n    tmp_x = src_ip\n"
+            "| alter\n    xdm.target.ipv4 = tmp_x\n;\n"
+        )
+        self.assertNotIn("ERR-034", _rule_ids_from(rule), rule)
+
+    def test_name_inside_a_string_literal_not_flagged(self):
+        ids = _rule_ids_from(
+            self._rule('tmp_x = json_extract_scalar(_raw_log, "$.view")')
+        )
+        self.assertNotIn("ERR-034", ids, ids)
+
+    def test_name_inside_a_line_comment_not_flagged(self):
+        ids = _rule_ids_from(self._rule("tmp_x = src_ip  // reads view here"))
+        self.assertNotIn("ERR-034", ids, ids)
+
+    def test_name_inside_a_block_comment_not_flagged(self):
+        # Nothing else in the linter strips block comments. Upstream rules
+        # carry long block headers naming the very fields they map.
+        rule = (
+            "[MODEL: dataset=acme_demo_raw]\n"
+            "filter\n    _raw_log != null\n"
+            "/* header: this rule maps view and tag and target\n"
+            "   across several lines */\n"
+            "| alter\n    tmp_x = src_ip\n"
+            "| alter\n    xdm.event.id = tmp_x\n;\n"
+        )
+        self.assertNotIn("ERR-034", _rule_ids_from(rule), rule)
+
+    def test_block_comment_does_not_shift_line_numbers(self):
+        # Blanking preserves the newlines, so the reported line must be the
+        # real one even with a multi-line block comment above it.
+        rule = (
+            "[MODEL: dataset=acme_demo_raw]\n"
+            "filter\n    _raw_log != null\n"
+            "/* a\n   multi\n   line */\n"
+            "| alter\n"
+            "    tmp_x = view\n"
+            "| alter\n    xdm.event.id = tmp_x\n;\n"
+        )
+        vios = [v for v in lint(rule) if v["rule_id"] == "ERR-034"]
+        self.assertEqual(len(vios), 1, vios)
+        self.assertEqual(vios[0]["line"], 8, vios)
+
+
+class TestStripLineCommentEscapedQuote(unittest.TestCase):
+    """_strip_line_comment toggled its in-string state on every quote,
+    including an escaped one, so a line carrying an escaped quote left it
+    believing it was still inside a string and every // after that read as
+    code. Every check that strips line comments was affected."""
+
+    def test_escaped_quote_does_not_swallow_the_comment(self):
+        line = r'    tmp_x = trim("@element", "\""),  // strip the quote'
+        self.assertNotIn("//", _lint_mod._strip_line_comment(line))
+
+    def test_double_slash_inside_a_string_is_preserved(self):
+        line = r'    tmp_x = concat("a//b", "c"),  // trailing comment'
+        out = _lint_mod._strip_line_comment(line)
+        self.assertIn("a//b", out)
+        self.assertNotIn("trailing comment", out)
 
 
 if __name__ == "__main__":

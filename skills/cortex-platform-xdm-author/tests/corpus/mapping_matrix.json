@@ -7,7 +7,7 @@
       "source": "aws_cloudtrail",
       "worked_example": "13-aws-cloudtrail-multi-event.md",
       "sample": {"eventName": "ConsoleLogin", "eventSource": "signin.amazonaws.com", "eventID": "c1", "awsRegion": "us-east-1", "recipientAccountId": "111122223333", "sourceIPAddress": "203.0.113.7", "responseElements": {"ConsoleLogin": "Success"}, "userIdentity": {"type": "IAMUser", "userName": "alice"}},
-      "expect": {"xdm.event.operation": "XDM_CONST.OPERATION_TYPE_AUTH_LOGIN", "xdm.event.outcome": "XDM_CONST.OUTCOME_SUCCESS", "xdm.event.tags": ["XDM_CONST.EVENT_TAG_AUTHENTICATION", "XDM_CONST.EVENT_TAG_CLOUD"], "xdm.source.cloud.provider": "XDM_CONST.CLOUD_PROVIDER_AWS", "xdm.source.ipv4": "203.0.113.7", "xdm.source.user.upn": "alice@111122223333.aws", "xdm.auth.service": "AWS Console"}
+      "expect": {"xdm.event.operation": "XDM_CONST.OPERATION_TYPE_AUTH_LOGIN", "xdm.event.outcome": "XDM_CONST.OUTCOME_SUCCESS", "xdm.event.tags": ["XDM_CONST.EVENT_TAG_AUTHENTICATION", "XDM_CONST.EVENT_TAG_CLOUD"], "xdm.source.cloud.provider": "XDM_CONST.CLOUD_PROVIDER_AWS", "xdm.source.ipv4": "203.0.113.7", "xdm.source.user.upn": "alice@111122223333.aws", "xdm.auth.service": "IDP", "xdm.target.resource.name": "signin.amazonaws.com"}
     },
     {
       "name": "cloudtrail runinstances (create)",
@@ -42,7 +42,7 @@
       "source": "microsoft_azure",
       "worked_example": "14-azure-activity-signin.md",
       "sample": {"userPrincipalName": "bob@contoso.com", "ipAddress": "20.4.5.6", "appDisplayName": "Azure Portal", "clientAppUsed": "Browser", "category": "SignInLogs", "status": {"errorCode": 50126}},
-      "expect": {"xdm.event.operation": "XDM_CONST.OPERATION_TYPE_AUTH_LOGIN", "xdm.event.outcome": "XDM_CONST.OUTCOME_FAILED", "xdm.event.tags": ["XDM_CONST.EVENT_TAG_AUTHENTICATION", "XDM_CONST.EVENT_TAG_CLOUD"], "xdm.source.user.upn": "bob@contoso.com", "xdm.auth.service": "Azure Portal"}
+      "expect": {"xdm.event.operation": "XDM_CONST.OPERATION_TYPE_AUTH_LOGIN", "xdm.event.outcome": "XDM_CONST.OUTCOME_FAILED", "xdm.event.tags": ["XDM_CONST.EVENT_TAG_AUTHENTICATION", "XDM_CONST.EVENT_TAG_CLOUD"], "xdm.source.user.upn": "bob@contoso.com", "xdm.auth.service": "IDP", "xdm.target.resource.name": "Azure Portal"}
     },
     {
       "name": "entra sign-in success",

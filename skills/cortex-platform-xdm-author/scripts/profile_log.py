@@ -726,6 +726,7 @@ _AUTH_MANDATORY = [
     "xdm.source.port",
     "xdm.target.ipv4",
     "xdm.target.port",
+    "xdm.target.resource.name",
     "xdm.network.ip_protocol",
     "xdm.event.type",
     "xdm.event.tags",
@@ -863,9 +864,6 @@ _NETWORK_MANDATORY = [
     "xdm.event.outcome",
     "xdm.event.type",
     "xdm.event.tags",
-    "xdm.network.http.http_header.header",
-    "xdm.network.http.http_header.value",
-    "xdm.network.http.url_category",
     "xdm.network.ip_protocol",
     "xdm.network.protocol_layers",
     "xdm.source.host.device_id",
@@ -880,6 +878,15 @@ _NETWORK_MANDATORY = [
     "xdm.target.is_internal_ip",
     "xdm.target.port",
     "xdm.target.sent_bytes",
+]
+
+# Mandatory only where the network event carries an HTTP layer (proxy,
+# web gateway, WAF, CASB, DNS-over-HTTPS). Mirrors
+# _NETWORK_HTTP_MANDATORY in lint_rule.py.
+_NETWORK_HTTP_MANDATORY = [
+    "xdm.network.http.http_header.header",
+    "xdm.network.http.http_header.value",
+    "xdm.network.http.url_category",
 ]
 
 # Network detection is deliberately more conservative than authentication
@@ -1335,7 +1342,7 @@ def detect_mitre(fields: Dict[str, dict], records: List[dict]) -> dict:
 # a device that restates its own clock, e.g. Cisco WLC). A direct single-
 # header line -- one <PRI>, one timestamp -- never matches, so normal Cisco
 # syslog is not flagged. Advisory only: it points the author at the
-# relay-aware Stage 0 and the token-anchoring hard rule (WARN-047); it does
+# relay-aware Stage 0 and the token-anchoring hard rule (ERR-030); it does
 # not change detected_format or classification.
 _DOUBLE_PRI_RE = re.compile(r"<\d{1,3}>.*<\d{1,3}>")
 _TS_3164 = r"[A-Za-z]{3}\s+\d{1,2}\s+\d{1,2}:\d{2}:\d{2}"
@@ -1345,7 +1352,7 @@ _DOUBLE_TS_RE = re.compile(_TS_3164 + r".*" + _TS_3164)
 def detect_syslog_relay(text: str) -> dict:
     """Flag lines that show an intermediate-relay prepend (double <PRI> or a
     transport header in front of a device that restates its timestamp).
-    Advisory; feeds the relay-aware Stage 0 + WARN-047 guidance."""
+    Advisory; feeds the relay-aware Stage 0 + ERR-030 guidance."""
     signals: List[dict] = []
     for ln in _non_blank_lines(text):
         s = ln.strip()
@@ -1365,7 +1372,7 @@ def detect_syslog_relay(text: str) -> dict:
             "Stage 0 greedy ^.* prefix takes the origin host/PRI) and anchor "
             "every payload field on its own token, never on ^ -- so extraction "
             "is identical whether the record arrives direct or prepended. See "
-            "references/syslog-envelope.md (HARD RULE); WARN-047 flags "
+            "references/syslog-envelope.md (HARD RULE); ERR-030 flags "
             "^-anchored body captures."
         )
     return out
