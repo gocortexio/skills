@@ -250,5 +250,68 @@ class TestNoLegacyTagline(unittest.TestCase):
                 )
 
 
+class TestSampleDataUsesDocumentationDomains(unittest.TestCase):
+    """Log samples are synthesised, as references/worked-examples.md
+    states, so every hostname in them belongs to a reserved
+    documentation domain. A name under a registrable third-party domain
+    does not, and asserting one in a public fixture is a claim about
+    somebody else's estate. Scoped to the sample corpora, where the
+    policy is unambiguous; prose elsewhere legitimately cites real
+    URLs."""
+
+    # RFC 2606 / RFC 6761 reserved names, plus the two synthesised
+    # estates the worked examples declare, plus the cloud providers'
+    # own API endpoints (which are the event data, not a host).
+    ALLOWED_SUFFIXES = (
+        ".example.com", ".example.net", ".example.org",
+        ".example.local", ".example.test",
+        ".acme.local", ".contoso.com",
+        ".invalid", ".test", ".localdomain",
+        ".amazonaws.com", ".googleapis.com", ".gserviceaccount.com",
+    )
+    ALLOWED_EXACT = {
+        "example.com", "example.net", "example.org",
+        "acme.local", "contoso.com",
+    }
+
+    # A Java / .NET fully-qualified class name has the same shape as a
+    # hostname read backwards. Nokia NFMP logs them verbatim
+    # (java.net.ConnectException), so they are matched and dropped
+    # before the hostname rule sees them.
+    _PACKAGE_PREFIXES = ("java.", "javax.", "org.", "com.sun.", "sun.")
+
+    _HOST = re.compile(
+        r"\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.){1,}"
+        r"(?:com|net|org|local|internal|io|au|uk|test|invalid)\b",
+        re.IGNORECASE,
+    )
+
+    def test_no_third_party_domains_in_sample_data(self):
+        root = bundle_root()
+        corpora = [root / "tests" / "fixtures", root / "tests" / "corpus"]
+        for base in corpora:
+            for p in sorted(base.rglob("*")):
+                if not p.is_file():
+                    continue
+                rel = str(p.relative_to(root))
+                try:
+                    text = p.read_text(encoding="utf-8")
+                except UnicodeDecodeError:
+                    continue
+                for host in {m.group(0).lower() for m in self._HOST.finditer(text)}:
+                    if host in self.ALLOWED_EXACT:
+                        continue
+                    if host.startswith(self._PACKAGE_PREFIXES):
+                        continue
+                    if host.endswith(self.ALLOWED_SUFFIXES):
+                        continue
+                    self.fail(
+                        f"{rel}: sample data carries '{host}', which is not a "
+                        f"documentation domain. Log samples are synthesised -- "
+                        f"re-sanitise it under example.com / example.net / "
+                        f"example.local."
+                    )
+
+
 if __name__ == "__main__":
     unittest.main()

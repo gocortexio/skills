@@ -21,7 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _helpers import bundle_root  # noqa: E402
+from _helpers import bundle_root, read_text  # noqa: E402
 
 SCRIPTS = bundle_root() / "scripts"
 RECIPES_DOC = bundle_root() / "references" / "extraction-recipes.md"
@@ -354,17 +354,22 @@ class TestExtractionRecipes(unittest.TestCase):
         self.assertEqual(op.get("xdm.observer.name"), "wlc-mgmt.example.net")
         self.assertIsNone(od.get("xdm.observer.name"))
 
-    def test_wlc_recipe_on_users_exact_line(self):
-        # The exact line the user reported (a real Cisco WLC relay-prepend).
+    def test_wlc_recipe_on_a_deep_hostname_and_ha_task(self):
+        # The HA-SSO variant: a four-label hostname with hyphens in the
+        # leftmost label, and a task name the direct-arrival samples do
+        # not carry. Both are what the greedy envelope capture has to
+        # survive, so this shape is held separately from line 269's.
         rule = RECIPES["wlc_prepend"][0]
         line = (
-            "<134>Jul 14 15:41:24 mo332-ha-mgmt.au.simon.net moe12-active: "
+            "<134>Jul 14 15:41:24 wlc332-ha-mgmt.au.example.net wlc12-active: "
             "*haSSOServiceTask3: Jul 14 15:41:24.640: %APF-6-USER_NAME_CREATED: "
             "[SS]apf_ms.c:9003 Username entry (3E-A8-8D-20-D1-1E) with length "
             "(17) created for mobile 3e:a8:8d:20:d1:1e"
         )
         out = _verify.evaluate_rule(rule, line)
-        self.assertEqual(out.get("xdm.observer.name"), "mo332-ha-mgmt.au.simon.net")
+        self.assertEqual(
+            out.get("xdm.observer.name"), "wlc332-ha-mgmt.au.example.net"
+        )
         self.assertEqual(
             out.get("xdm.event.original_event_type"), "APF-6-USER_NAME_CREATED"
         )
@@ -756,13 +761,16 @@ class TestCiscoMessageToken(unittest.TestCase):
         self.assertIn("NO lookahead or lookbehind", doc)
 
     def test_severity_five_is_notification_not_notice(self):
-        """Cisco's own word for level 5, which differs from RFC 3164."""
-        cat = (
-            bundle_root().parent.parent
-            / "PRIVATE_DOCS" / "network-os-logging" / "cisco-message-catalogue.md"
-        )
-        if cat.is_file():
-            self.assertIn("notification", cat.read_text(encoding="utf-8"))
+        """Cisco's own word for level 5, which differs from RFC 3164.
+
+        This assertion used to read a file outside the bundle and was
+        wrapped in ``if path.is_file()``, so for anyone without that
+        tree it executed nothing and reported ok. It now checks the
+        shipped reference, which carries the same claim and is what an
+        author actually reads."""
+        doc = read_text("references/extraction-recipes.md")
+        self.assertIn("notification", doc)
+        self.assertIn("RFC 3164", doc)
 
 
 
@@ -850,15 +858,15 @@ class TestWlcClientSession(unittest.TestCase):
         self.assertIn("IDS shun event", line)
         self.assertRegex(line, r"for \d{1,3}(?:\.\d{1,3}){3}")
 
-    def test_catalogue_records_the_coupled_state_machines(self):
-        cat = (
-            bundle_root().parent.parent
-            / "PRIVATE_DOCS" / "network-os-logging" / "cisco-message-catalogue.md"
-        )
-        if cat.is_file():
-            text = cat.read_text(encoding="utf-8")
-            self.assertIn("BADWLANID2", text)
-            self.assertIn("STATION MAC is the correlation key", text)
+    def test_reference_records_the_coupled_state_machines(self):
+        """The controller proves APF, MM and PEM are one session by
+        printing all three states for one mobile, and the station MAC is
+        the only key that joins them. Same story as the test above: this
+        read a tree outside the bundle behind an ``is_file()`` guard and
+        so asserted nothing for anyone who did not have it."""
+        text = read_text("references/authentication-mapping.md")
+        self.assertIn("BADWLANID2", text)
+        self.assertIn("STATION MAC is the correlation key", text)
 
 
 

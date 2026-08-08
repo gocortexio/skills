@@ -17,7 +17,18 @@ Portable skill bundles for doing cool stuff with the Palo Alto Networks Cortex P
 | --- | --- |
 | [cortex-platform-xdm-author](skills/cortex-platform-xdm-author/) | Author Cortex XSIAM Data Model Rules in Cortex Query Language (XQL). Produce a complete `[MODEL: dataset=..._raw]` rule from raw vendor log samples, with a MAPPED-header comment block. MODEL-only. |
 
-## Installing a bundle
+## Installing with Claude Code
+
+This repository is a Claude Code plugin marketplace. From any Claude Code session:
+
+```
+/plugin marketplace add gocortexio/skills
+/plugin install gocortex-skills@gocortexio-skills
+```
+
+The `gocortex-skills` plugin currently ships the `cortex-platform-xdm-author` bundle; bundles are added to the plugin as they reach a stable release. Pushed updates arrive with `/plugin marketplace update`.
+
+## Installing a bundle by hand
 
 A bundle is just a directory. Copy or symlink it into the skills directory the host expects, then start the host. Consult the host's documentation for the exact path. If the host does not support the on-disk skill convention, load `SKILL.md` and the references by hand into the session.
 
@@ -29,7 +40,7 @@ The `cortex-platform-xdm-author` bundle's `references/` are derived markdown sna
 
 ## Scope
 
-Each bundle states its own scope in its `SKILL.md`. The `cortex-platform-xdm-author` bundle covers Data Model Rules only; Parsing Rules (`[INGEST: ...]`) and parser-stamped anchor columns are out of scope. The `cortex-platform-use-case-consultant` bundle is in early development; its `SKILL.md` states what is delivered and what is not yet defined.
+Each bundle states its own scope in its `SKILL.md`. The `cortex-platform-xdm-author` bundle covers Data Model Rules only; Parsing Rules (`[INGEST: ...]`) and parser-stamped anchor columns are out of scope.
 
 ## Runtime dependencies
 

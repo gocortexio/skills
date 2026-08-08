@@ -298,12 +298,21 @@ class TestScaffoldNetworkMandatory(unittest.TestCase):
         self.assertIn(
             'xdm.network.protocol_layers = arraycreate("IP")', rule
         )
-        self.assertIn(
-            "xdm.network.http.url_category = XDM_CONST.URL_CATEGORY_UNKNOWN",
-            rule,
-        )
         self.assertIn("xdm.source.is_internal_ip = false", rule)
         self.assertIn("xdm.target.is_internal_ip = false", rule)
+
+    def test_http_leaves_not_padded_onto_a_bare_flow(self):
+        # This sample is a firewall flow: addresses, ports, byte counts,
+        # a rule name and a session id. No URL, no HTTP field, so it has
+        # no HTTP layer and must not be given one. This test previously
+        # asserted the opposite and was what locked the defect in.
+        rule = self._rule()
+        for leaf in (
+            "xdm.network.http.http_header.header",
+            "xdm.network.http.http_header.value",
+            "xdm.network.http.url_category",
+        ):
+            self.assertNotIn(f"{leaf} =", rule)
 
     def test_anchor_wired_fields_not_overwritten(self):
         # src_ip is wired from the log by the anchor loop; the network pad
@@ -420,6 +429,63 @@ class TestScaffoldProvenanceBlock(unittest.TestCase):
         self.assertIn('GOCORTEX_SKILLS_MODEL="test-model-x"', cp.stdout)
         self.assertIn('GOCORTEX_SKILLS_SKILL_WARNING_COUNT="3"', cp.stdout)
         self.assertIn('GOCORTEX_SKILLS_SOURCE_BASIS="spec-backed"', cp.stdout)
+
+
+class TestHttpLeavesAreGatedOnAnHttpLayer(unittest.TestCase):
+    """The three xdm.network.http.* leaves are mandatory only for a
+    network event that CARRIES an HTTP layer. SKILL.md states it as a
+    hard rule -- never pad a header name, a header value and a URL
+    category onto a router SSH login, an SNMP failure or a control-plane
+    record -- and lint_rule._rule_claims_http_layer gates WARN-043 the
+    same way. The scaffolder used to pad them on every network-flagged
+    sample, so its own output asserted a protocol the source never saw."""
+
+    def test_gate_is_false_without_http_evidence(self):
+        for targets in (
+            set(),
+            {"xdm.source.ipv4", "xdm.target.port", "xdm.network.ip_protocol"},
+            {"xdm.network.application_protocol"},  # ssh / snmp, not HTTP
+        ):
+            with self.subTest(targets=sorted(targets)):
+                self.assertFalse(_scaffold._claims_http_layer(targets))
+
+    def test_gate_is_true_on_an_http_field_or_a_url(self):
+        for targets in (
+            {"xdm.network.http.method"},
+            {"xdm.network.http.response_code"},
+            {"xdm.target.url"},
+            {"xdm.source.url"},
+        ):
+            with self.subTest(targets=sorted(targets)):
+                self.assertTrue(_scaffold._claims_http_layer(targets))
+
+    def test_http_leaves_absent_from_the_unconditional_network_set(self):
+        unconditional = {f for f, _ in _scaffold._NETWORK_PADDABLE}
+        for leaf in (
+            "xdm.network.http.http_header.header",
+            "xdm.network.http.http_header.value",
+            "xdm.network.http.url_category",
+        ):
+            self.assertNotIn(leaf, unconditional)
+
+    def test_syslog_network_source_gets_no_http_pads(self):
+        # A plain syslog network feed with no HTTP layer anywhere.
+        ws = json.dumps(_worksheet("network_event_syslog.log"))
+        cp = subprocess.run(
+            [sys.executable, str(SCRIPTS / "scaffold_rule.py"), "-",
+             "--vendor", "Acme", "--product", "Router"],
+            input=ws, capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(cp.returncode, 0, cp.stderr)
+        for leaf in (
+            "xdm.network.http.http_header.header",
+            "xdm.network.http.http_header.value",
+            "xdm.network.http.url_category",
+        ):
+            self.assertNotIn(
+                f"{leaf} =", cp.stdout,
+                f"{leaf} padded onto a source with no HTTP layer",
+            )
 
 
 if __name__ == "__main__":

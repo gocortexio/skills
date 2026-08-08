@@ -35,7 +35,7 @@ filter <null_guard_condition>
 - First stage after the header is `filter` with NO leading pipe (WARN-017 fires on a leading pipe). All subsequent stages use a leading pipe.
 - Use multiple `alter` stages: one for extraction, optionally one for derivation, one for XDM assignment. This respects idiom (xi) (no sibling references inside a single `alter` -- see [parser-idioms.md](parser-idioms.md)).
 - Rule MUST end with a semicolon (ERR-009). The last assignment before the semicolon must NOT have a trailing comma (ERR-010).
-- The `filter` must NOT be a no-op tautology (see "No no-op leading filter stages" in [pitfall-traps.md](pitfall-traps.md)).
+- The `filter` guards on `_raw_log != null` and nothing more -- not a tautology, and not a predicate that drops records (see "The leading filter is the null guard, and nothing else" in [pitfall-traps.md](pitfall-traps.md)).
 
 ## Extraction strategy decision tree
 
@@ -57,29 +57,29 @@ See [extraction-patterns.md](extraction-patterns.md) for the four canonical extr
 Assign in this order. Earlier categories first, since later ones often depend on them:
 
 1. Observer identity: `xdm.observer.vendor` and `xdm.observer.product` (hardcoded strings).
-2. Event classification: `xdm.event.type` -- normalised category: `"ALERT"`, `"NETWORK"`, `"AUTH"`, `"EMAIL"`, `"FILE"`, `"PROCESS"`, `"ENDPOINT_ACTIVITY"`, `"AUDIT"`. Then `xdm.event.id`, `xdm.event.original_event_type`, `xdm.event.description`, `xdm.event.outcome`, and `xdm.event.operation` (`XDM_CONST.OPERATION_TYPE_*` -- e.g. `OPERATION_TYPE_AUTH_MFA` / `OPERATION_TYPE_AUTH_LOGIN` for AUTH events, `OPERATION_TYPE_AUDIT` for audit trails; omit only when no constant fits).
+2. Event classification: `xdm.event.type` -- a normalised category, decided PER RECORD rather than per feed. `xdm.event.type` is a free String, not a closed list: the values above are the common ones, and a source with its own vocabulary uses it. What the story checks require is a SUBSTRING match, so an authentication record needs a value containing `authentication` and a network record one containing `network` -- `"AUTH"` alone does not satisfy WARN-042, which is why the scaffolder emits `authentication` and `network` in full. See [record-classification.md](record-classification.md). Common values: `alert`, `network`, `authentication`, `email`, `file`, `process`, `endpoint_activity`, `audit`. Then `xdm.event.id`, `xdm.event.original_event_type`, `xdm.event.description`, `xdm.event.outcome`, and `xdm.event.operation` (`XDM_CONST.OPERATION_TYPE_*` -- e.g. `OPERATION_TYPE_AUTH_MFA` / `OPERATION_TYPE_AUTH_LOGIN` for AUTH events, `OPERATION_TYPE_AUDIT` for audit trails; omit only when no constant fits).
 3. Source and target identities: IPs, hostnames, ports, users.
 4. Domain-specific fields: `xdm.alert.`, `xdm.email.`, `xdm.network.`, `xdm.auth.`.
 5. Intermediate fields: for proxy or gateway devices between source and target.
 
 ## Mandatory validation checklist
 
-The bundled `scripts/lint_rule.py` covers the syntactic subset of these checks (ERR-012 through ERR-018, ERR-024, INFO-012). Dataflow- and schema-dependent items such as WARN-019 unused-variable and ERR-025 must be reviewed by eye against the list below before invoking the linter.
+The bundled `scripts/lint_rule.py` covers all three families offline -- structural, schema-aware and dataflow -- so none of the list below needs reviewing by eye first. It reads the XDM schema and the `XDM_CONST` lists from the references and runs a reach and array-typing pass over the rule's temps. Run `python3 scripts/lint_rule.py --list-codes` for the current codes; the codes named below are the ones each item maps to.
 
-- Every `tmp_temp` variable is consumed in an XDM assignment (WARN-019; unused = BLOCKING error, see ERR-019 in [parser-idioms.md](parser-idioms.md)).
+- Every `tmp_temp` variable is consumed in an XDM assignment. An unused temp is a BLOCKING error on every dataset (ERR-019; see [parser-idioms.md](parser-idioms.md)).
 - `xdm.observer.vendor` and `xdm.observer.product` are set (hardcoded strings).
 - `xdm.event.type` is set to a normalised category string.
 - `XDM_CONST` values are NOT quoted (WARN-014).
 - Dataset name is NOT quoted in the `MODEL` header (WARN-015).
 - No leading pipe before the first stage after the `MODEL` header (WARN-017).
 - Numeric comparisons use numeric literals (`severity = 4` not `severity = "4"`).
-- Array-type XDM fields use `arraycreate()` (WARN-020).
+- Array-type XDM fields use `arraycreate()` or another array-producing function (WARN-035).
 - `to_string()` wraps any `arrayindex()` output before passing to `split()` or `regextract()`.
 - No self-referencing XDM fields (`xdm.x = coalesce(xdm.x, tmp_y)` is INVALID, ERR-011).
 - No chained arrow operators (`column -> field -> subfield` is INVALID; use `json_extract_scalar`).
 - Rule ends with a semicolon (ERR-009). No trailing comma before the semicolon (ERR-010).
-- A null-guard `filter` is present as the first stage (and is NOT a no-op tautology -- see "No no-op leading filter stages" in [pitfall-traps.md](pitfall-traps.md)).
-- Every XDM field path exists in [xdm-schema.md](xdm-schema.md) (WARN-010).
+- A null-guard `filter` is present as the first stage (and is NOT a tautology or a record-dropping predicate -- see "The leading filter is the null guard, and nothing else" in [pitfall-traps.md](pitfall-traps.md)).
+- Every XDM field path exists in [xdm-schema.md](xdm-schema.md) (ERR-020), and none is a banned internal-only field (ERR-029).
 - `_time` is NOT assigned in MODEL rules (WARN-018). Cortex sets it automatically; `_time` belongs to INGEST (parsing) rules.
 - All [parser-idioms.md](parser-idioms.md) checks pass (ERR-012 through ERR-019, plus the (xi) / (xii) idioms).
 

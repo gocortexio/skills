@@ -95,11 +95,6 @@ ALLOW_KNOWN_BAD_XDM_CONSTS = {
     "XDM_CONST.CLOUD_PROVIDER_ORACLE": "failure-modes.md #6 invented-constant counter-example",
     "XDM_CONST.OS_FAMILY_BSD": "failure-modes.md #6 invented-constant counter-example",
     "XDM_CONST.THREAT_CATEGORY_SECURITY": "failure-modes.md #6 invented-constant counter-example",
-    # virtualization-mapping.md -- cited as one of the two possible forms
-    # of the virtualization tag, in an explicitly unresolved TO CONFIRM
-    # block. Whether this member exists is the open question; if a tenant
-    # confirms it, add it to xdm-const.md and drop this entry.
-    "XDM_CONST.EVENT_TAG_VIRTUALIZATION": "virtualization-mapping.md unresolved tag-form counter-example",
 }
 
 # Token-prefix excludes -- match starts-with so we can ignore whole
@@ -246,12 +241,38 @@ class TestXdmPathConsistency(unittest.TestCase):
         cls.known_paths = authoritative_xdm_paths()
 
     def test_authoritative_list_is_substantial(self):
-        # Sanity check on the parse; the schema reference covers ~645 fields.
+        # Sanity check on the parse -- a parser that returned nothing would
+        # make every "cited path exists" assertion below vacuously true.
         self.assertGreater(
             len(self.known_paths),
             400,
             f"authoritative xdm path list suspiciously small: {len(self.known_paths)}",
         )
+
+    def test_documented_field_count_matches_the_list(self):
+        """The count stated in prose must be the count on disk. It said
+        645 in three places against an actual 628 -- a figure inherited
+        from 1.5.2 and never re-measured, while the loose ">400" sanity
+        check above happily passed throughout."""
+        actual = len(self.known_paths)
+        heading = read_text("references/xdm-schema.md").splitlines()[5]
+        m = re.search(r"(\d{3,})\s+fields", heading)
+        self.assertIsNotNone(
+            m, f"xdm-schema.md heading states no field count: {heading!r}"
+        )
+        self.assertEqual(
+            int(m.group(1)), actual,
+            f"references/xdm-schema.md claims {m.group(1)} fields; the list "
+            f"holds {actual}",
+        )
+        for rel in ("SKILL.md", "references/failure-modes.md"):
+            for stated in re.findall(r"(\d{3,})[- ]field|has (\d{3,}) fields",
+                                     read_text(rel)):
+                n = next(s for s in stated if s)
+                self.assertEqual(
+                    int(n), actual,
+                    f"{rel} states {n} XDM fields; the list holds {actual}",
+                )
 
     def test_cited_paths_exist(self):
         unknown = {}
@@ -397,6 +418,121 @@ class TestNetworkMappingWiring(unittest.TestCase):
         )
 
 
+def _codes_on(text: str) -> set:
+    """Every check code in ``text``, expanding the slash-abbreviated
+    run form the docs use.
+
+    ``ERR-009/010/011`` is three codes, but a bare ``(?:ERR|WARN|INFO)-\\d+``
+    match sees only ERR-009 -- the rest carry no prefix. That is not
+    hypothetical: it is why the restated-list guard below scored
+    SKILL.md's 34-code enumeration as 2 and let it fall eleven codes
+    behind the linter."""
+    found = set()
+    for kind, run in re.findall(r"\b(ERR|WARN|INFO)-(\d+(?:/\d+)*)", text):
+        for num in run.split("/"):
+            found.add(f"{kind}-{num}")
+    return found
+
+
+class TestReadmeCodeListMatchesTheLinter(unittest.TestCase):
+    """README.md enumerates the linter's codes in full, so unlike
+    SKILL.md it is holding a copy on purpose. A copy is only safe if
+    something compares it, and nothing did."""
+
+    def setUp(self) -> None:
+        sys.path.insert(0, str(bundle_root() / "scripts"))
+        import lint_rule  # noqa: PLC0415
+
+        self.registry = {e["code"] for e in lint_rule.code_table()}
+        self.named = _codes_on(read_text("README.md"))
+
+    def test_readme_names_no_code_the_linter_lacks(self):
+        unknown = sorted(self.named - self.registry)
+        self.assertEqual(
+            unknown, [],
+            f"README.md names codes lint_rule.py does not define: {unknown}",
+        )
+
+    def test_readme_names_every_code_the_linter_has(self):
+        missing = sorted(self.registry - self.named)
+        self.assertEqual(
+            missing, [],
+            f"README.md's code list is {len(missing)} behind the linter: "
+            f"{missing}. Add them, or replace the enumeration with a pointer "
+            "to `scripts/lint_rule.py --list-codes`.",
+        )
+
+
+class TestEveryReferenceIsReachable(unittest.TestCase):
+    """A reference nothing links to is content the author will never
+    load. virtualization-mapping.md sat in references/ for two releases
+    absent from SKILL.md's index and from every other reference, so the
+    only way to reach it was to list the directory -- and it was a
+    provisional draft carrying open questions, which is the worst thing
+    to find that way."""
+
+    def test_no_orphan_reference_files(self):
+        root = bundle_root()
+        refs = sorted((root / "references").rglob("*.md"))
+        corpus = read_text("SKILL.md") + read_text("README.md")
+        for p in refs:
+            corpus += p.read_text(encoding="utf-8")
+
+        orphans = []
+        for p in refs:
+            rel = p.relative_to(root)
+            # A file is reachable if any other document names it. Strip
+            # its own text first, so a self-reference does not count.
+            others = corpus.replace(p.read_text(encoding="utf-8"), "")
+            if p.name not in others:
+                orphans.append(str(rel))
+
+        self.assertEqual(
+            orphans, [],
+            f"reference files nothing links to: {orphans}. Add them to "
+            "SKILL.md's 'References (load on demand)' list, link them from "
+            "a reference that does appear there, or take them out of the "
+            "shipped bundle.",
+        )
+
+
+class TestReferenceFilesNameOnlyRealCodes(unittest.TestCase):
+    """A reference that cites a code the linter does not have sends the
+    author looking for a check that will never fire. modeling-rules.md
+    carried three -- WARN-019, WARN-020 and WARN-010 -- whose real
+    counterparts are ERR-019, WARN-035 and ERR-020."""
+
+    # Parser-conformance codes from modeling-rules.md's own numbering;
+    # INFO-006, which SKILL.md names in order to record that it is
+    # deliberately not emitted; and WARN-023, which is a CORTEX IDE
+    # validator code rather than one of ours -- compatibility-notes.md
+    # cites it as the platform's own output and says so.
+    _NON_LINTER_CODES = {
+        "ERR-001", "ERR-002", "ERR-003", "ERR-004", "ERR-005",
+        "ERR-006", "ERR-007", "ERR-008", "INFO-006",
+        "WARN-023",
+    }
+
+    def setUp(self) -> None:
+        sys.path.insert(0, str(bundle_root() / "scripts"))
+        import lint_rule  # noqa: PLC0415
+
+        self.registry = {e["code"] for e in lint_rule.code_table()}
+
+    def test_no_reference_cites_a_missing_code(self):
+        root = bundle_root()
+        for path in sorted((root / "references").rglob("*.md")):
+            rel = str(path.relative_to(root))
+            named = _codes_on(path.read_text(encoding="utf-8"))
+            unknown = sorted(named - self.registry - self._NON_LINTER_CODES)
+            with self.subTest(file=rel):
+                self.assertEqual(
+                    unknown, [],
+                    f"{rel} cites codes lint_rule.py does not define: "
+                    f"{unknown}",
+                )
+
+
 class TestSkillMdLintCodesExist(unittest.TestCase):
     """SKILL.md names linter codes inline inside its hard rules. The
     linter's own module docstring is the single registry of those codes,
@@ -452,7 +588,7 @@ class TestSkillMdLintCodesExist(unittest.TestCase):
         rule are fine; a restated list is not."""
         worst = max(
             (
-                (len(set(re.findall(r"(?:ERR|WARN|INFO)-\d+", line))), i + 1)
+                (len(_codes_on(line)), i + 1)
                 for i, line in enumerate(read_text("SKILL.md").splitlines())
             ),
             default=(0, 0),

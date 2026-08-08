@@ -107,17 +107,18 @@ For the following groups, treat with OMIT-and-fall-back:
 | `xdm.{source,target}.user.user_type` | OMIT; `username` and `identity_type` already convey the signal |
 | `xdm.{source,target}.user.scope` | OMIT; place scope literal in `xdm.event.description` if useful |
 | `xdm.source.process.executable.signature_status` (and all peer `.signature_status`) | OMIT; vendors rarely match the closed set |
-| `xdm.event.tags` (`EVENT_TAG` Array) | OMIT unless vendor explicitly produces tags such as AUTHENTICATION/CLOUD/NETWORK/ONPREM/SAAS/VPN; never invent tags |
 | `xdm.network.dns.dns_question.type` / `xdm.network.dns.dns_resource_record.type` | OMIT; place raw record type in `xdm.event.description` |
 | `xdm.network.dns.response_code` | OMIT; place raw code in `xdm.network.dns.response_code_text` if available, else `xdm.event.description` |
 | `xdm.network.http.url_category` | OMIT; place raw category in `xdm.event.description` (NEVER guess `URL_CATEGORY_*`) |
 | `xdm.network.ldap.{bind_auth_type,operation,scope}` | OMIT; place raw value in `xdm.event.description` |
 | `xdm.network.dcerpc.operation` | OMIT; raw operation name in `xdm.event.description` |
 | `xdm.network.dhcp.message_type` | OMIT; raw message type in `xdm.event.description` |
-| `xdm.target.registry{,tmp_before}.value_type` | OMIT; raw value type in `xdm.event.description` |
+| `xdm.target.registry.value_type` / `xdm.target.registry_before.value_type` | OMIT; raw value type in `xdm.event.description` |
 | `xdm.database.operation` | OMIT; raw SQL verb in `xdm.target.application.name` or `xdm.event.description` |
 
 Do NOT invent constants for any of the above. The Cortex IDE rejects unknown `XDM_CONST` values with a hard validation error, and a hallucinated constant typically passes a local-LLM self-check while failing the server-side compile.
+
+`xdm.event.tags` is NOT one of these groups and used to be listed here in error. `EVENT_TAG` is fully enumerated -- six members, documented in [xdm-const.md](xdm-const.md) -- so the OMIT-and-fall-back reasoning does not apply to it. The tag is decided per record from that closed set, and it is a mandatory member of both the authentication and the network story sets, so omitting it drops the event out of the story it belongs to. The rule that survives is the narrow one: never invent a tag outside the six (WARN-045). See [record-classification.md](record-classification.md).
 
 ## Unused temp variable rule
 
@@ -130,23 +131,20 @@ Do NOT park it in `xdm.source.cloud.source_type` -- that field is banned (see [b
 
 Never leave orphaned temp variables -- they cause a blocking validation error.
 
-## No no-op leading filter stages
+## The leading filter is the null guard, and nothing else
 
-Data model rules run inside a MODEL block. A `filter` stage as the FIRST stage is forbidden when the predicate is universally true (a no-op). The Cortex IDE rejects the rule with a parser error.
+The first stage of a MODEL rule is `filter _raw_log != null`. That is the prescribed opening in the three-stage shape (filter, extract, assign) and it is what `scripts/scaffold_rule.py` emits, so a rule that opens any other way is the one to look at twice.
 
-### Common forbidden patterns
+It is a real guard rather than a tautology. A dataset routinely carries records where `_raw_log` is null -- that is the ordinary Pattern D shape, where the fields arrive as pre-parsed top-level columns -- so the predicate discriminates. An earlier version of this section had this exactly backwards and called the null guard a forbidden no-op. It is not; it is mandatory.
+
+What the leading stage must NOT do is either of these:
 
 ```
-// WRONG -- no-op leading filter
-filter _raw_log != null
-| alter tmp_foo = json_extract_scalar(_raw_log, "$.foo")
-| alter xdm.event.id = tmp_foo
-
-// WRONG -- always-true tautology
+// WRONG -- always-true tautology, discriminates nothing
 filter true
 | alter ...
 
-// WRONG -- filter re-asserts the dataset selection already implicit in MODEL
+// WRONG -- re-asserts the dataset selection the MODEL header already made
 filter _vendor = "<vendor>" and _product = "<product>"
 | alter ...
 ```
@@ -154,15 +152,19 @@ filter _vendor = "<vendor>" and _product = "<product>"
 ### Correct
 
 ```
-alter tmp_foo = json_extract_scalar(_raw_log, "$.foo")
+filter
+    _raw_log != null
+| alter tmp_foo = json_extract_scalar(_raw_log, "$.foo")
 | alter xdm.event.id = tmp_foo
 ```
 
-RULE: The first stage of the rule MUST be `alter`. Do NOT prefix the rule with a `filter` stage of any kind, even when the intent is "skip null logs" -- nulls are handled per-extraction with `coalesce` / `if` and per-field with null guards.
+RULE: filter on `_raw_log != null` and nothing more. Every other null case is handled per-extraction with `coalesce` / `if` and per-field with null guards, never by narrowing the leading filter.
 
-A legitimate `filter` stage may appear LATER in the pipeline only when it expresses a non-trivial conditional projection (e.g. dropping audit subtypes that should not be modelled). It must never be the first stage and must never have a predicate that is always true.
+The reason the leading filter stays this narrow is row parity. A predicate that drops records makes the `datamodel` row count diverge from the raw count, silently, and the records it drops are exactly the ones nobody knows to look for. Classify an unrecognised record into the catch-all instead (`xdm.event.original_event_type = "GOCORTEX_UNMODELLED"`), which keeps it countable -- see [record-classification.md](record-classification.md). WARN-046 flags a content filter that drops records with no catch-all.
 
-This applies to ALL data sources -- no vendor for which a no-op leading filter is valid.
+A `filter` stage later in the pipeline is subject to the same argument and is almost never right. If you are reaching for one to drop a subtype that should not be modelled, give it the catch-all instead.
+
+This applies to ALL data sources -- there is no vendor for which a record-dropping filter is the correct answer.
 
 ## An advisory is not a defect list: name the ENTITY before satisfying one
 

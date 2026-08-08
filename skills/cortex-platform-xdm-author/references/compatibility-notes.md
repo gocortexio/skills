@@ -12,7 +12,7 @@ IMPORTANT: fields listed here are NOT valid for general use. This is a list of f
 Promoted 2026-04.
 
 - Symptom: the Cortex IDE validator emits WARN-023 ("XDM_CONST enum chain too large"). On `_gc_raw` datasets the type-checker crashes with an "internal error" cascade. On non-`_gc_raw` datasets the warning is non-blocking but appears on every rule that maps the field.
-- Datasets: always fires on `_gc_raw` datasets (BLOCKING). Fires as a non-blocking warning on every other dataset (`extrahop_revealx_raw`, `imperva_*_raw`, `panw_iot_raw`, `novasec_*_raw`, and others).
+- Datasets: always fires on `_gc_raw` datasets (BLOCKING). Fires as a non-blocking warning on every other dataset, without exception -- it is a property of the field, not of any particular source.
 - Workaround:
   1. On `_gc_raw` datasets, OMIT `xdm.alert.mitre_techniques` entirely. Map `xdm.alert.mitre_tactics` only -- the tactic enum is small enough for the validator.
   2. On non-`_gc_raw` datasets the field is still required by the spec because correlation depends on technique mapping. Accept the WARN-023 as the floor signal.

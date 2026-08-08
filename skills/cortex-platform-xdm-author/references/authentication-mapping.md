@@ -55,12 +55,21 @@ markers the record earns: `XDM_CONST.EVENT_TAG_VPN` for a VPN login,
 is closed to six members ([xdm-const.md](xdm-const.md)).
 
 When detected, `scripts/scaffold_rule.py` pre-populates the mandatory
-set: it pads the fields that have an official placeholder (tags,
-operation, service, ip_protocol, the transport ports, target.ipv4),
-sets `xdm.event.type` to `authentication`, and lists the fields that
-must come from the raw log (`xdm.source.user.upn`, `xdm.source.ipv4`,
-`xdm.event.original_event_type`, `xdm.event.outcome`) as TODOs rather
-than padding them with a static value the platform would reject.
+set. It pads only the fields whose placeholder is semantically EMPTY --
+`xdm.network.ip_protocol`, the transport ports, `xdm.target.ipv4`, and
+the account-class pair `identity_type` / `user_type` -- and sets
+`xdm.event.type` to `authentication`.
+
+Everything else is listed as a must-extract TODO rather than seeded:
+`xdm.auth.service`, `xdm.event.operation`, `xdm.source.user.upn`,
+`xdm.source.ipv4`, `xdm.event.original_event_type`,
+`xdm.event.outcome` and `xdm.target.resource.name`. Two of those moved
+out of the paddable set deliberately. `xdm.target.resource.name` is
+never padded because a padded target is the state an inverted rule
+passes the linter in (WARN-055). `xdm.auth.service` followed it in
+1.9.0: a ROLE decided per event type cannot be seeded with a default
+without asserting a flow shape the scaffolder cannot know, and the
+`"Login"` pad it used to carry is gone entirely.
 
 Enforcement is advisory. `scripts/lint_rule.py` classifies a MODEL rule
 as authentication either from an explicit XDM marker (the
@@ -258,14 +267,20 @@ would assert something, accepting the advisory.
 | `xdm.source.port = to_integer(0)` | zero is transparently a placeholder, not a port |
 | `xdm.target.ipv4 = ""` | the empty string asserts no address |
 
-`xdm.network.ip_protocol` is the counter-example. Padding it means
-writing a protocol NAME, and any name is a factual claim. Where the
-administrative transport is TCP for an SSH session and something else
-for a console login, and the record does not say which, there is no
-honest pad -- so leave it unset and take the WARN-043 advisory. An
-advisory is a prompt to think, not a defect to close; a conscientious
-author following the recommendation literally would otherwise write a
-plausible falsehood into every authentication record.
+`xdm.network.ip_protocol` shows where the line falls, and this file
+used to place it on the wrong side. The pad is
+`XDM_CONST.IP_PROTOCOL_IP`, which names the parent protocol rather than
+a transport, so it is semantically empty in the same way `""` is: it
+asserts an IP record and nothing more. Pad it, as the mandatory table
+above and `scripts/scaffold_rule.py` both do.
+
+What is barred is padding a SPECIFIC protocol. Where the administrative
+transport is TCP for an SSH session and something else for a console
+login, and the record does not say which, `IP_PROTOCOL_TCP` is a
+plausible falsehood written into every record -- and unlike a null it
+is invisible, because the field is populated and type-valid. Derive the
+specific member where the log says so, fall back to `IP_PROTOCOL_IP`
+where it does not, and never guess between them.
 
 After deploying, count each mandatory field's POPULATION over real
 records, not just its presence in the rule. A field populated on 0 of n

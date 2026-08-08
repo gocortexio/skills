@@ -110,5 +110,50 @@ class TestHeaderTemplate(unittest.TestCase):
             break
 
 
+class TestVersionStampsAgree(unittest.TestCase):
+    """Every place the bundle writes its own version must agree with the
+    SKILL.md frontmatter. The template's stamp sat at 1.8.24 through two
+    releases while the frontmatter said 1.9.1, and 517 green tests did
+    not notice, because the template test pinned structure only. A rule
+    hand-authored from the template therefore carried a provenance
+    version that named the wrong guidance -- which is the exact failure
+    the provenance block exists to prevent."""
+
+    @classmethod
+    def setUpClass(cls):
+        import re
+
+        cls.re = re
+        skill = read_text("SKILL.md")
+        m = re.search(r"^version:\s*(\S+)\s*$", skill, re.MULTILINE)
+        assert m, "SKILL.md frontmatter has no version line"
+        cls.declared = m.group(1)
+        cls.skill = skill
+
+    def test_template_stamp_matches_frontmatter(self):
+        text = read_text("assets/modeling_header_template.xql")
+        found = self.re.findall(r'GOCORTEX_SKILLS_SKILL_VERSION="([^"]+)"', text)
+        self.assertTrue(found, "template has no GOCORTEX_SKILLS_SKILL_VERSION line")
+        for v in found:
+            self.assertEqual(
+                v, self.declared,
+                f"assets/modeling_header_template.xql stamps {v!r} but SKILL.md "
+                f"frontmatter declares {self.declared!r}",
+            )
+
+    def test_skill_md_prose_stamps_match_frontmatter(self):
+        found = self.re.findall(
+            r'GOCORTEX_SKILLS_SKILL_VERSION="([^"]+)"', self.skill
+        )
+        for v in found:
+            if v.startswith("<"):      # an explicit placeholder is fine
+                continue
+            self.assertEqual(
+                v, self.declared,
+                f"SKILL.md shows a provenance version of {v!r} but its own "
+                f"frontmatter declares {self.declared!r}",
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

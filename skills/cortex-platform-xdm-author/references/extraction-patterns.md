@@ -283,7 +283,11 @@ The escape is a BACKTICK, and it is the established idiom rather than a workarou
 | alter xdm.event.tags = arraycreate(`tag`)
 ```
 
-Which names qualify was derived from that corpus rather than from how SQL-ish a word looks, and the guess is a bad guide. Reserved: `view` and `tag` (both confirmed by live-tenant bisection) plus `target`, `fields`, `transaction`, `table` and `filter` (never read bare in any shipped rule). `in` qualifies too but is excluded from the check, because it is also the membership operator and flagging it would fire on every `action in (...)`.
+Which names qualify was derived from that corpus rather than from how SQL-ish a word looks, and the guess is a bad guide. Reserved: `view` and `tag` (both confirmed by live-tenant bisection) plus `target`, `fields`, `in`, `transaction`, `table` and `filter` (never read bare in any shipped rule).
+
+`in` was held out of the check until 1.9.0, on the reasoning that it is also the membership operator and flagging it would fire on every `action in (...)`. That was true of a cruder check and is false of this one, which measurement settles: the read patterns match only in VALUE position -- after `=`, `(` or `,` -- and the operator never appears there, because it follows an identifier. Re-measured against the corpus exactly as the check runs, with strings and comments stripped: 570 membership-operator uses, ZERO matched, against 9 backticked reads the check correctly accepts.
+
+Its pair `out` is NOT reserved, and must not be added on symmetry. `out` arrives beside `in` on every CEF firewall, which makes the symmetry tempting, and the corpus refuses it: `out` is read BARE in value position 8 times in shipped rules -- `to_integer(out)` on the sent-bytes mapping -- and never backticked. That is the `timestamp` and `dst` pattern below, not the `target` pattern. Reserving it would invent a hazard and call 8 demonstrably installable rules broken. A pair is not evidence about both halves.
 
 Read the counterexample counts carefully, because it is easy to state them wrongly. `timestamp` is read bare in value position 39 times and `dst` 146, so both are demonstrably ordinary column names. `contains` and `call` are not evidence of anything: `contains` occurs 1429 times and 1428 of those are the OPERATOR, with zero value-position reads, so the corpus simply holds no column of that name. They are left out of the check because there is nothing to put them in on, which is a weaker claim than having measured them safe.
 

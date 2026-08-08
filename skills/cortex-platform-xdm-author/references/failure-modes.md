@@ -19,7 +19,7 @@ xdm.alert.bar -- Not available
 xdm.alert.baz -- Not in sample
 ```
 
-This happens when you walk the XDM schema field by field and note non-matches. The XDM schema has 645 fields. Even walking the top-level alert categories produces dozens of "Not available" lines, none of which add information. The downstream rule never references any of these fields, so the enumeration is pure latency.
+This happens when you walk the XDM schema field by field and note non-matches. The XDM schema has 628 fields. Even walking the top-level alert categories produces dozens of "Not available" lines, none of which add information. The downstream rule never references any of these fields, so the enumeration is pure latency.
 
 Recovery: stop the enumeration mid-sentence. Switch to a positive-only strategy: list only the vendor fields that DO have an XDM target. Anything not listed is implicitly unmapped. Document genuine notable omissions (a field a reviewer would expect to see mapped) in the NOT MAPPED block of the MAPPED-header, capped at about 5 to 10 entries with a one-line reason each.
 
@@ -124,9 +124,9 @@ Recovery: before declaring a field unmapped, grep [xdm-schema.md](xdm-schema.md)
 
 ## 11. Risk signal thrown away as "no home"
 
-You drop a numeric ratio / deviation / anomaly metric (e.g. `metrics.baseline_deviation`) and justify it as "no XDM home for that value". A ratio with no typed numeric field still fits `xdm.alert.risks` (a free-text String sink), so "no home" is false and a real risk signal is lost.
+You drop a numeric ratio / deviation / anomaly metric (e.g. `metrics.baseline_deviation`) and justify it as "no XDM home for that value". A ratio with no typed numeric field still fits `xdm.alert.risks` (a free-text sink, typed String (Array)), so "no home" is false and a real risk signal is lost.
 
-Recovery: park the metric in `xdm.alert.risks` as free text alongside `risk_score` (see [transformation-patterns.md](transformation-patterns.md) "Risk and deviation metrics"). If you genuinely choose to drop it, record it in NOT MAPPED as "intentionally omitted" with a reason, not "no home".
+Recovery: park the metric in `xdm.alert.risks` alongside `risk_score`, wrapped with `arraycreate()` because the field is array-typed (see [transformation-patterns.md](transformation-patterns.md) "Risk and deviation metrics"). If you genuinely choose to drop it, record it in NOT MAPPED as "intentionally omitted" with a reason, not "no home".
 
 ## 12. Whole payload dumped into the description
 

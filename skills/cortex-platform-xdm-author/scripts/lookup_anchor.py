@@ -111,7 +111,12 @@ def main(argv: list) -> int:
 
     try:
         args = ap.parse_args(argv[1:])
-    except SystemExit:
+    except SystemExit as exc:
+        # argparse exits 0 for -h / --help and 2 for a usage error. The
+        # blanket catch turned the help exit into a failure, so
+        # `lookup_anchor.py --help` printed correct help and reported 1.
+        if exc.code == 0:
+            raise
         return 1
 
     if args.reverse:

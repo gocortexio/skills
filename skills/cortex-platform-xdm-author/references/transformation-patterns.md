@@ -201,15 +201,20 @@ xdm.event.outcome = if(
 
 ## Risk and deviation metrics -> xdm.alert.risks
 
-A numeric ratio, deviation, or score with no typed numeric XDM home -- e.g. `metrics.baseline_deviation`, an anomaly multiplier, a confidence ratio -- is NOT homeless. Park it in `xdm.alert.risks` (String) as free text, alongside the raw `risk_score`, so the risk signal is preserved for the analyst:
+A numeric ratio, deviation, or score with no typed numeric XDM home -- e.g. `metrics.baseline_deviation`, an anomaly multiplier, a confidence ratio -- is NOT homeless. Park it in `xdm.alert.risks` alongside the raw `risk_score`, so the risk signal is preserved for the analyst.
+
+`xdm.alert.risks` is an ARRAY of String, not a String. [xdm-schema.md](xdm-schema.md) types it `String (Array)`, and a bare `concat()` into it is the scalar-into-array shape WARN-035 exists to catch -- the assignment installs and the field then reads back wrong. Wrap the summary, or emit one element per metric:
 
 ```
-xdm.alert.risks = concat(
-    "risk_score=", tmp_risk_score,
-    if(tmp_baseline_deviation != null, concat(" baseline_deviation=", tmp_baseline_deviation), ""))
+xdm.alert.risks = arraycreate(
+    concat("risk_score=", tmp_risk_score),
+    if(tmp_baseline_deviation != null,
+       concat("baseline_deviation=", tmp_baseline_deviation)))
 ```
 
-Dropping such a metric is a choice, not a necessity. When you do drop one, record it in the NOT MAPPED block as "intentionally omitted" with a reason -- never as "no XDM home", which is false for any value that fits the `xdm.alert.risks` String sink.
+An element whose `if()` finds nothing resolves null and the array carries the rest, so no guard around the whole assignment is needed.
+
+Dropping such a metric is a choice, not a necessity. When you do drop one, record it in the NOT MAPPED block as "intentionally omitted" with a reason -- never as "no XDM home", which is false for any value that fits `xdm.alert.risks`.
 
 ## Banded numeric scoring (mandatory for `score` fields)
 

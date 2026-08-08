@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: GoCortexIO
 SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
-# XDM schema -- 645 fields (12 categories)
+# XDM schema -- 628 fields (12 categories)
 
 Every field below is a valid XDM field path. Only map to fields listed here. Any field path not in this list will cause a validation error or internal error in the Cortex IDE.
 

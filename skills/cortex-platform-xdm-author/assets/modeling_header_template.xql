@@ -9,7 +9,7 @@
 // Generated via
 // GOCORTEX_SKILLS_MODEL="<model id>"
 // GOCORTEX_SKILLS_SKILL_NAME="cortex-platform-xdm-author"
-// GOCORTEX_SKILLS_SKILL_VERSION="1.8.24"
+// GOCORTEX_SKILLS_SKILL_VERSION="2.0.0"
 // GOCORTEX_SKILLS_SKILL_WARNING_COUNT="<lint warning count>"
 // GOCORTEX_SKILLS_SOURCE_BASIS="<spec-backed | sample-only>"
 //
@@ -21,10 +21,13 @@
 // "Maps <Vendor> <Product> <log family> events to the Cortex XDM schema.
 // The <product> emits <event count> distinct event types from <single | N
 // log shapes>; this rule normalises them into XDM for cross-source
-// correlation. <Anchor handshake note if applicable>: the parsing rule
-// stamps `_<anchor_name>` columns on every ingested row; this rule
-// reads them via `coalesce()` with a regex fallback so historical and
-// replayed rows still model identically."
+// correlation."
+//
+// A MODEL rule derives every value from the raw dataset columns (or
+// _raw_log). It never reads a parser-stamped `_` anchor column, not even
+// behind a coalesce() fallback: Cortex validates a MODEL rule against the
+// dataset schema, where parser-only `_` anchors do not exist, so the read
+// is rejected as an unknown field before the fallback can run. ERR-027.
 //
 // ALERT / EVENT FIELD MAPPING
 // ---------------------------

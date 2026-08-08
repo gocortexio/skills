@@ -1,5 +1,5 @@
 <134>Jun 30 11:59:30 wlc1 apfMsConnTask_2: %APF-6-STATIC_IP_MOBILITY: Client aa:bb:cc:dd:ee:ff moved to controller 10.0.0.2
 <131>Jun 30 12:00:04 wlc1 emWeb: %AAAAPI-3-AUTH_FAILURE: AAA Authentication Failure for UserName:lobbyadmin User Type: WLAN USER
 <133>Jun 30 12:00:20 wlc1 dot1xMsgTask: %DOT1X-5-SUCCESS: 802.1X authentication successful for client 11:22:33:44:55:66 on WLAN corp
-<134>Jul 14 15:41:24 mo332-ha-mgmt.au.simon.net moe12-active: *haSSOServiceTask3: Jul 14 15:41:24.640: %APF-6-USER_NAME_CREATED: [SS]apf_ms.c:9003 Username entry (3E-A8-8D-20-D1-1E) with length (17) created for mobile 3e:a8:8d:20:d1:1e
+<134>Jul 14 15:41:24 wlc332-ha-mgmt.au.example.net wlc12-active: *haSSOServiceTask3: Jul 14 15:41:24.640: %APF-6-USER_NAME_CREATED: [SS]apf_ms.c:9003 Username entry (3E-A8-8D-20-D1-1E) with length (17) created for mobile 3e:a8:8d:20:d1:1e
 <190>Jun 30 12:00:40 relay01 <133>Jun 30 12:00:20 wlc1 dot1xMsgTask: %DOT1X-5-SUCCESS: 802.1X authentication successful for client 11:22:33:44:55:66 on WLAN corp

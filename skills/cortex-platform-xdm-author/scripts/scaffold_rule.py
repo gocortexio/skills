@@ -199,9 +199,6 @@ _NETWORK_PADDABLE = [
     ("xdm.event.outcome", "XDM_CONST.OUTCOME_UNKNOWN"),
     ("xdm.network.ip_protocol", "XDM_CONST.IP_PROTOCOL_IP"),
     ("xdm.network.protocol_layers", 'arraycreate("IP")'),
-    ("xdm.network.http.http_header.header", '""'),
-    ("xdm.network.http.http_header.value", '""'),
-    ("xdm.network.http.url_category", "XDM_CONST.URL_CATEGORY_UNKNOWN"),
     ("xdm.source.host.device_id", '""'),
     ("xdm.source.ipv6", '""'),
     ("xdm.source.is_internal_ip", "false"),
@@ -214,6 +211,36 @@ _NETWORK_PADDABLE = [
     ("xdm.target.port", "to_integer(0)"),
     ("xdm.target.sent_bytes", "to_integer(0)"),
 ]
+
+# The three xdm.network.http.* leaves are NOT part of the unconditional
+# network set. They are mandatory only for a network event that carries
+# an HTTP layer, which is how lint_rule.py gates WARN-043
+# (_rule_claims_http_layer). Padding them onto a router SSH login, an
+# SNMP failure or a control-plane record asserts a protocol the source
+# never saw, and this scaffolder used to do exactly that on every
+# network-flagged sample -- emitting url_category = URL_CATEGORY_UNKNOWN
+# for a plain syslog feed, labelled "network mandatory, padded".
+_NETWORK_HTTP_PADDABLE = [
+    ("xdm.network.http.http_header.header", '""'),
+    ("xdm.network.http.http_header.value", '""'),
+    ("xdm.network.http.url_category", "XDM_CONST.URL_CATEGORY_UNKNOWN"),
+]
+
+# Held deliberately identical to _HTTP_LAYER_FIELD_RE in lint_rule.py:
+# the scaffolder must not pad what the linter would not ask for.
+_HTTP_LAYER_TARGETS = ("xdm.target.url", "xdm.source.url")
+
+
+def _claims_http_layer(used_targets) -> bool:
+    """True when the anchor loop has already wired something that only
+    exists on an HTTP record -- another xdm.network.http.* field, or a
+    URL. Mirrors lint_rule._rule_claims_http_layer."""
+    for t in used_targets:
+        if t.startswith("xdm.network.http."):
+            return True
+        if t in _HTTP_LAYER_TARGETS:
+            return True
+    return False
 
 # Process / command-execution recommended fields (references/process-mapping.md).
 # NOT a mandatory story -- XDM has no process tag -- so these are never
@@ -429,6 +456,16 @@ def scaffold(
                 mapping_rows.append(
                     f"//   (network mandatory, padded) -> {field}"
                 )
+        # Only a record that carries an HTTP layer takes the HTTP leaves.
+        # On anything else they assert a protocol the source never saw.
+        if _claims_http_layer(used_targets):
+            for field, rhs in _NETWORK_HTTP_PADDABLE:
+                if field not in used_targets:
+                    used_targets.add(field)
+                    drains.append(f"    {field} = {rhs}")
+                    mapping_rows.append(
+                        f"//   (http layer, padded)        -> {field}"
+                    )
         for field, hint in _NETWORK_MUST_EXTRACT:
             if field not in used_targets:
                 todo_rows.append(
