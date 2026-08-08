@@ -48,9 +48,9 @@ String, so branch it to the kind each record actually is:
 
 ```
     xdm.event.type = if(
-        tmp_is_flow != null,  "network",
         tmp_is_cmd != null,   "process",
         tmp_is_login != null, "authentication",
+        tmp_is_flow != null,  "network",
         "GOCORTEX_UNMODELLED")
 ```
 
@@ -58,6 +58,106 @@ The discriminator temps (`tmp_is_login`, `tmp_is_flow`, ...) are extracted in
 an earlier `alter` stage from the record's own markers (a `type=` field,
 a `cmd=` token, an action verb, a transport tuple), exactly as the
 worked examples do.
+
+### Order the branches MOST SPECIFIC first
+
+The discriminators are not mutually exclusive and are not expected to be.
+A record routinely satisfies several: a TACACS+ command-accounting line
+carries both a `cmd=` token and a `type=` / `action=` pair, and a VPN
+login on a firewall carries both a login marker and a transport tuple.
+`if()` takes the FIRST true branch (see
+[xql-language.md](xql-language.md)), so the ORDER is what assigns the
+event, and it is doing real work rather than reading as a formality.
+
+Order from the most specific kind to the most foundational. Network is
+the foundational layer -- an IDS event, a WAF event and a VPN login all
+map the network story on top of a primary role -- so a network branch
+belongs LAST among the real kinds, above the catch-all only. Worked
+example 08 is the shipped case: `tmp_kv_cmd != null` precedes
+`tmp_oet != null`, which is the only reason a TACACS+ command lands as
+`process` rather than `authentication`, as the skill requires.
+
+### CLASSIFY ONCE, DERIVE MANY
+
+Two chains over one set of discriminators can disagree, and when they do
+nothing catches it. A record matching two discriminators takes the first
+branch of EACH chain independently, so a type chain ordered network-first
+beside a tags chain ordered login-first types a VPN login `network` while
+tagging it AUTHENTICATION. Both fields are populated, both values are
+legal, the linter sees two well-formed chains and the release gate is
+green. This file shipped exactly that pairing until 2.0.2, three code
+blocks apart, which is the honest measure of how visible it is.
+
+Reordering the chains to match fixes an instance. Deriving them from ONE
+decision removes the class. Classify into a single temp, then read that
+temp everywhere:
+
+```
+    tmp_class = if(
+        tmp_kv_cmd != null,   "cmd",
+        tmp_is_login != null, "login",
+        tmp_is_vpn != null,   "vpn",
+        tmp_is_flow != null,  "flow",
+        "unmodelled")
+| alter
+    xdm.event.type = if(
+        tmp_class = "cmd",   "process",
+        tmp_class = "login", "authentication",
+        tmp_class = "vpn",   "authentication",
+        tmp_class = "flow",  "network",
+        "GOCORTEX_UNMODELLED"),
+    xdm.event.tags = if(
+        tmp_class = "login", arraycreate(XDM_CONST.EVENT_TAG_AUTHENTICATION),
+        tmp_class = "vpn",   arraycreate(XDM_CONST.EVENT_TAG_AUTHENTICATION, XDM_CONST.EVENT_TAG_VPN, XDM_CONST.EVENT_TAG_NETWORK),
+        tmp_class = "flow",  arraycreate(XDM_CONST.EVENT_TAG_NETWORK),
+        null)
+```
+
+Precedence is now decided ONCE, in `tmp_class`, and the derived chains
+test a variable that holds exactly one value per record -- so their own
+branch order cannot change an answer and cannot drift when someone
+inserts a branch into one of them. It extends past these two fields:
+`xdm.event.operation`, `xdm.event.outcome` and the story field sets all
+derive from the same temp.
+
+Two things to know before adopting it. The single partition must be as
+FINE as the finest chain needs, so a distinction only `tags` cares about
+(SAAS, VPN) still becomes its own class, and the chains that do not care
+collapse it -- that is the cost, and it is the right cost, because the
+alternative is two partitions that can disagree. And `tmp_class` is an
+ordinary temp: it must reach an `xdm.*` assignment or ERR-019 blocks the
+rule, which deriving from it satisfies.
+
+The shipped worked examples predate this and use parallel chains. They
+are correct -- example 08 orders both chains `cmd` then `oet` -- and are
+not being rewritten, because they are the mapping-accuracy corpus's gold
+standard. Read them as valid, and write new rules the way this section
+does.
+
+No linter check for the divergence, and the reason is worth stating so
+nobody assumes one exists. Comparing the relative order of shared temps
+across the two chains looks purely syntactic, but it is only a DEFECT
+when the two discriminators can be true together, and deciding that is
+implication rather than pattern matching -- the same wall that stops a
+check on the branch ordering itself. A warning that fires on genuinely
+exclusive discriminators would be a false positive on a correct rule,
+and this bundle does not ship advisories that teach authors to mute the
+checker. The upstream corpus cannot settle it either: of 387 shipped
+rules, 20 assign `xdm.event.type` through an `if()` chain and NOT ONE
+assigns `xdm.event.tags` that way, so the two-chain shape is a house
+pattern with no external population to measure against.
+
+One consequence worth knowing, because pack-side tooling now leans on
+it: a chain built this way is statically traceable, so the
+`xdm.event.type` of a given `xdm.event.original_event_type` can be read
+off the rule without querying a single row. That holds only while every
+branch AT OR BEFORE the winning one is decidable from the same
+discriminator the reader filtered on. A branch keyed on an unrelated
+marker -- a transport tuple, a `cmd=` token, a field the filter does not
+fix -- is not decidable that way, and a reader who ignores it will
+conclude a constancy the data does not have. Prefer one discriminator
+family per chain, and where a chain mixes families, say so in the
+MAPPED-header comment.
 
 ### Pick a discriminator that is stable, not one that merely looks structural
 

@@ -780,6 +780,32 @@ _AUTH_VALUE_RE = re.compile(
 # hundreds of auth lines, and there is no value in walking them all.
 _AUTH_SIGNAL_CAP = 24
 
+# How many signals travel in the worksheet. The list is evidence for a verdict
+# that has already been reached, so a sample is enough to audit it by.
+_SIGNAL_SAMPLE = 12
+
+
+def _signal_block(detected: bool, signals: List[dict], capped: bool = False) -> dict:
+    """The common shape of a detector's result, with an honest count.
+
+    ``signals`` is truncated for transport, so ``len()`` of what ships is the
+    sample size, not the finding. Every section but syslog_relay used to report
+    that truncated length as the total: a sample carrying 20 auth-named fields
+    reported "12 signal(s)", and no larger number could ever be printed however
+    many the log held. The count is taken here, before truncation.
+
+    ``capped`` is passed by the detector, which is the only thing that knows
+    whether it stopped early -- the per-record scan caps but the field-name scan
+    does not, so comparing the count against the cap infers truncation that
+    often did not happen.
+    """
+    return {
+        "detected": detected,
+        "signal_count": len(signals),
+        "signal_count_capped": capped,
+        "signals": signals[:_SIGNAL_SAMPLE],
+    }
+
 
 def detect_authentication(
     fields: dict, records: "Optional[List[dict]]" = None
@@ -803,6 +829,7 @@ def detect_authentication(
     Detection feeds the advisory WARN-042 in lint_rule.py -- it never
     blocks. See references/authentication-mapping.md."""
     signals: List[dict] = []
+    capped = False
     seen: set = set()
 
     def _add(field: str, match: str, kind: str) -> None:
@@ -829,6 +856,10 @@ def detect_authentication(
                 if vm:
                     _add(path, vm.group(1).lower(), "value")
             if len(signals) >= _AUTH_SIGNAL_CAP:
+                # Only a floor if records were actually left unscanned. Stopping
+                # on the last one missed nothing, and reporting "24+" there would
+                # be the same overclaim in the other direction.
+                capped = rec is not records[-1]
                 break
     else:
         for info in fields.values():
@@ -839,7 +870,7 @@ def detect_authentication(
                     _add(info.get("path", ""), vm.group(1).lower(), "value")
 
     detected = bool(signals)
-    out: dict = {"detected": detected, "signals": signals[:12]}
+    out: dict = _signal_block(detected, signals, capped)
     if detected:
         out["mandatory_fields"] = list(_AUTH_MANDATORY)
         out["guidance"] = (
@@ -981,6 +1012,7 @@ def detect_network(
     advisory WARN-043 in lint_rule.py -- it never blocks. See
     references/network-mapping.md."""
     signals: List[dict] = []
+    capped = False
     seen: set = set()
     non_action_evidence = False
 
@@ -1031,6 +1063,7 @@ def detect_network(
                 if isinstance(value, str):
                     _scan_value(path, value)
             if len(signals) >= _NETWORK_SIGNAL_CAP:
+                capped = rec is not records[-1]
                 break
     else:
         for info in fields.values():
@@ -1054,7 +1087,7 @@ def detect_network(
         }
 
     detected = bool(signals)
-    out: dict = {"detected": detected, "signals": signals[:12]}
+    out: dict = _signal_block(detected, signals, capped)
     if detected:
         out["mandatory_fields"] = list(_NETWORK_MANDATORY)
         out["guidance"] = (
@@ -1160,6 +1193,7 @@ def detect_process(
     Only the AUTHEN (login) and AUTHOR shapes are authentication. Feeds
     advisory WARN-044; never blocks."""
     signals: List[dict] = []
+    capped = False
     seen: set = set()
     strong = False
 
@@ -1193,6 +1227,7 @@ def detect_process(
                 if isinstance(value, str):
                     _scan_value(path, value)
             if len(signals) >= _PROCESS_SIGNAL_CAP:
+                capped = rec is not records[-1]
                 break
     else:
         for info in fields.values():
@@ -1215,7 +1250,7 @@ def detect_process(
         _ENDPOINT_SHAPE_RE.search(p.lower()) for p in paths
     )
 
-    out: dict = {"detected": strong, "signals": signals[:12]}
+    out: dict = _signal_block(strong, signals, capped)
     if strong:
         out["recommended_fields"] = list(_PROCESS_RECOMMENDED)
         guidance = (
@@ -1312,7 +1347,8 @@ def detect_mitre(fields: Dict[str, dict], records: List[dict]) -> dict:
         ):
             signals.append({"field": path, "kind": "value"})
             seen.add(("value", path))
-    out: dict = {"detected": bool(signals), "signals": signals[:12]}
+    # No collection cap on the MITRE scan, so the count is a true total.
+    out: dict = _signal_block(bool(signals), signals)
     if signals:
         out["target_fields"] = [
             "xdm.alert.mitre_techniques",
@@ -1461,6 +1497,19 @@ def profile(source_path: str, text: str) -> dict:
 # --------------------------------------------------------------------
 
 
+def _signal_summary(section: dict, shown: int) -> str:
+    """The count phrase for one detector, distinguishing total from sample.
+
+    Falls back to the sample length only for a worksheet written before
+    signal_count existed, where no better number survives.
+    """
+    total = section.get("signal_count", len(section.get("signals", [])))
+    floor = "+" if section.get("signal_count_capped") else ""
+    if shown < total:
+        return f"detected -- {total}{floor} signal(s), showing {shown}"
+    return f"detected -- {total}{floor} signal(s)"
+
+
 def _format_text(worksheet: dict) -> str:
     rec = worksheet.get("recommended_pattern") or {}
     lines = [
@@ -1486,50 +1535,44 @@ def _format_text(worksheet: dict) -> str:
         )
     auth = worksheet.get("authentication") or {}
     if auth.get("detected"):
-        sigs = auth.get("signals", [])
-        shown = ", ".join(
-            f"{s['field']}({s['match']})" for s in sigs[:5]
-        )
+        sample = auth.get("signals", [])[:5]
+        rendered = ", ".join(f"{s['field']}({s['match']})" for s in sample)
         lines.append("")
         lines.append("authentication:")
-        lines.append(f"  detected -- {len(sigs)} signal(s): {shown}")
+        lines.append(f"  {_signal_summary(auth, len(sample))}: {rendered}")
         lines.append(
             "  map the mandatory set (advisory WARN-042): "
             + ", ".join(auth.get("mandatory_fields", []))
         )
     net = worksheet.get("network") or {}
     if net.get("detected"):
-        sigs = net.get("signals", [])
-        shown = ", ".join(
-            f"{s['field']}({s['match']})" for s in sigs[:5]
-        )
+        sample = net.get("signals", [])[:5]
+        rendered = ", ".join(f"{s['field']}({s['match']})" for s in sample)
         lines.append("")
         lines.append("network:")
-        lines.append(f"  detected -- {len(sigs)} signal(s): {shown}")
+        lines.append(f"  {_signal_summary(net, len(sample))}: {rendered}")
         lines.append(
             "  map the mandatory set (advisory WARN-043): "
             + ", ".join(net.get("mandatory_fields", []))
         )
     proc = worksheet.get("process") or {}
     if proc.get("detected"):
-        sigs = proc.get("signals", [])
-        shown = ", ".join(
-            f"{s['field']}({s['match']})" for s in sigs[:5]
-        )
+        sample = proc.get("signals", [])[:5]
+        rendered = ", ".join(f"{s['field']}({s['match']})" for s in sample)
         lines.append("")
         lines.append("process / command execution:")
-        lines.append(f"  detected -- {len(sigs)} signal(s): {shown}")
+        lines.append(f"  {_signal_summary(proc, len(sample))}: {rendered}")
         lines.append(
             "  map the process family (advisory WARN-044): "
             + ", ".join(proc.get("recommended_fields", []))
         )
     mitre = worksheet.get("mitre") or {}
     if mitre.get("detected"):
-        sigs = mitre.get("signals", [])
-        shown = ", ".join(f"{s['field']}({s['kind']})" for s in sigs[:5])
+        sample = mitre.get("signals", [])[:5]
+        rendered = ", ".join(f"{s['field']}({s['kind']})" for s in sample)
         lines.append("")
         lines.append("mitre att&ck:")
-        lines.append(f"  detected -- {len(sigs)} signal(s): {shown}")
+        lines.append(f"  {_signal_summary(mitre, len(sample))}: {rendered}")
         lines.append("  " + mitre.get("guidance", ""))
     relay = worksheet.get("syslog_relay") or {}
     if relay.get("detected"):

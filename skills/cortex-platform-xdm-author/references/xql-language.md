@@ -176,6 +176,17 @@ xdm.event.outcome = if(
     XDM_CONST.OUTCOME_UNKNOWN)
 ```
 
+FIRST MATCH WINS. Conditions are tested left to right and the value of the first TRUE one is returned; the rest are never reached. Two branches may therefore overlap, and when they do the ORDER is what decides the answer -- which several idioms in this bundle depend on rather than merely tolerate. The banded severity chain is the plainest case, since its last branch is true for every record the earlier ones already caught:
+
+```
+    tmp_pri_log_level = if(
+        tmp_pri_severity <= 2,    XDM_CONST.LOG_LEVEL_CRITICAL,
+        tmp_pri_severity = 3,     XDM_CONST.LOG_LEVEL_ERROR,
+        tmp_pri_severity != null, XDM_CONST.LOG_LEVEL_INFORMATIONAL)
+```
+
+A severity of 2 satisfies branch one and branch three; it is CRITICAL because branch one is FIRST. Move that branch last and every record becomes INFORMATIONAL while the rule still lints, verifies and installs. `scripts/verify_rule.py` evaluates `if()` the same way, so `--coverage` reproduces the live ordering offline. See [record-classification.md](record-classification.md) for what this means when the branches are event classifiers rather than bands.
+
 ### `parse_epoch(string_value, "MILLIS" or "SECS")`
 
 Parses epoch timestamp string to Timestamp type. `from_epoch` does NOT exist in XQL -- always use `parse_epoch`.

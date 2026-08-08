@@ -2822,6 +2822,14 @@ def _check_err033(code_lines: List[str]) -> List[dict]:
 # bundle's scripts/preflight_release.py, which gates the same fault at
 # upload time. The two must not disagree: a rule this check passes and that
 # gate rejects costs a burned version number per upload.
+#
+# The copy is by hand and neither repository can see the other, so changing
+# the MEMBERSHIP of this tuple is not a local edit: message the
+# cortex-content-pack-go-again bundle in the same change. SKILL.md records
+# that as a standing commitment under "Called as an instrument", and
+# test_lint_rule.py pins the eight members so an addition cannot land
+# silently -- both existing tests iterate a hard-coded name list and would
+# have passed a ninth member without a word.
 _ERR034_RESERVED = (
     "tag", "view",                                          # confirmed by bisection
     "target", "fields", "transaction", "table", "filter",   # never read bare in a shipped rule

@@ -871,5 +871,82 @@ class TestCloudDetection(unittest.TestCase):
         self.assertFalse((ws.get("cloud") or {}).get("detected"))
 
 
+class TestSignalCounts(unittest.TestCase):
+    """A detector's count must describe the signals it found, not the sample it ships.
+
+    ``signals`` is truncated to twelve for transport. Every section but
+    syslog_relay reported the length of that truncated list as the total, so a
+    sample carrying twenty auth-named fields printed "12 signal(s)" and no
+    larger number could ever appear however many the log held.
+    """
+
+    SAMPLE = _pl._SIGNAL_SAMPLE
+
+    def _synthetic(self, names, records=3):
+        rec = {name: f"value{i}" for i, name in enumerate(names)}
+        text = "\n".join(json.dumps(rec) for _ in range(records)) + "\n"
+        return profile("synthetic.jsonl", text)
+
+    def test_count_exceeds_the_shipped_sample(self):
+        names = [
+            "logon_type", "login_user", "logout_time", "signin_ip", "signon_id",
+            "authentication_method", "authorization_scope", "authz_result",
+            "unauthorized_flag", "authorized_by", "logoff_reason", "sign_in_source",
+            "sign_on_token", "login_result", "logon_status", "authentication_stage",
+            "signin_attempt", "logout_kind", "authorization_id", "login_channel",
+        ]
+        auth = self._synthetic(names)["authentication"]
+        self.assertTrue(auth["detected"])
+        self.assertEqual(auth["signal_count"], len(names))
+        self.assertGreater(auth["signal_count"], len(auth["signals"]))
+        self.assertEqual(len(auth["signals"]), self.SAMPLE)
+
+    def test_every_section_carries_a_count(self):
+        """syslog_relay always did; the other four are the regression."""
+        for name in ("authentication", "network", "process", "mitre", "syslog_relay"):
+            with self.subTest(section=name):
+                ws = _profile_fixture("auth_event.jsonl")
+                section = ws.get(name) or {}
+                self.assertIn("signal_count", section)
+                self.assertGreaterEqual(
+                    section["signal_count"], len(section.get("signals", [])))
+
+    def test_capped_flag_is_false_when_nothing_was_left_unscanned(self):
+        """A scan that stopped on the last record missed nothing, so no "+"."""
+        names = [f"logon_field_{i}" for i in range(30)]
+        auth = self._synthetic(names, records=1)["authentication"]
+        self.assertEqual(auth["signal_count"], 30)
+        self.assertFalse(auth["signal_count_capped"])
+
+    def test_capped_flag_is_true_when_records_went_unscanned(self):
+        names = [f"logon_field_{i}" for i in range(30)]
+        auth = self._synthetic(names, records=5)["authentication"]
+        self.assertTrue(auth["signal_count_capped"])
+
+    def test_text_summary_prints_the_total_not_the_sample(self):
+        names = [f"logon_field_{i}" for i in range(20)]
+        ws = self._synthetic(names, records=1)
+        text = _pl._format_text(ws)
+        line = next(l for l in text.splitlines() if l.strip().startswith("detected --"))
+        self.assertIn("20 signal(s)", line)
+        self.assertIn("showing 5", line)
+        self.assertNotIn(f"{self.SAMPLE} signal(s)", line)
+
+    def test_text_summary_marks_a_capped_count_as_a_floor(self):
+        names = [f"logon_field_{i}" for i in range(30)]
+        ws = self._synthetic(names, records=5)
+        text = _pl._format_text(ws)
+        line = next(l for l in text.splitlines() if l.strip().startswith("detected --"))
+        self.assertIn("+ signal(s)", line)
+
+    def test_text_summary_omits_the_showing_clause_when_all_are_shown(self):
+        ws = _profile_fixture("auth_event.jsonl")
+        auth = ws["authentication"]
+        if auth["signal_count"] > 5:
+            self.skipTest("fixture carries more signals than the summary shows")
+        line = _pl._signal_summary(auth, min(5, auth["signal_count"]))
+        self.assertNotIn("showing", line)
+
+
 if __name__ == "__main__":
     unittest.main()

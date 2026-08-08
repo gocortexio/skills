@@ -1,0 +1,656 @@
+{
+  "_comment": [
+    "Per-version field impact for cortex-platform-xdm-author, so a consumer can answer",
+    "'did version X change the MEANING of field F' in one step instead of reading prose.",
+    "",
+    "Built for the cortex-content-pack-go-again phase 900 STEP ZERO precondition: a",
+    "migration check that measures a SECOND field against the still-installed old model",
+    "is only valid if the migration did not change that field. The distinction that makes",
+    "this worth having is mentioned_only -- four packs once 'touched xdm.event.type' in a",
+    "migration and all four hits were comment lines, so a grep over diffs stops the reader",
+    "while a positive 'meaning unchanged' lets them proceed.",
+    "",
+    "ENTRIES ARE PER-VERSION DELTAS, each relative to the version below it. A consumer",
+    "crossing a RANGE takes the union of every entry in that range: going 1.8.1 -> 2.0.0",
+    "means reading 1.8.2 through 2.0.0, not 2.0.0 alone.",
+    "",
+    "BUCKETS. Every xdm. path named in a version's changelog entry lands in exactly one,",
+    "which tests/test_field_impact.py enforces against CHANGELOG.md, so this file cannot",
+    "quietly fall behind and absence cannot be mistaken for an unrecorded change:",
+    "  meaning_changed   - a rule that correctly assigned the field BEFORE is now wrong",
+    "                      about what it means. Do not compare values across this version.",
+    "  mandatory_changed - the field's required-ness moved. Values still mean the same",
+    "                      thing; the POPULATION may change. Safe to compare, not to count.",
+    "  banned            - the field must no longer be assigned at all.",
+    "  mentioned_only    - named in the entry, with meaning, legality and required-ness all",
+    "                      unchanged. This is a POSITIVE statement of no impact, not a gap.",
+    "",
+    "complete=true means every xdm. path in that version's changelog entry is classified",
+    "here. It does NOT claim the changelog itself is exhaustive: a meaning change the",
+    "entry never mentioned would be missed here too, and that is a changelog defect."
+  ],
+  "schema_version": 1,
+  "bundle": "cortex-platform-xdm-author",
+  "versions": [
+    {
+      "version": "2.1.2",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "2.1.1",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "2.1.0",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.auth.service",
+          "note": "Named while recording its two historical moves (1.6.1 and 1.9.0), and as the worked example of an exclusive --from. No change here."
+        },
+        {
+          "field": "xdm.event.original_event_type",
+          "note": "Named while recording its 1.8.9 value-format change. No change here."
+        },
+        {
+          "field": "xdm.event.tags",
+          "note": "Named while recording that 1.7.0 moved it. No change here."
+        },
+        {
+          "field": "xdm.event.type",
+          "note": "Named as the WORKED CASE for the registry's central distinction: two versions discuss it without moving it. This release does not touch it."
+        },
+        {
+          "field": "xdm.network.http.http_header.header",
+          "note": "Named only in the account of the 1.8.14 entry's shorthand being written out in full. The 1.8.14 facts are unchanged."
+        },
+        {
+          "field": "xdm.target.resource.name",
+          "note": "Named as the deliberate counter-example -- mandatory at 1.8.23, not a meaning change. No change here."
+        }
+      ]
+    },
+    {
+      "version": "2.0.3",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.event.type",
+          "note": "CLASSIFY ONCE, DERIVE MANY: how the chain is CONSTRUCTED. Meaning, values and required-ness unchanged."
+        },
+        {
+          "field": "xdm.event.tags",
+          "note": "Same. Derived from one tmp_class rather than a parallel chain; the tag vocabulary is untouched."
+        }
+      ]
+    },
+    {
+      "version": "2.0.2",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.event.type",
+          "note": "Branch ORDER within the chain, and a reference example reordered. No value or meaning change."
+        },
+        {
+          "field": "xdm.event.tags",
+          "note": "Same. The two chains were made to agree on precedence; neither field's meaning moved."
+        }
+      ]
+    },
+    {
+      "version": "2.0.1",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "2.0.0",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.auth.service",
+          "note": "RESTATES the 1.9.0 reversal for the major-version rationale. The change itself is 1.9.0's; crossing 1.9.x -> 2.0.0 alone does not move this field."
+        },
+        {
+          "field": "xdm.target.resource.name",
+          "note": "Restates 1.8.23's mandatory addition."
+        },
+        {
+          "field": "xdm.alert.risks",
+          "note": "The bundle corrected its own bad advice (a bare concat() into a String (Array) field). The field was always an array; a rule written to the old advice was always broken."
+        },
+        {
+          "field": "xdm.network.http.*",
+          "note": "Restates 1.8.14's conditional scoping, and a scaffolder defect that padded the leaves. No scope change here."
+        },
+        {
+          "field": "xdm.event.tags",
+          "note": "Documentation fix: EVENT_TAG is fully enumerated and mandatory, against a reference that said to omit it."
+        }
+      ]
+    },
+    {
+      "version": "1.9.1",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.auth.service",
+          "note": "Appears only in the account of a FortiGate rule authored against 1.8.24 guidance while 1.9.0 had reversed it. This version is about ERR-034 and the backtick tokeniser."
+        }
+      ]
+    },
+    {
+      "version": "1.9.0",
+      "complete": true,
+      "meaning_changed": [
+        {
+          "field": "xdm.auth.service",
+          "was": "the authentication SERVICE NAME (as 1.6.1 wrongly established)",
+          "now": "the ROLE the system played in the flow -- IDP, SP or Universal -- decided PER EVENT TYPE",
+          "migration": "A rule correct under 1.6.1..1.8.24 writes a service name and is now wrong; WARN-042 flags it. Values are not comparable across this version. The protocol or mechanism that was being written there moves to xdm.auth.auth_method, xdm.network.application_protocol or xdm.logon.package_name."
+        }
+      ],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.auth.auth_method",
+          "note": "Named as a DESTINATION for content displaced from auth.service. Its own meaning is unchanged."
+        },
+        {
+          "field": "xdm.network.application_protocol",
+          "note": "Same -- a destination, not a change."
+        },
+        {
+          "field": "xdm.logon.package_name",
+          "note": "Same -- a destination, not a change."
+        },
+        {
+          "field": "xdm.target.application.name",
+          "note": "Named as where an access channel (CLI, GUI, API) belongs. Unchanged."
+        },
+        {
+          "field": "xdm.event.operation_sub_type",
+          "note": "Stated that an access channel is BARRED from it because the closed list would be corrupted. A constraint restated, not a new one."
+        },
+        {
+          "field": "xdm.target.resource.name",
+          "note": "Mentioned in the authentication set; the mandatory addition is 1.8.23's."
+        }
+      ]
+    },
+    {
+      "version": "1.8.24",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "1.8.23",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [
+        {
+          "field": "xdm.target.resource.name",
+          "change": "added",
+          "detail": "Becomes the fifteenth MANDATORY field on any record classified as authentication: the entity the principal authenticated TO. A rule correct before is now INCOMPLETE rather than wrong, so existing values remain comparable. It must NEVER be padded (WARN-055 flags a placeholder), and it is set IN ADDITION to the type-correct target field, never instead of it -- so xdm.target.host.hostname and xdm.target.application.name keep their mappings and asset correlation is unaffected."
+        }
+      ],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.source.host.hostname",
+          "note": "Appears in the CiscoIOSXR inversion account (764 SSH logins with the accessed router mapped here). No change to the field."
+        },
+        {
+          "field": "xdm.target.host.hostname",
+          "note": "Keeps its mapping under the dual-mapping rule."
+        },
+        {
+          "field": "xdm.target.application.name",
+          "note": "Keeps its mapping under the dual-mapping rule."
+        },
+        {
+          "field": "xdm.target.ipv4",
+          "note": "Contrasted as a field where an empty pad IS honest. Unchanged."
+        },
+        {
+          "field": "xdm.target.resource.*",
+          "note": "The cloud-only reading of this subtree is superseded for authentication events only."
+        },
+        {
+          "field": "xdm.auth.service",
+          "note": "Listed among the existing mandatory set."
+        }
+      ]
+    },
+    {
+      "version": "1.8.22",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.event.operation",
+          "note": "ERR-031 consequence: there is no logout verb in OPERATION_TYPE, so leave the verb unset on a logout. A statement about the CONSTANT list, not about the field."
+        },
+        {
+          "field": "xdm.event.type",
+          "note": "Named as where a logout is carried instead. Unchanged."
+        }
+      ]
+    },
+    {
+      "version": "1.8.21",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "1.8.20",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "1.8.19",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "1.8.18",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "1.8.17",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "1.8.16",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "1.8.15",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.target.*",
+          "note": "Discipline for companion-field advisories: name the ENTITY each field describes, since the target subtree is not one object per record. No field changed."
+        }
+      ]
+    },
+    {
+      "version": "1.8.14",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [
+        {
+          "field": "xdm.network.http.http_header.header",
+          "change": "narrowed",
+          "detail": "Moved OUT of the unconditional 20-field network set into a conditional set, mandatory only where the event carries an HTTP layer. A rule that omitted it on a non-HTTP flow stops being flagged; one that mapped it stays correct. Values are comparable; the flagged population shrinks."
+        },
+        {
+          "field": "xdm.network.http.http_header.value",
+          "change": "narrowed",
+          "detail": "Same conditional set. All-or-nothing: a rule claiming an HTTP layer must complete the set."
+        },
+        {
+          "field": "xdm.network.http.url_category",
+          "change": "narrowed",
+          "detail": "Same conditional set. Padding it onto a router or SNMP record asserts a protocol the source never saw."
+        }
+      ],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.network.http.*",
+          "note": "The subtree is what a rule maps to DECLARE an HTTP layer. Unchanged."
+        }
+      ]
+    },
+    {
+      "version": "1.8.13",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.event.original_event_type",
+          "note": "Capture discipline -- terminate on CONTENT, not end-of-line, wherever the value will be COMPARED. Affects extraction quality, not the field's meaning."
+        },
+        {
+          "field": "xdm.target.process.command_line",
+          "note": "Same capture discipline. A trailing space makes an exact-match correlation return zero rows."
+        }
+      ]
+    },
+    {
+      "version": "1.8.12",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "1.8.11",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.source.user.upn",
+          "note": "Named as the canonical derivation, with <account>@localhost accepted for a device-local login. Guidance on how to FILL it; the field's meaning is unchanged."
+        }
+      ]
+    },
+    {
+      "version": "1.8.10",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.observer.*",
+          "note": "Documented that the subtree has NO address field, so the natural mapping is rejected by ERR-020. A documentation of the schema, not a change to it."
+        },
+        {
+          "field": "xdm.observer.name",
+          "note": "The syslog HOSTNAME slot often holds an address, which is correct here but unreachable by address-based correlation."
+        },
+        {
+          "field": "xdm.target.ipv4",
+          "note": "Named as the workaround for the missing observer address, with the conflation that accepts."
+        },
+        {
+          "field": "xdm.network.ip_protocol",
+          "note": "Counter-example for the padding rule: any protocol name is a factual claim, so leave unset. Guidance."
+        }
+      ]
+    },
+    {
+      "version": "1.8.9",
+      "complete": true,
+      "meaning_changed": [
+        {
+          "field": "xdm.event.original_event_type",
+          "was": "the event NAME alone",
+          "now": "the application and event name as a PAIR",
+          "migration": "The VALUE FORMAT changes, so values are not comparable across this version and any correlation or constancy measurement keyed on the field must be re-taken. The reason for the change is that name and id each collide across applications, so a correlation keyed on either alone matches unrelated events."
+        }
+      ],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.event.id",
+          "note": "Receives the event id, which moved out of original_event_type's value. The field's own meaning is unchanged."
+        },
+        {
+          "field": "xdm.target.process.command_line",
+          "note": "Command-I/O events routed to the process family, matching AAA command accounting. A routing rule, not a field change."
+        }
+      ]
+    },
+    {
+      "version": "1.8.8",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "1.8.7",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.event.operation",
+          "note": "A companion check was designed and deliberately NOT shipped, because the detectable signal is the branch VALUE while the defect is in its CONDITION. Nothing changed."
+        }
+      ]
+    },
+    {
+      "version": "1.8.6",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.*",
+          "note": "The field-set diff step for a rule that REPLACES an existing one: enumerate the old rule's assignments and set-subtract the new one's. Generic, no specific field."
+        }
+      ]
+    },
+    {
+      "version": "1.8.5",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "1.8.4",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.event.type",
+          "note": "Never GATE it on a syslog facility, which sweeps unrelated records into a story. Classification discipline; the field is unchanged."
+        },
+        {
+          "field": "xdm.event.tags",
+          "note": "Same facility rule."
+        },
+        {
+          "field": "xdm.event.operation",
+          "note": "A chain must not end on a broad subsystem flag; leave the verb unset if nothing specific matches. Guidance."
+        }
+      ]
+    },
+    {
+      "version": "1.8.3",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.*",
+          "note": "verify_rule.py --coverage reports population per field. Tooling, no field change."
+        }
+      ]
+    },
+    {
+      "version": "1.8.2",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.source.ipv4",
+          "note": "Placeholder padding GATED for entity fields -- confirm the source cannot supply the value before padding. Discipline, not a change."
+        },
+        {
+          "field": "xdm.target.ipv4",
+          "note": "Same padding gate."
+        },
+        {
+          "field": "xdm.*.host.hostname",
+          "note": "Same padding gate."
+        },
+        {
+          "field": "xdm.source.user.*",
+          "note": "Same padding gate."
+        },
+        {
+          "field": "xdm.auth.privilege_level",
+          "note": "The priv_lvl crosswalk was already documented and merely moved into the consolidated AAA table. No change."
+        }
+      ]
+    },
+    {
+      "version": "1.8.1",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [
+        {
+          "field": "xdm.source.cloud.source_type",
+          "reason": "Internal-only XCloud asset-inventory attribute (asset types such as t2.micro, gp3), not part of any event data model. Cortex REJECTS a MODEL rule that assigns it. Lint ERR-029."
+        },
+        {
+          "field": "xdm.target.cloud.source_type",
+          "reason": "Same. Removed from references/xdm-schema.md."
+        },
+        {
+          "field": "xdm.intermediate.cloud.source_type",
+          "reason": "Same. Removed from references/xdm-schema.md."
+        }
+      ],
+      "mentioned_only": [
+        {
+          "field": "xdm.event.type",
+          "note": "Named as the new home for a raw cloud service name displaced from the banned field. Unchanged."
+        },
+        {
+          "field": "xdm.event.description",
+          "note": "Same -- an alternative home. Unchanged."
+        },
+        {
+          "field": "xdm.*.cloud.service",
+          "note": "Still set only on a confident CLOUD_SERVICE_TYPE match, exactly as before."
+        }
+      ]
+    },
+    {
+      "version": "1.8.0",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.network.http.response_code",
+          "note": "A const-typed enum must be mapped over its COMPLETE set; a full 60-code crosswalk ships and WARN-048 flags a partial chain. Completeness of the MAPPING, not a change to the field."
+        },
+        {
+          "field": "xdm.*",
+          "note": "Scratch temps moved to the tmp_ prefix because _ is reserved by the platform. Affects temporaries, not xdm fields."
+        }
+      ]
+    },
+    {
+      "version": "1.7.2",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "1.7.0",
+      "complete": true,
+      "meaning_changed": [
+        {
+          "field": "xdm.event.type",
+          "was": "one label stamped across the whole feed",
+          "now": "decided PER RECORD from that record's own discriminators",
+          "migration": "This is the most consequential boundary in this bundle's history for anyone MEASURING the field. Before 1.7.0 it was constant per dataset by construction, so a constancy measurement taken against a pre-1.7.0 model proves nothing about a rule authored after it. Re-take any such measurement."
+        },
+        {
+          "field": "xdm.event.tags",
+          "was": "one label stamped across the whole feed",
+          "now": "decided PER RECORD, drawn from the closed six-member EVENT_TAG enum, with an unrecognised record falling through to blank tags",
+          "migration": "Same as event.type: population and cardinality both change. A record matching no known kind now carries NO tag rather than a guessed one."
+        },
+        {
+          "field": "xdm.event.original_event_type",
+          "was": "no reserved value",
+          "now": "carries the GOCORTEX_UNMODELLED sentinel on any record the rule cannot classify",
+          "migration": "A new reserved value enters the field's domain, so a distinct-value count or an equality filter crossing this version sees a value that did not exist before. It exists so a datamodel search never returns fewer rows than the raw dataset."
+        }
+      ],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "1.6.1",
+      "complete": true,
+      "meaning_changed": [
+        {
+          "field": "xdm.auth.service",
+          "was": "the ROLE the system played in the authentication flow",
+          "now": "the authentication SERVICE NAME",
+          "migration": "THIS CHANGE WAS WRONG and 1.9.0 reverses it -- the field was always a role field, and the reasoning here (from the schema's plain String type to the absence of a vocabulary) was a non-sequitur. Recorded because a consumer crossing 1.6.1 in either direction still sees the values move, and because a bundle that hides its own reversals cannot be audited."
+        }
+      ],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    }
+  ]
+}

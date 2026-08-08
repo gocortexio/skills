@@ -9,7 +9,7 @@
 // Generated via
 // GOCORTEX_SKILLS_MODEL="<model id>"
 // GOCORTEX_SKILLS_SKILL_NAME="cortex-platform-xdm-author"
-// GOCORTEX_SKILLS_SKILL_VERSION="2.0.0"
+// GOCORTEX_SKILLS_SKILL_VERSION="2.1.2"
 // GOCORTEX_SKILLS_SKILL_WARNING_COUNT="<lint warning count>"
 // GOCORTEX_SKILLS_SOURCE_BASIS="<spec-backed | sample-only>"
 //

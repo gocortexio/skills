@@ -26,7 +26,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _helpers import bundle_root, iter_source_files, read_text  # noqa: E402
+from _helpers import (  # noqa: E402
+    bundle_root,
+    in_dot_directory,
+    iter_source_files,
+    read_text,
+)
 
 
 REQUIRED_FILES = [
@@ -197,6 +202,50 @@ class TestAsciiOnlyOutsideCode(unittest.TestCase):
                     offenders,
                     f"{rel}: non-ASCII glyphs in source: {offenders[:5]}",
                 )
+
+
+class TestToolCachesAreNotBundleContent(unittest.TestCase):
+    """The walker must not treat a tool's cache as a file the bundle ships.
+
+    Running this suite under pytest writes ``.pytest_cache/README.md`` beside
+    SKILL.md. It has no SPDX header and uses bold prose, so the SPDX and
+    emphasis checks failed on it: running the tests made the next run fail,
+    and the failure named a file nobody wrote. The documented runner is
+    unittest, which is why this went unnoticed -- the sibling bundle in this
+    repository uses pytest, so a contributor switching runners hits it.
+    """
+
+    def test_dot_directories_are_excluded(self):
+        root = bundle_root()
+        self.assertTrue(in_dot_directory(root / ".pytest_cache" / "README.md", root))
+        self.assertTrue(in_dot_directory(root / ".venv" / "lib" / "x.py", root))
+        self.assertFalse(in_dot_directory(root / "references" / "a.md", root))
+        self.assertFalse(in_dot_directory(root / "SKILL.md", root))
+
+    def test_a_dotfile_is_not_excluded_for_its_own_name(self):
+        """Only directories are excluded; the filename is not consulted."""
+        root = bundle_root()
+        self.assertFalse(in_dot_directory(root / ".hidden.md", root))
+
+    def test_the_real_cache_shape_is_skipped_by_the_walker(self):
+        """Reproduces the artefact exactly, then asserts the walker ignores it."""
+        root = bundle_root()
+        cache = root / ".pytest_cache"
+        created = not cache.exists()
+        readme = cache / "README.md"
+        if created:
+            cache.mkdir()
+            readme.write_text(
+                "# pytest cache directory #\n\n**Do not** commit this to "
+                "version control.\n",
+                encoding="utf-8",
+            )
+        try:
+            self.assertNotIn(readme.resolve(), {p.resolve() for p in iter_source_files()})
+        finally:
+            if created:
+                readme.unlink()
+                cache.rmdir()
 
 
 class TestNoBoldItalicInProse(unittest.TestCase):

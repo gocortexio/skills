@@ -2136,6 +2136,26 @@ class TestErr034UnquotedReservedRead(unittest.TestCase):
         self.assertEqual(len(vios), 1, [v["message"] for v in vios])
         self.assertEqual(vios[0]["severity"], "error")
 
+    def test_reserved_set_membership_is_pinned(self):
+        # This set is MIRRORED by hand into RESERVED_COLUMNS in the
+        # content-pack bundle's scripts/preflight_release.py, and neither
+        # repository can see the other. The two tests below iterate a
+        # hard-coded name list, so both would have passed a ninth member
+        # without a word -- which is how a mirrored list drifts while each
+        # side believes itself current, exactly what happened before 1.9.1
+        # when that gate's patterns were still case-sensitive.
+        self.assertEqual(
+            _lint_mod._ERR034_RESERVED,
+            ("tag", "view", "target", "fields", "transaction", "table",
+             "filter", "in"),
+            "ERR-034's reserved set changed. Update this pin, the two "
+            "name lists below, and RESERVED_COLUMNS in the content-pack "
+            "bundle's scripts/preflight_release.py -- then MESSAGE that "
+            "bundle in the same change, per SKILL.md 'Called as an "
+            "instrument'. Note that `out` is deliberately excluded and "
+            "must not be added on symmetry with `in`.",
+        )
+
     def test_every_reserved_name_flagged_bare(self):
         # The set is corpus-derived, not guessed. Each must fire when read
         # bare in value position.
