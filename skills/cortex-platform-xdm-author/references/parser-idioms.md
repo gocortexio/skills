@@ -7,7 +7,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 These idioms are non-negotiable. Each was observed rejected by the live Cortex XSIAM parser in April 2026. They correspond to the parser-conformance category ERR-012 through ERR-019 plus INFO-012, and they are the highest-yield checks to run against any draft rule.
 
-Apply every check below before emitting the rule. The bundled linter `scripts/lint_rule.py` enforces the syntactic subset that can be checked from source alone: ERR-012, ERR-013, ERR-014, ERR-015, ERR-016, ERR-017, ERR-018, ERR-024, and the INFO-012 cascade hint. ERR-019, ERR-025, and the dataflow- or schema-dependent WARN / INFO checks are out of scope for the standalone linter and must be reviewed by eye against the prose below.
+Apply every check below before emitting the rule. The bundled linter `scripts/lint_rule.py` runs its whole registry offline in one pass -- structural, schema-aware and dataflow checks alike -- so every idiom below is checked mechanically rather than from memory. It exits non-zero when any finding is error severity. Run `python3 scripts/lint_rule.py --list-codes` for the authoritative set: that command IS the registry, and a list restated here is a copy that falls behind it, which is exactly what happened when this paragraph claimed the linter skipped ERR-019.
 
 ## ERR-012 -- No infix arithmetic inside `alter`
 

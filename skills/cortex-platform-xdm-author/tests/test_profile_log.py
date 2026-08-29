@@ -369,6 +369,24 @@ class TestAuthenticationDetection(unittest.TestCase):
         self.assertIn("xdm.source.user.upn", auth["mandatory_fields"])
         self.assertTrue(auth["signals"], "expected at least one signal")
 
+    def test_auth_surfaces_the_recommended_identity_mirror(self) -> None:
+        # The recommended tier is surfaced, not enforced: the profiler
+        # names the mirror so an author sees it, while the mandatory set
+        # stays exactly 15 and WARN-042 is unaffected.
+        ws = _profile_fixture("auth_event.jsonl")
+        auth = ws["authentication"]
+        self.assertEqual(len(auth["mandatory_fields"]), 15)
+        rec = auth["recommended_fields"]
+        self.assertEqual(len(rec), 6)
+        self.assertIn("xdm.source.identity.upn", rec)
+        for path in rec:
+            self.assertNotIn(path, auth["mandatory_fields"])
+        self.assertIn("never instead of it", auth["guidance"])
+
+    def test_non_auth_sample_has_no_recommended_mirror(self) -> None:
+        ws = _profile_fixture("network_event.jsonl")
+        self.assertNotIn("recommended_fields", ws["authentication"])
+
     def test_silent_on_non_auth_sample(self) -> None:
         ws = profile("bytes.jsonl", '{"src_ip":"1.1.1.1","bytes":5}\n')
         self.assertFalse(ws["authentication"]["detected"])
@@ -415,6 +433,190 @@ class TestAuthenticationDetection(unittest.TestCase):
         self.assertEqual(ws["authentication"]["signals"], [])
 
 
+class TestFortiGateNativeDialect(unittest.TestCase):
+    """FortiOS native key=value. The regression this guards: the sample
+    used to detect through the src+dst+port+proto tuple ALONE, so losing
+    one field lost the whole classification, and 21 of its 36 keys
+    resolved to no anchor at all."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.ws = _profile_fixture("fortinet_fortigate_traffic.log")
+
+    def _mod(self):
+        return _load_module()
+
+    def test_native_kv_is_detected_as_network(self) -> None:
+        self.assertEqual(self.ws["detected_format"], "kv")
+        self.assertIn("network", self.ws["classification"]["families_detected"])
+
+    def test_detection_does_not_rest_on_the_tuple_alone(self) -> None:
+        # The whole point: several INDEPENDENT signal kinds, so no single
+        # missing field can silence the record.
+        kinds = {s["kind"] for s in self.ws["network"]["signals"]}
+        self.assertIn("name", kinds, self.ws["network"]["signals"])
+        self.assertIn("value", kinds, self.ws["network"]["signals"])
+        self.assertIn("structure", kinds, self.ws["network"]["signals"])
+
+    def test_byte_and_packet_counters_are_name_signals(self) -> None:
+        # sentbyte / rcvdbyte / sentpkt / rcvdpkt -- the no-underscore
+        # vendor spellings the old alternation missed entirely.
+        named = {s["field"] for s in self.ws["network"]["signals"]
+                 if s["kind"] == "name"}
+        for f in ("sentbyte", "rcvdbyte", "sentpkt", "rcvdpkt"):
+            self.assertIn(f, named, named)
+
+    def test_traffic_discriminator_value_is_a_signal(self) -> None:
+        # FortiGate carries the story in the VALUE of type=, not in any
+        # field NAME, so a name-only scan sees nothing.
+        matches = {(s["field"], s["match"]) for s in self.ws["network"]["signals"]}
+        self.assertIn(("type", "traffic"), matches, matches)
+
+    def test_numeric_ip_protocol_is_a_signal(self) -> None:
+        # proto=6, not proto=tcp.
+        matches = {(s["field"], s["match"]) for s in self.ws["network"]["signals"]}
+        self.assertIn(("proto", "tcp"), matches, matches)
+
+    def test_session_teardown_actions_are_signals(self) -> None:
+        # Neither server-rst nor close appears in the generic allow/deny
+        # vocabulary, and they are what a real traffic feed mostly carries.
+        matches = {s["match"] for s in self.ws["network"]["signals"]}
+        self.assertIn("server-rst", matches, matches)
+        self.assertIn("close", matches, matches)
+
+    def test_native_keys_resolve_to_anchors(self) -> None:
+        # Was: 21 of 36 unresolved. The corpus knew FortiGate's CEF
+        # dialect and almost none of its native spelling.
+        by_path = {f["path"]: f for f in self.ws["fields"]}
+        expected = {
+            "sentbyte": "xdm.source.sent_bytes",
+            "rcvdbyte": "xdm.target.sent_bytes",
+            "sentpkt": "xdm.source.sent_packets",
+            "rcvdpkt": "xdm.target.sent_packets",
+            "devname": "xdm.observer.name",
+            "devid": "xdm.observer.unique_identifier",
+            "srcintf": "xdm.source.interface",
+            "dstintf": "xdm.target.interface",
+            "srccountry": "xdm.source.location.country",
+            "dstcountry": "xdm.target.location.country",
+            "appcat": "xdm.network.application_protocol_category",
+            "catdesc": "xdm.network.http.url_category",
+            "trandisp": "xdm.intermediate.is_nat",
+        }
+        for field, path in expected.items():
+            with self.subTest(field=field):
+                self.assertIn(field, by_path)
+                paths = [c["xdm_path"] for c in by_path[field]["xdm_candidates"]]
+                self.assertIn(path, paths, paths)
+
+    def test_event_time_fields_deliberately_have_no_anchor(self) -> None:
+        # date / time / timestamp / eventtime are the event time and
+        # belong in the dataset's own _time, never an xdm.* path. Zero
+        # candidates is the CORRECT answer, not a gap to be filled.
+        by_path = {f["path"]: f for f in self.ws["fields"]}
+        for field in ("date", "time", "timestamp", "eventtime"):
+            if field in by_path:
+                with self.subTest(field=field):
+                    self.assertFalse(
+                        by_path[field]["xdm_candidates"],
+                        f"{field} should have no anchor: it is the event "
+                        f"time and belongs in _time",
+                    )
+
+
+class TestFortiGateDetectionSurvivesLoss(unittest.TestCase):
+    """The two reproducible total failures that motivated the change."""
+
+    _LINE = (
+        'timestamp=1787890601 devname="FW-EXAMPLE-01" devid="FGTSERIAL0000001" '
+        'type="traffic" subtype="forward" level="notice" '
+        'srcip=10.64.25.134 srcport=55434 srcintf="port1" '
+        'dstip=10.143.249.116 dstport=22 dstintf="port2" '
+        'proto=6 action="server-rst" policyid=13 service="SSH" '
+        'duration=36 sentbyte=4549 rcvdbyte=4569 sentpkt=14 rcvdpkt=19'
+    )
+
+    def _classify(self, line: str) -> list:
+        mod = _load_module()
+        return mod.profile("<mem>", line + "\n")["classification"]["families_detected"]
+
+    def test_still_detects_without_the_protocol_field(self) -> None:
+        # Regression: dropping proto= used to take the ONLY signal with
+        # it and return families_detected == [], despite the byte
+        # counters, the port pair and type="traffic" all being present.
+        without = " ".join(
+            tok for tok in self._LINE.split() if not tok.startswith("proto=")
+        )
+        self.assertNotIn("proto=", without)
+        self.assertIn("network", self._classify(without))
+
+    def test_still_detects_without_the_byte_counters(self) -> None:
+        without = " ".join(
+            tok for tok in self._LINE.split()
+            if not tok.startswith(("sentbyte=", "rcvdbyte=", "sentpkt=", "rcvdpkt="))
+        )
+        self.assertIn("network", self._classify(without))
+
+    def test_still_detects_behind_a_relay(self) -> None:
+        # Regression: an rsyslog header in front of the line made
+        # detect_format answer syslog-3164, the record collapsed to one
+        # opaque _message, and every detector returned False.
+        ws = _profile_fixture("fortinet_fortigate_relay.log")
+        self.assertEqual(ws["detected_format"], "syslog-3164")
+        self.assertIn("network", ws["classification"]["families_detected"])
+        # The envelope is still an envelope: Pattern B, _message retained.
+        self.assertEqual(ws["recommended_pattern"]["primary"], "B")
+        paths = {f["path"] for f in ws["fields"]}
+        self.assertIn("_message", paths)
+        # ...but the kv body's own field names are now visible.
+        self.assertIn("srcip", paths)
+        self.assertIn("sentbyte", paths)
+
+    def test_envelope_merge_needs_a_real_kv_body(self) -> None:
+        # Prose that happens to contain one foo=bar must NOT be shredded
+        # into fake fields.
+        mod = _load_module()
+        rec = mod._envelope_record(
+            "Aug 28 14:16:41 host sshd[1]: connection reset by peer errno=104"
+        )
+        self.assertEqual(list(rec), ["_message"])
+
+
+class TestNetworkPrecisionGuards(unittest.TestCase):
+    """The widenings above are each gated on a field NAME licensing the
+    wider reading. These pin the gates."""
+
+    def _net(self, line: str) -> dict:
+        return _load_module().profile("<mem>", line + "\n")["network"]
+
+    def test_traffic_vocabulary_in_free_text_is_not_a_signal(self) -> None:
+        # "connection" inside a message is prose, not evidence. Only the
+        # value of a discriminator-ish field counts.
+        net = self._net('host="a" msg="connection flow traffic firewall" id=1 n=2')
+        self.assertFalse(net["detected"], net)
+
+    def test_bare_integer_is_not_a_protocol_signal(self) -> None:
+        # An IANA number only means something under a protocol-ish name.
+        net = self._net('id=6 count=17 status=1 code=47 total=50')
+        self.assertFalse(net["detected"], net)
+
+    def test_timeout_in_free_text_is_not_an_action_signal(self) -> None:
+        # Measured against nokia_nfmp.jsonl: the bare word "timeout"
+        # appears inside exception strings.
+        net = self._net(
+            'host="a" err="java.net.SocketTimeoutException: timeout" id=1 n=2'
+        )
+        self.assertFalse(net["detected"], net)
+
+    def test_aaa_suppression_survives_the_wider_vocabulary(self) -> None:
+        # A TACACS+ / RADIUS gateway logs session verbs that are AAA
+        # outcomes, not flows. Only the unambiguously transport verbs
+        # (server-rst / client-rst / ip-conn) lift the suppression.
+        ws = _profile_fixture("tacacs_aaa.log")
+        self.assertTrue(ws["authentication"]["detected"])
+        self.assertFalse(ws["network"]["detected"], ws["network"])
+
+
 class TestNetworkDetection(unittest.TestCase):
     """detect_network is deliberately conservative: distinctive traffic
     vocabulary, allow/deny action values, protocol names, or the complete
@@ -433,8 +635,10 @@ class TestNetworkDetection(unittest.TestCase):
         self.assertIn("structure", kinds)
 
     def test_detects_syslog_flow_record_via_values(self) -> None:
-        # Syslog collapses each line into _message, so only the value
-        # signal is available -- it must carry detection on its own.
+        # On a syslog line the envelope is never decomposed, so the whole
+        # line is still scanned as one _message value -- that half must
+        # carry detection on its own, independently of any kv body the
+        # line may also have (see _envelope_record).
         ws = _profile_fixture("network_event_syslog.log")
         self.assertIn(ws["detected_format"], ("syslog-3164", "syslog-5424"))
         net = ws["network"]
@@ -442,7 +646,7 @@ class TestNetworkDetection(unittest.TestCase):
         value_signals = [s for s in net["signals"] if s["kind"] == "value"]
         self.assertTrue(value_signals, net["signals"])
         self.assertTrue(
-            all(s["field"] == "_message" for s in value_signals),
+            any(s["field"] == "_message" for s in value_signals),
             net["signals"],
         )
 

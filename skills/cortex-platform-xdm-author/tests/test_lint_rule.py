@@ -137,6 +137,8 @@ class TestSyntacticRules(unittest.TestCase):
         ("warn043_network_mandatory.xql", "WARN-043"),
         ("warn049_hardcoded_path.xql", "WARN-049"),
         ("warn055_auth_target_resource.xql", "WARN-055"),
+        ("warn057_identity_without_user.xql", "WARN-057"),
+        ("warn057_diverged_mirror.xql", "WARN-057"),
         ("info013_overmapping.xql", "INFO-013"),
     ]
 
@@ -2140,14 +2142,17 @@ class TestErr034UnquotedReservedRead(unittest.TestCase):
         # This set is MIRRORED by hand into RESERVED_COLUMNS in the
         # content-pack bundle's scripts/preflight_release.py, and neither
         # repository can see the other. The two tests below iterate a
-        # hard-coded name list, so both would have passed a ninth member
+        # hard-coded name list, so both would have passed a tenth member
         # without a word -- which is how a mirrored list drifts while each
         # side believes itself current, exactly what happened before 1.9.1
-        # when that gate's patterns were still case-sensitive.
+        # when that gate's patterns were still case-sensitive. This pin is
+        # what routed the 2.1.3 `config` report to both bundles instead of
+        # to one, so it has now earned its keep rather than merely being
+        # prudent.
         self.assertEqual(
             _lint_mod._ERR034_RESERVED,
-            ("tag", "view", "target", "fields", "transaction", "table",
-             "filter", "in"),
+            ("tag", "view", "config", "target", "fields", "transaction",
+             "table", "filter", "in"),
             "ERR-034's reserved set changed. Update this pin, the two "
             "name lists below, and RESERVED_COLUMNS in the content-pack "
             "bundle's scripts/preflight_release.py -- then MESSAGE that "
@@ -2159,16 +2164,16 @@ class TestErr034UnquotedReservedRead(unittest.TestCase):
     def test_every_reserved_name_flagged_bare(self):
         # The set is corpus-derived, not guessed. Each must fire when read
         # bare in value position.
-        for name in ("tag", "view", "target", "fields", "transaction",
-                     "table", "filter", "in"):
+        for name in ("tag", "view", "config", "target", "fields",
+                     "transaction", "table", "filter", "in"):
             ids = _rule_ids_from(self._rule(f"tmp_x = {name}"))
             self.assertIn("ERR-034", ids, f"{name} should fire: {ids}")
 
     def test_backticked_read_is_the_correct_form_and_silent(self):
         # 328 shipped upstream rules read these columns backticked and never
         # bare. Flagging the escape would flag the fix.
-        for name in ("tag", "view", "target", "fields", "transaction",
-                     "table", "filter", "in"):
+        for name in ("tag", "view", "config", "target", "fields",
+                     "transaction", "table", "filter", "in"):
             ids = _rule_ids_from(self._rule(f"tmp_x = `{name}`"))
             self.assertNotIn("ERR-034", ids, f"`{name}` must be silent: {ids}")
 
@@ -2182,6 +2187,79 @@ class TestErr034UnquotedReservedRead(unittest.TestCase):
                      'tmp_x = if(evt not in ("a"), "y")'):
             ids = _rule_ids_from(self._rule(expr))
             self.assertNotIn("ERR-034", ids, f"{expr} must be silent: {ids}")
+
+    def test_the_code_registry_names_every_reserved_word(self):
+        # The --list-codes docstring is a FOURTH copy of this set, and
+        # SKILL.md points authors at it as the single source of truth for
+        # the code list. Nothing compared it to the tuple, so it lost `in`
+        # in 1.9.1 and still said seven names five releases later -- an
+        # author following the documented instruction read a list one name
+        # short of the check that was actually running. A copy is only
+        # safe if something compares it, which is the same argument that
+        # put TestReadmeCodeListMatchesTheLinter in test_doc_consistency.
+        # Parse the parenthesised list rather than searching the prose. A
+        # substring test over the description is worthless for the short
+        # names -- `in` occurs inside "install", "naming" and "line", so
+        # the check would have passed throughout the five releases the
+        # list was actually wrong, which is the one case it exists for.
+        entry = next(
+            e for e in _lint_mod.code_table() if e["code"] == "ERR-034"
+        )
+        listed = re.search(r"construct \(([^)]*)\)", entry["description"])
+        self.assertIsNotNone(
+            listed,
+            "ERR-034's --list-codes description no longer carries a "
+            f"`construct (...)` name list: {entry['description']}",
+        )
+        self.assertEqual(
+            {n.strip() for n in listed.group(1).split("/")},
+            set(_lint_mod._ERR034_RESERVED),
+            "ERR-034's --list-codes name list disagrees with "
+            "_ERR034_RESERVED. It is what `scripts/lint_rule.py "
+            "--list-codes` prints and what SKILL.md sends authors to, so "
+            "a name missing here is a name the documentation denies is "
+            "reserved.",
+        )
+
+    def test_config_stage_keyword_is_not_a_column_read(self):
+        # `config` is reserved AND names a query STAGE, the same collision
+        # `in` has with the membership operator. Every settings form must
+        # stay silent; the corpus carries 12 of them in shipped MODEL
+        # rules, all `config case_sensitive = true`.
+        #
+        # The PARENTHESISED cases are the ones that matter. They put the
+        # word directly after '(' and therefore into value position, and
+        # they fired before the stage lookahead was added -- a false
+        # ERR-034 on valid XQL, which is the failure mode that teaches an
+        # author to mute the checker.
+        for stage in ("| config case_sensitive = true",
+                      "| config timeframe = 24h",
+                      "| config max_runtime_minutes = 5",
+                      "| config case_sensitive = false, timeframe = 7d",
+                      "    (config timeframe = 24h",
+                      "    (config case_sensitive = false, timeframe = 7d"):
+            source = (
+                "[MODEL: dataset=acme_demo_raw]\n"
+                "filter\n    _raw_log != null\n"
+                "| alter\n    tmp_x = api_key_id\n"
+                "| alter\n    xdm.event.id = tmp_x\n"
+                f"{stage}\n;\n"
+            )
+            ids = _rule_ids_from(source)
+            self.assertNotIn("ERR-034", ids, f"{stage} must be silent: {ids}")
+
+    def test_config_read_as_a_column_still_fires(self):
+        # The shape that cost five tenant uploads on a GitHub Enterprise
+        # Cloud audit source: a raw column called `config`, read bare
+        # inside json_extract_scalar. The stage lookahead above must not
+        # have bought this silence too -- a column read is followed by
+        # ',', ')' or an operator, never by an identifier and an '='.
+        for expr in ('tmp_x = json_extract_scalar(config, "$.url")',
+                     "tmp_x = to_number(config)",
+                     "tmp_x = arrayindex(config, 0)",
+                     "tmp_x = config"):
+            ids = _rule_ids_from(self._rule(expr))
+            self.assertIn("ERR-034", ids, f"{expr} should fire: {ids}")
 
     def test_out_is_an_ordinary_column_name(self):
         # `out` always arrives paired with `in` on a CEF firewall source, so
@@ -2210,7 +2288,7 @@ class TestErr034UnquotedReservedRead(unittest.TestCase):
         # The word boundary must keep these out: the name is a prefix or a
         # suffix, not the whole column.
         for name in ("view_name", "preview", "etag", "header_fields",
-                     "target_ip", "tagging"):
+                     "target_ip", "tagging", "configuration", "config_id"):
             ids = _rule_ids_from(self._rule(f"tmp_x = {name}"))
             self.assertNotIn("ERR-034", ids, f"{name} must be silent: {ids}")
 
@@ -2291,3 +2369,344 @@ class TestStripLineCommentEscapedQuote(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestWarn057IdentityMirror(unittest.TestCase):
+    """The recommended identity mirror. The tier's whole design rests on
+    NEVER reporting an absent mirror: every rule written before this tier
+    existed maps user.* without one, and a check that fired on those would
+    report findings on correct, complete work -- the failure mode that
+    teaches authors to mute a checker. Only a mirror that is present and
+    wrong is reported."""
+
+    def _auth(self, body: str) -> str:
+        return (
+            "[MODEL: dataset=acme_idp_raw]\n"
+            "filter _raw_log != null\n"
+            "| alter\n"
+            '    tmp_u = json_extract_scalar(_raw_log, "$.user"),\n'
+            '    tmp_alt = json_extract_scalar(_raw_log, "$.alt")\n'
+            "| alter\n"
+            "    xdm.event.tags = arraycreate(XDM_CONST.EVENT_TAG_AUTHENTICATION),\n"
+            f"{body}\n"
+            ";\n"
+        )
+
+    def _ids(self, rule: str):
+        return [v for v in lint(rule) if v["rule_id"] == "WARN-057"]
+
+    def test_absence_is_never_reported(self):
+        # The load-bearing assertion of the whole tier.
+        for body in (
+            "    xdm.source.user.upn = tmp_u",
+            "    xdm.source.user.username = tmp_u,\n    xdm.source.user.domain = tmp_alt",
+        ):
+            self.assertEqual(self._ids(self._auth(body)), [], body)
+
+    def test_matched_mirror_is_silent(self):
+        rule = self._auth(
+            "    xdm.source.user.upn = tmp_u,\n"
+            "    xdm.source.identity.upn = tmp_u"
+        )
+        self.assertEqual(self._ids(rule), [])
+
+    def test_reformatted_mirror_is_still_matched(self):
+        # Whitespace and line breaks carry no meaning across a derivation,
+        # so an author who wrapped one half must not be flagged.
+        rule = self._auth(
+            '    xdm.source.user.upn = if(tmp_u contains "@", tmp_u,'
+            ' tmp_u != null, concat(tmp_u, "@localhost")),\n'
+            '    xdm.source.identity.upn = if(tmp_u contains "@", tmp_u,\n'
+            '        tmp_u != null, concat(tmp_u, "@localhost"))'
+        )
+        self.assertEqual(self._ids(rule), [])
+
+    def test_identity_without_user_is_reported(self):
+        rule = self._auth("    xdm.source.identity.upn = tmp_u")
+        vios = self._ids(rule)
+        self.assertEqual(len(vios), 1, vios)
+        self.assertEqual(vios[0]["severity"], "warning")
+        self.assertIn("never written instead of it", vios[0]["message"])
+
+    def test_diverged_pair_is_reported_as_a_question(self):
+        rule = self._auth(
+            "    xdm.source.user.upn = tmp_u,\n"
+            "    xdm.source.identity.upn = tmp_alt"
+        )
+        vios = self._ids(rule)
+        self.assertEqual(len(vios), 1, vios)
+        self.assertEqual(vios[0]["severity"], "warning")
+        # Phrased as a question, per the WARN-038 shape: the linter cannot
+        # see intent, only difference.
+        self.assertIn("IF these are meant to carry", vios[0]["message"])
+        self.assertIn("does NOT apply", vios[0]["message"])
+        self.assertTrue(
+            vios[0]["recommendation"].startswith("Decide which derivation"),
+            vios[0]["recommendation"],
+        )
+
+    def test_each_side_is_independent(self):
+        rule = self._auth(
+            "    xdm.source.user.upn = tmp_u,\n"
+            "    xdm.source.identity.upn = tmp_u,\n"
+            "    xdm.target.identity.username = tmp_alt"
+        )
+        vios = self._ids(rule)
+        self.assertEqual(len(vios), 1, vios)
+        self.assertIn("xdm.target.identity.username", vios[0]["message"])
+
+    def test_fixtures_are_advisory_only(self):
+        # Warning severity, so still exit 0: the tier is recommended and
+        # a defective mirror must not block a release the twin's own
+        # missing-field check would let through.
+        for name in (
+            "warn057_identity_without_user.xql",
+            "warn057_diverged_mirror.xql",
+        ):
+            with self.subTest(fixture=name):
+                path = bundle_root() / "tests" / "fixtures" / name
+                proc = subprocess.run(
+                    [sys.executable, str(LINT_SCRIPT), str(path)],
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(proc.returncode, 0, proc.stdout)
+
+    def test_silent_on_non_auth_and_complete_auth(self):
+        self.assertNotIn("WARN-057", _rule_ids("clean_rule.xql"))
+        self.assertEqual(
+            self._ids(TestWarn042AuthMandatory._COMPLETE_AUTH), []
+        )
+
+
+class TestWarn057CorpusSweep(unittest.TestCase):
+    """The permanent measurement gate. A check was withdrawn from this
+    bundle in 2.1.4 for firing on the bundle's own prescribed idioms, and
+    the lesson recorded there was that measuring once before release is
+    not enough. This sweeps every fixture and every MODEL block in every
+    worked example on every run."""
+
+    def _model_blocks(self, path: Path):
+        lines = path.read_text(encoding="utf-8").splitlines()
+        out, i = [], 0
+        while i < len(lines):
+            if lines[i].startswith("[MODEL:"):
+                j = i
+                while j < len(lines) and lines[j].strip() != "```":
+                    j += 1
+                out.append("\n".join(lines[i:j]) + "\n")
+                i = j
+            i += 1
+        return out
+
+    def test_no_fixture_fires_except_the_purpose_built_ones(self):
+        for path in sorted((bundle_root() / "tests" / "fixtures").glob("*.xql")):
+            if path.name.startswith("warn057_"):
+                continue
+            with self.subTest(fixture=path.name):
+                vios = [
+                    v for v in lint(path.read_text(encoding="utf-8"))
+                    if v["rule_id"] == "WARN-057"
+                ]
+                self.assertEqual(vios, [], f"{path.name}: {vios}")
+
+    def test_no_worked_example_block_fires(self):
+        we_dir = bundle_root() / "references" / "worked-examples"
+        swept = mirrored = 0
+        for md in sorted(we_dir.glob("*.md")):
+            for k, block in enumerate(self._model_blocks(md)):
+                swept += 1
+                if ".identity." in block:
+                    mirrored += 1
+                with self.subTest(example=md.name, block=k):
+                    vios = [
+                        v for v in lint(block) if v["rule_id"] == "WARN-057"
+                    ]
+                    self.assertEqual(vios, [], f"{md.name} block {k}: {vios}")
+        self.assertGreaterEqual(swept, 15, "sweep found too few MODEL blocks")
+        # The gate must not pass vacuously: the examples really do carry
+        # mirrors, so a regression in the check has something to fire on.
+        self.assertGreaterEqual(
+            mirrored, 5, "no mirrored blocks swept -- gate is hollow"
+        )
+
+
+class TestIdentityMirrorListsInSync(unittest.TestCase):
+    """The mirror set is written down in four places. Three-way drift is
+    what the WARN-042 mandatory-list guard exists to prevent; this is the
+    same guard for the recommended tier."""
+
+    def test_lint_profiler_and_scaffolder_agree(self):
+        import importlib.util
+
+        def _load(name, filename):
+            spec = importlib.util.spec_from_file_location(
+                name, bundle_root() / "scripts" / filename
+            )
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod
+
+        lr = _load("lr_sync", "lint_rule.py")
+        pl = _load("pl_sync", "profile_log.py")
+        sc = _load("sc_sync", "scaffold_rule.py")
+
+        leaves = set(lr._IDENTITY_MIRROR_LEAVES)
+        self.assertEqual(len(lr._IDENTITY_MIRROR_LEAVES), 6)
+        self.assertEqual(
+            {p.rsplit(".", 1)[1] for p in pl._AUTH_IDENTITY_MIRROR}, leaves
+        )
+        self.assertEqual(
+            {i.rsplit(".", 1)[1] for _u, i in sc._AUTH_RECOMMENDED}, leaves
+        )
+        # Every scaffolder pair really is a pair: same side, same leaf.
+        for user_field, ident_field in sc._AUTH_RECOMMENDED:
+            self.assertEqual(
+                user_field.replace(".user.", ".identity."), ident_field
+            )
+
+    def test_reference_table_names_the_same_leaves(self):
+        doc = (
+            bundle_root() / "references" / "authentication-mapping.md"
+        ).read_text(encoding="utf-8")
+        section = doc.split("## Recommended fields (the identity mirror)")[1]
+        section = section.split("\n## ")[0]
+        for leaf in ("upn", "identity_type", "user_type", "username",
+                     "identifier", "domain"):
+            self.assertIn(f"`user.{leaf}` -> `identity.{leaf}`", section)
+
+
+class TestMirrorInteractionsWithExistingChecks(unittest.TestCase):
+    """A mirrored pair doubles the number of user-ish assignments in a
+    rule. These pin the checks that count or categorise such assignments,
+    so the mirror cannot quietly double a finding or invent a new one."""
+
+    _PROSE = """[MODEL: dataset=acme_syslog_raw]
+filter _raw_log != null
+| alter
+    tmp_acct = arrayindex(regextract(_raw_log, "for (\\\\S+)"), 0)
+| alter
+    xdm.event.tags = arraycreate(XDM_CONST.EVENT_TAG_AUTHENTICATION),
+    xdm.source.user.username = tmp_acct,
+    xdm.source.identity.username = tmp_acct
+;
+"""
+
+    def test_warn051_reports_the_unguarded_capture_once_not_twice(self):
+        # WARN-051 flags a prose-captured account with no redaction guard.
+        # The mirror feeds the same temp to a second field; the finding is
+        # about the CAPTURE, so it must stay a single finding.
+        vios = [v for v in lint(self._PROSE) if v["rule_id"] == "WARN-051"]
+        self.assertLessEqual(len(vios), 1, vios)
+
+    def test_mirror_does_not_raise_info013_over_mapping(self):
+        # INFO-013 counts XDM entity FAMILIES a temp reaches. user and
+        # identity are both on the same side, so a mirror adds no family
+        # and must not push a rule over the threshold.
+        vios = [v for v in lint(self._PROSE) if v["rule_id"] == "INFO-013"]
+        self.assertEqual(vios, [], vios)
+
+    def test_mirror_does_not_change_the_mandatory_count(self):
+        # The tier is additive: WARN-042 sees the same 15 either way.
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "lr_count", bundle_root() / "scripts" / "lint_rule.py"
+        )
+        lr = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(lr)
+        self.assertEqual(len(lr._AUTH_MANDATORY), 15)
+        for path in lr._AUTH_MANDATORY:
+            self.assertNotIn(".identity.", path)
+
+
+class TestMirrorTwinReadIsNotADivergence(unittest.TestCase):
+    """Writing `identity.<X> = user.<X>` is the intuitive way to say "the
+    same value", and it is wrong in a way worth separating from a real
+    divergence. Inside one alter stage Cortex evaluates every target in
+    parallel, so the read returns the pre-stage value and the rule is
+    rejected -- that is ERR-024's fault to report, not a value mismatch.
+    Across stages the read is legitimate and the values are identical by
+    construction, so nothing should fire at all."""
+
+    def _rule(self, body: str) -> str:
+        return (
+            "[MODEL: dataset=acme_idp_raw]\n"
+            "filter _raw_log != null\n"
+            "| alter\n"
+            '    tmp_u = json_extract_scalar(_raw_log, "$.u")\n'
+            "| alter\n"
+            "    xdm.event.tags = arraycreate(XDM_CONST.EVENT_TAG_AUTHENTICATION),\n"
+            f"{body}\n;\n"
+        )
+
+    def test_same_stage_twin_read_is_err024_not_a_divergence(self):
+        rule = self._rule(
+            "    xdm.source.user.upn = tmp_u,\n"
+            "    xdm.source.identity.upn = xdm.source.user.upn"
+        )
+        vios = lint(rule)
+        codes = {v["rule_id"] for v in vios}
+        self.assertIn("ERR-024", codes)
+        self.assertNotIn(
+            "WARN-057", codes,
+            "a structurally broken twin read must not also be reported as a "
+            "value divergence -- that sends the author hunting for a "
+            "mismatch that does not exist",
+        )
+        err = next(v for v in vios if v["rule_id"] == "ERR-024")
+        self.assertIn("sibling field", err["message"])
+        self.assertIn("repeats the derivation", err["recommendation"])
+
+    def test_later_stage_twin_read_is_clean(self):
+        rule = self._rule(
+            "    xdm.source.user.upn = tmp_u\n"
+            "| alter\n"
+            "    xdm.source.identity.upn = xdm.source.user.upn"
+        )
+        codes = {
+            v["rule_id"] for v in lint(rule)
+            if v["rule_id"] in ("ERR-024", "WARN-057")
+        }
+        self.assertEqual(codes, set(), "same value by construction")
+
+    def test_err024_does_not_match_a_path_prefix(self):
+        # xdm.source.user must not match inside xdm.source.user.upn.
+        rule = self._rule(
+            "    xdm.source.user.upn = tmp_u,\n"
+            "    xdm.source.user.username = tmp_u"
+        )
+        codes = {v["rule_id"] for v in lint(rule)}
+        self.assertNotIn("ERR-024", codes)
+
+
+class TestWarn057SeverityMirrorsItsTwin(unittest.TestCase):
+    """The mirror check reports at the severity the twin's own
+    mandatory-set check reports at. WARN-042 names a MANDATORY
+    authentication field and returns exit 0; a defect in the recommended
+    mirror beside it cannot reasonably be stricter than that."""
+
+    def test_warn057_is_warning_severity(self):
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "lr_sev", bundle_root() / "scripts" / "lint_rule.py"
+        )
+        lr = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(lr)
+        src = (bundle_root() / "scripts" / "lint_rule.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('"WARN-057",\n                        "warning",', src)
+
+    def test_a_defective_mirror_still_exits_zero(self):
+        for name in (
+            "warn057_identity_without_user.xql",
+            "warn057_diverged_mirror.xql",
+        ):
+            with self.subTest(fixture=name):
+                proc = subprocess.run(
+                    [sys.executable, str(LINT_SCRIPT),
+                     str(bundle_root() / "tests" / "fixtures" / name)],
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(proc.returncode, 0, proc.stdout)

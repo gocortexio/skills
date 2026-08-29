@@ -731,6 +731,101 @@ target address and the placeholder is semantically empty.
 thing being logged into, so a placeholder there would assert that the
 event has a known target when it does not.
 
+## Recommended fields (the identity mirror)
+
+The XDM Identity data model reads `xdm.<side>.identity.*`, a
+field-for-field twin of `xdm.<side>.user.*` -- same leaf names, same
+types, same `XDM_CONST` enums (measured against all six vendor schema
+pages on 2026-08-25; there is no `identity.name` and no `identity.type`,
+the leaves really are `username`, `identity_type` and their kin). A rule
+that maps one of the user fields below is STRONGLY ENCOURAGED to also
+assign the identity twin on the same side, so identity analytics
+populate without a second extraction. This is a RECOMMENDED tier, not a
+mandatory one: nothing here joins the mandatory set, WARN-042 does not
+fire on its absence, and a rule that maps none of it is complete.
+
+THE LAW OF THIS TIER IS APPEND, NEVER REPLACE. The `user.*` assignment
+stays exactly as it is -- it remains the mandatory-set member, the
+story correlation key, and the field every existing consumer reads. The
+identity twin is an ADDITIONAL assignment beside it. A rule that maps
+`identity.*` INSTEAD of `user.*` has deleted a mandatory field to
+satisfy a recommendation, which is strictly worse than ignoring this
+section entirely.
+
+| Pair (each of source / target / intermediate) | Notes |
+| --- | --- |
+| `user.upn` -> `identity.upn` | Same UPN-shaped value, same shape guard. |
+| `user.identity_type` -> `identity.identity_type` | Same `XDM_CONST.IDENTITY_TYPE_*` member. |
+| `user.user_type` -> `identity.user_type` | Same `XDM_CONST.USER_TYPE_*` member. |
+| `user.username` -> `identity.username` | Same display name (still NOT the identity key). |
+| `user.identifier` -> `identity.identifier` | Same persistent GUID / SID. |
+| `user.domain` -> `identity.domain` | Same domain. |
+
+WHAT IS ENFORCED, AND AT WHAT STRENGTH. Absence of a mirror is never
+reported: a rule that maps only `user.*` is complete. What IS reported,
+at WARN-057 and warning severity, is a mirror that is present and
+wrong -- an `identity.*` assigned with no `user.*` twin beside it (the
+REPLACE this section forbids), or a pair assigned from two different
+derivations. Warning severity is chosen to match the strength at which
+the twin's own mandatory-set check reports: WARN-042 names a MANDATORY
+authentication field and still returns exit 0, so a defect in the
+RECOMMENDED mirror beside it cannot reasonably block a release that the
+mandatory check itself would let through.
+
+DO NOT WRITE `xdm.<side>.identity.<X> = xdm.<side>.user.<X>`. It is the
+intuitive way to say "the same value" and it is rejected: Cortex
+evaluates every target in one `alter` in parallel, so the read returns
+the pre-stage value and the parser reports an unknown field. That is
+ERR-024 and it BLOCKS. Repeat the derivation instead -- which is what
+the rest of this section means by mirroring.
+
+MIRROR MEANS CHARACTER-FOR-CHARACTER. Assign the identity twin the SAME
+right-hand side as its user twin -- the same temp, or the same full
+expression where the user field takes an `if()` shape. A rule cannot
+read a sibling `xdm.*` field (the self/sibling-reference rule), so the
+mirror repeats the derivation text rather than referencing the user
+field:
+
+    xdm.source.user.upn = if(tmp_u contains "@", tmp_u, tmp_u != null, concat(tmp_u, "@localhost")),
+    xdm.source.identity.upn = if(tmp_u contains "@", tmp_u, tmp_u != null, concat(tmp_u, "@localhost")),
+
+The mirror carries whatever the user twin carries, including its
+prescribed defaults -- `IDENTITY_TYPE_UNKNOWN`, `USER_TYPE_REGULAR` and
+the `@localhost` shape guard mirror over unchanged. NEVER invent a
+different, richer or "more correct" value for the identity side: two
+derivations for one fact is how the pair silently diverges, and a
+diverged pair is worse than an absent mirror because both halves look
+populated.
+
+TENANT VERIFICATION IS PENDING, AND THIS IS THE CAVEAT TO READ BEFORE
+USING THE TIER. The pairs above are admitted on VENDOR DOCUMENTATION
+evidence only: all six leaves are published on the source, intermediate
+and target identity pages, typed identically to their user twins. No
+tenant has yet confirmed that a MODEL rule assigning them installs, nor
+that a modeler-written value survives auto-enrichment. A probe is
+commissioned and its evidence will replace this paragraph with a
+per-leaf result.
+
+Why the caveat is load-bearing rather than boilerplate: a documented
+XDM path is NOT proof of an installable one. `cloud.source_type` is
+published in the same schema, looks legitimate in every offline check,
+and fails pack install with an opaque error because it belongs to an
+asset data model rather than the event surface -- which is why it is
+now a banned field. Several other identity leaves (`has_mfa`,
+`last_login`, `password_last_set`) read exactly like asset attributes,
+which is why the tier is six leaves and not fifty-four, and why the
+rest stay out of the schema so ERR-020 keeps refusing them.
+
+So: mirror where it costs you nothing, and treat an install failure or
+a value that changes underneath you as expected news rather than a
+surprise -- report it, and the leaf leaves this table. Do not retrofit
+the mirror across a shipped pack on the strength of this section alone.
+
+The optional-tier entries for `xdm.source.user.identifier` and
+`xdm.source.user.username` below are unchanged by this tier: they stay
+optional, and the mirror recommendation applies only when a rule maps
+them.
+
 ## Optional fields (map when the source provides them)
 
 These enrich the story but are not required for it to be created. Map

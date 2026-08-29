@@ -176,7 +176,14 @@ filter
     xdm.source.user.upn = if(
         tmp_user contains "@", tmp_user,
         tmp_user != null, concat(tmp_user, "@localhost")),
+    // Identity mirror (recommended tier): same derivations, appended beside user.* -- never instead of it.
+    xdm.source.identity.upn = if(
+        tmp_user contains "@", tmp_user,
+        tmp_user != null, concat(tmp_user, "@localhost")),
     xdm.source.user.identity_type = if(
+        tmp_user != null, XDM_CONST.IDENTITY_TYPE_USER,
+        XDM_CONST.IDENTITY_TYPE_UNKNOWN),
+    xdm.source.identity.identity_type = if(
         tmp_user != null, XDM_CONST.IDENTITY_TYPE_USER,
         XDM_CONST.IDENTITY_TYPE_UNKNOWN),
     xdm.source.user.user_type = if(
@@ -185,7 +192,14 @@ filter
         lowercase(tmp_user) ~= "^svc[-_.]|service|gserviceaccount",
             XDM_CONST.USER_TYPE_SERVICE_ACCOUNT,
         XDM_CONST.USER_TYPE_REGULAR),
+    xdm.source.identity.user_type = if(
+        tmp_user = null, XDM_CONST.USER_TYPE_REGULAR,
+        tmp_user contains "$", XDM_CONST.USER_TYPE_MACHINE_ACCOUNT,
+        lowercase(tmp_user) ~= "^svc[-_.]|service|gserviceaccount",
+            XDM_CONST.USER_TYPE_SERVICE_ACCOUNT,
+        XDM_CONST.USER_TYPE_REGULAR),
     xdm.source.user.username = tmp_user,
+    xdm.source.identity.username = tmp_user,
     xdm.source.user.groups = if(tmp_az_group != null, arraycreate(tmp_az_group), null),
     xdm.source.ipv4 = tmp_src_ip,
     xdm.source.port = to_integer(0),

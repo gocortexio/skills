@@ -154,6 +154,22 @@ _AUTH_PADDABLE = [
 # Mandatory fields that cannot be padded -- the doc requires a real value
 # from the raw log. Auto-wired by the normal anchor loop when the source
 # carries them; otherwise listed as TODO and flagged by WARN-042.
+# The recommended identity mirror, as (user field, identity twin) pairs.
+# Emitted as AUTH RECOMMENDED TODO comments, never as seeded values: the
+# mirror must repeat its twin's derivation character for character, which
+# is not known at scaffold time. Canonical source: the "Recommended
+# fields (the identity mirror)" table in
+# references/authentication-mapping.md. Mirrored in lint_rule.py and
+# profile_log.py; a test pins the three lists together.
+_AUTH_RECOMMENDED = [
+    ("xdm.source.user.upn", "xdm.source.identity.upn"),
+    ("xdm.source.user.identity_type", "xdm.source.identity.identity_type"),
+    ("xdm.source.user.user_type", "xdm.source.identity.user_type"),
+    ("xdm.source.user.username", "xdm.source.identity.username"),
+    ("xdm.source.user.identifier", "xdm.source.identity.identifier"),
+    ("xdm.source.user.domain", "xdm.source.identity.domain"),
+]
+
 _AUTH_MUST_EXTRACT = [
     ("xdm.auth.service",
      'the ROLE this system played, decided per event type: "IDP" when it '
@@ -441,6 +457,16 @@ def scaffold(
                 todo_rows.append(
                     f"//   {field:<28} -- AUTH MANDATORY (map from raw): {hint}"
                 )
+
+        # The recommended identity mirror. Emitted as TODO prose only --
+        # never a seeded assignment, because the mirror must carry the
+        # SAME derivation as its user twin and the scaffolder does not
+        # know yet what that derivation will be.
+        for user_field, ident_field in _AUTH_RECOMMENDED:
+            todo_rows.append(
+                f"//   {ident_field:<28} -- AUTH RECOMMENDED: mirror of "
+                f"{user_field}, same right-hand side, appended beside it"
+            )
 
     if is_network:
         for field, rhs in _NETWORK_PADDABLE:

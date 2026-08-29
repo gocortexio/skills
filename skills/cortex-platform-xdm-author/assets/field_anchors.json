@@ -3,7 +3,7 @@
   "generated": "2026-05-03T10:48:07.685Z",
   "source_corpus": "internal corpus of GoCortex modelling rules",
   "rule_count": 464,
-  "anchor_count": 376,
+  "anchor_count": 377,
   "notes": "Synonyms are normalised: lowercased, dots/hyphens/spaces converted to underscores, leading underscores and a single 'tmp_' prefix stripped. Frequency = number of distinct rule blocks that map this xdm path. exampleVendors lists up to 12 vendors observed using this path.",
   "schema": {
     "anchors": "Object keyed by canonical xdm.* path. Each value has { frequency: int, synonyms: Array<{synonym: string, count: int}>, exampleVendors: string[] }. The synonyms array is sorted by descending count then alphabetic; the original task brief described a bare string array, but this richer shape is kept because consumers (linter, IDE quick-fix, training-data ranker) all need the per-synonym frequency. To recover the brief's shape, map `synonyms` to `synonyms.map(s => s.synonym)`."
@@ -4927,10 +4927,6 @@
           "count": 1
         },
         {
-          "synonym": "time",
-          "count": 1
-        },
-        {
           "synonym": "timetaken_d",
           "count": 1
         },
@@ -4992,7 +4988,6 @@
         "rtt",
         "session_duration",
         "start",
-        "time",
         "timetaken_d",
         "timetaken_s",
         "title",
@@ -5196,6 +5191,11 @@
           "count": 1
         },
         {
+          "synonym": "logid",
+          "count": 1,
+          "curated": true
+        },
+        {
           "synonym": "message",
           "count": 1
         },
@@ -5301,43 +5301,36 @@
         }
       ],
       "synonyms_simple": [
-        "id",
-        "event_id",
-        "eventid",
-        "cefdeviceeventclassid",
-        "externalid",
-        "loguid",
-        "uuid",
-        "properties",
-        "request_id",
-        "details",
-        "guid",
-        "incidentid",
-        "log_id",
-        "originalrequestid",
-        "telephony_id",
         "acode",
         "activitytype",
         "activityuuid",
         "attributes",
         "auditeventid",
         "auditid",
+        "cefdeviceeventclassid",
         "cn1",
         "cn2",
         "code",
         "cs1",
         "cs2",
+        "details",
         "dg_guid",
         "event_eventid",
         "event_hash",
+        "event_id",
         "event_num",
         "event_uuid",
         "eventdataid",
+        "eventid",
+        "externalid",
         "ftntfgtlogid",
+        "guid",
         "iau_requestid",
         "iau_threadid",
+        "id",
         "idvalue",
         "incident_id",
+        "incidentid",
         "insertid",
         "internal_message_id",
         "leefeventid",
@@ -5345,12 +5338,17 @@
         "log",
         "log_array",
         "log_fields",
+        "log_id",
+        "logid",
+        "loguid",
         "message",
         "message_id",
         "opid",
+        "originalrequestid",
         "parsed_fields_description",
         "pbid",
         "primary_event_id",
+        "properties",
         "provideralertid",
         "queryid",
         "rayid",
@@ -5358,10 +5356,12 @@
         "report_id",
         "reportid",
         "request",
+        "request_id",
         "requestid",
         "sessionid",
         "sys_id",
         "taskid",
+        "telephony_id",
         "threateventid",
         "threatid",
         "trackingreference_s",
@@ -5369,6 +5369,7 @@
         "type_id",
         "typecode",
         "uid",
+        "uuid",
         "webhook",
         "wineventrecordid"
       ],
@@ -5384,7 +5385,8 @@
         "beyondtrust",
         "box",
         "check",
-        "cisco"
+        "cisco",
+        "fortinet"
       ]
     },
     "xdm.event.is_completed": {
@@ -8345,6 +8347,10 @@
           "count": 3
         },
         {
+          "synonym": "intermediary_ip",
+          "count": 2
+        },
+        {
           "synonym": "ip",
           "count": 2
         },
@@ -8366,6 +8372,10 @@
         },
         {
           "synonym": "dst",
+          "count": 1
+        },
+        {
+          "synonym": "dvc_ip",
           "count": 1
         },
         {
@@ -8401,7 +8411,27 @@
           "count": 1
         },
         {
+          "synonym": "gw",
+          "count": 1
+        },
+        {
+          "synonym": "i_ip",
+          "count": 1
+        },
+        {
+          "synonym": "inter_ip",
+          "count": 1
+        },
+        {
+          "synonym": "intermediary_hostip",
+          "count": 1
+        },
+        {
           "synonym": "load_balancer_proxy_ip_address",
+          "count": 1
+        },
+        {
+          "synonym": "local_proxy_ip",
           "count": 1
         },
         {
@@ -8425,6 +8455,14 @@
           "count": 1
         },
         {
+          "synonym": "relay_ip",
+          "count": 1
+        },
+        {
+          "synonym": "remote_proxy_ip",
+          "count": 1
+        },
+        {
           "synonym": "serverip",
           "count": 1
         },
@@ -8437,58 +8475,27 @@
           "count": 1
         },
         {
+          "synonym": "tranip",
+          "count": 1,
+          "curated": true
+        },
+        {
           "synonym": "unifideviceip",
           "count": 1
         },
         {
           "synonym": "viewerip",
           "count": 1
-        },
-        {
-          "synonym": "intermediary_hostip",
-          "count": 1
-        },
-        {
-          "synonym": "dvc_ip",
-          "count": 1
-        },
-        {
-          "synonym": "i_ip",
-          "count": 1
-        },
-        {
-          "synonym": "intermediary_ip",
-          "count": 2
-        },
-        {
-          "synonym": "gw",
-          "count": 1
-        },
-        {
-          "synonym": "inter_ip",
-          "count": 1
-        },
-        {
-          "synonym": "local_proxy_ip",
-          "count": 1
-        },
-        {
-          "synonym": "relay_ip",
-          "count": 1
-        },
-        {
-          "synonym": "remote_proxy_ip",
-          "count": 1
         }
       ],
       "synonyms_simple": [
-        "dvc",
-        "ip",
         "auth_device",
         "deliveredto",
         "destinationip",
         "device_ip",
         "dst",
+        "dvc",
+        "dvc_ip",
         "event_data",
         "external_ip",
         "ftntfgtassignip",
@@ -8497,26 +8504,27 @@
         "fwd_gw_ip",
         "generalciscolog",
         "global_ip",
+        "gw",
+        "i_ip",
+        "inter_ip",
+        "intermediary_hostip",
+        "intermediary_ip",
+        "ip",
         "load_balancer_proxy_ip_address",
+        "local_proxy_ip",
         "log_fields",
         "mail_server",
         "message",
         "param2",
         "proxy_address",
+        "relay_ip",
+        "remote_proxy_ip",
         "serverip",
         "serverrouted",
         "src",
+        "tranip",
         "unifideviceip",
-        "viewerip",
-        "intermediary_hostip",
-        "dvc_ip",
-        "i_ip",
-        "intermediary_ip",
-        "gw",
-        "inter_ip",
-        "local_proxy_ip",
-        "relay_ip",
-        "remote_proxy_ip"
+        "viewerip"
       ],
       "exampleVendors": [
         "application",
@@ -8745,6 +8753,10 @@
       "frequency": 10,
       "synonyms": [
         {
+          "synonym": "comm_tuple_server_port",
+          "count": 1
+        },
+        {
           "synonym": "deliveredto",
           "count": 1
         },
@@ -8765,7 +8777,19 @@
           "count": 1
         },
         {
+          "synonym": "i_port",
+          "count": 1
+        },
+        {
+          "synonym": "inter_port",
+          "count": 1
+        },
+        {
           "synonym": "proxy_port",
+          "count": 1
+        },
+        {
+          "synonym": "server_port",
           "count": 1
         },
         {
@@ -8777,46 +8801,37 @@
           "count": 1
         },
         {
-          "synonym": "i_port",
-          "count": 1
-        },
-        {
-          "synonym": "comm_tuple_server_port",
-          "count": 1
-        },
-        {
-          "synonym": "server_port",
-          "count": 1
-        },
-        {
-          "synonym": "inter_port",
-          "count": 1
+          "synonym": "tranport",
+          "count": 1,
+          "curated": true
         }
       ],
       "synonyms_simple": [
+        "comm_tuple_server_port",
         "deliveredto",
         "destinationport",
         "dpt",
         "generalciscolog",
         "global_port",
+        "i_port",
+        "inter_port",
         "proxy_port",
+        "server_port",
         "serverport",
         "serverrouted",
-        "i_port",
-        "comm_tuple_server_port",
-        "server_port",
-        "inter_port"
+        "tranport"
       ],
       "exampleVendors": [
         "application",
         "cisco",
+        "claroty",
+        "f5",
+        "fortinet",
+        "haproxy",
         "infoblox",
         "lookout",
         "msft",
-        "trend",
-        "f5",
-        "claroty",
-        "haproxy"
+        "trend"
       ]
     },
     "xdm.intermediate.process.command_line": {
@@ -9392,6 +9407,11 @@
       "frequency": 7,
       "synonyms": [
         {
+          "synonym": "appcat",
+          "count": 2,
+          "curated": true
+        },
+        {
           "synonym": "appgroup",
           "count": 2
         },
@@ -9421,6 +9441,7 @@
         }
       ],
       "synonyms_simple": [
+        "appcat",
         "appgroup",
         "cat",
         "extendedproperties",
@@ -11142,6 +11163,11 @@
       "frequency": 10,
       "synonyms": [
         {
+          "synonym": "catdesc",
+          "count": 2,
+          "curated": true
+        },
+        {
           "synonym": "cs2",
           "count": 2
         },
@@ -11154,11 +11180,11 @@
           "count": 1
         },
         {
-          "synonym": "cs_categories",
+          "synonym": "cs5",
           "count": 1
         },
         {
-          "synonym": "cs5",
+          "synonym": "cs_categories",
           "count": 1
         },
         {
@@ -11182,11 +11208,11 @@
           "count": 1
         },
         {
-          "synonym": "urlcategorycode",
+          "synonym": "urlcategory",
           "count": 1
         },
         {
-          "synonym": "urlcategory",
+          "synonym": "urlcategorycode",
           "count": 1
         },
         {
@@ -11195,18 +11221,19 @@
         }
       ],
       "synonyms_simple": [
-        "cs2",
-        "url_category",
+        "catdesc",
         "category",
-        "cs_categories",
+        "cs2",
         "cs5",
+        "cs_categories",
         "ftntfgtcatdesc",
         "localized_url_category",
         "message",
         "requestcontext",
+        "url_category",
         "urlcat",
-        "urlcategorycode",
         "urlcategory",
+        "urlcategorycode",
         "urlsupercategory"
       ],
       "exampleVendors": [
@@ -11808,6 +11835,11 @@
           "count": 1
         },
         {
+          "synonym": "poluuid",
+          "count": 1,
+          "curated": true
+        },
+        {
           "synonym": "rdr_rulename",
           "count": 1
         },
@@ -11869,22 +11901,9 @@
         }
       ],
       "synonyms_simple": [
-        "cs1",
-        "cs2",
-        "policy_name",
-        "policy",
-        "rule",
-        "name",
-        "policies",
-        "policydetails",
-        "rulename",
-        "analyzerrulename",
-        "debugcontext",
-        "policyid",
-        "policyname",
-        "threatdetections",
         "alert_rule_name",
         "alertruleid",
+        "analyzerrulename",
         "appliedconditionalaccesspolicies",
         "appliedrule",
         "apprulelabel",
@@ -11893,9 +11912,12 @@
         "client_ssl_policy_id",
         "cn3",
         "context",
+        "cs1",
+        "cs2",
         "cs3",
         "cs7",
         "cs8",
+        "debugcontext",
         "description",
         "details",
         "dlprulename",
@@ -11915,12 +11937,20 @@
         "log_fields",
         "message",
         "model",
+        "name",
         "nsgrulename",
         "orgpolicyviolationinfo",
         "parsed_fields_description",
         "pid",
         "plan",
+        "policies",
+        "policy",
+        "policy_name",
+        "policydetails",
+        "policyid",
+        "policyname",
         "policyviolationinfo",
+        "poluuid",
         "rdr_rulename",
         "reasons",
         "reqrulelabel",
@@ -11928,11 +11958,14 @@
         "resrulelabel",
         "riskwarerules",
         "routingrulename_s",
+        "rule",
         "rulelabel",
+        "rulename",
         "rulename_s",
         "ruletitle",
         "securityruleid",
         "terminatingruleid",
+        "threatdetections",
         "token_policies",
         "urlfilterrulelabel",
         "violationinfo"
@@ -11949,7 +11982,8 @@
         "commvault",
         "cyberark",
         "darktrace",
-        "f5"
+        "f5",
+        "fortinet"
       ]
     },
     "xdm.network.session_id": {
@@ -12619,6 +12653,10 @@
           "count": 2
         },
         {
+          "synonym": "accesscontrolruleaction",
+          "count": 1
+        },
+        {
           "synonym": "action_s",
           "count": 1
         },
@@ -12671,10 +12709,6 @@
           "count": 1
         },
         {
-          "synonym": "event_name_custom1",
-          "count": 1
-        },
-        {
           "synonym": "event_name2",
           "count": 1
         },
@@ -12695,6 +12729,10 @@
           "count": 1
         },
         {
+          "synonym": "event_name_custom1",
+          "count": 1
+        },
+        {
           "synonym": "event_result",
           "count": 1
         },
@@ -12704,6 +12742,10 @@
         },
         {
           "synonym": "ftntfgtutmaction",
+          "count": 1
+        },
+        {
+          "synonym": "fw_action",
           "count": 1
         },
         {
@@ -12779,6 +12821,10 @@
           "count": 1
         },
         {
+          "synonym": "security_action",
+          "count": 1
+        },
+        {
           "synonym": "securityaction",
           "count": 1
         },
@@ -12799,78 +12845,72 @@
           "count": 1
         },
         {
-          "synonym": "accesscontrolruleaction",
-          "count": 1
-        },
-        {
-          "synonym": "fw_action",
-          "count": 1
-        },
-        {
-          "synonym": "security_action",
-          "count": 1
+          "synonym": "utmaction",
+          "count": 1,
+          "curated": true
         }
       ],
       "synonyms_simple": [
+        "accesscontrolruleaction",
         "act",
         "action",
-        "status",
-        "result",
-        "actions",
-        "cs3",
-        "exceptioninfo",
-        "legacyeventtype",
-        "message",
-        "policyaction",
-        "threatactiontaken",
         "action_s",
+        "actions",
         "activity",
         "activityaction",
         "activitytype",
         "actresult",
         "audit_log_event",
         "blocked",
+        "cs3",
         "cs7",
         "details",
         "detection",
         "diffs",
         "disposition",
         "edgepathingop",
-        "event_name_custom1",
         "event_name2",
         "event_name3",
         "event_name4",
         "event_name5",
         "event_name6",
+        "event_name_custom1",
         "event_result",
+        "exceptioninfo",
         "ftntfgtsslaction",
         "ftntfgtutmaction",
+        "fw_action",
         "generalciscolog",
         "json",
+        "legacyeventtype",
         "log_fields",
+        "message",
         "mitigationstatus",
         "model",
         "msg",
         "operationtype",
         "policy_action",
+        "policyaction",
         "preventativecontrol",
         "properties",
         "reason",
         "report_description",
         "resaction",
         "response",
+        "result",
         "resultstatus",
         "riskstate",
         "ruleactions",
         "sc_filter_result",
+        "security_action",
         "securityaction",
         "stat",
         "state",
+        "status",
         "themis_verdict",
+        "threatactiontaken",
         "threatprotectionaction",
-        "accesscontrolruleaction",
-        "fw_action",
-        "security_action"
+        "utmaction"
       ],
       "exampleVendors": [
         "akamai",
@@ -12885,6 +12925,7 @@
         "darktrace",
         "duo",
         "fireeye",
+        "fortinet",
         "nix",
         "sonic"
       ]
@@ -13003,6 +13044,11 @@
         {
           "synonym": "deviceexternalid",
           "count": 2
+        },
+        {
+          "synonym": "devname",
+          "count": 2,
+          "curated": true
         },
         {
           "synonym": "eventsource",
@@ -13190,23 +13236,9 @@
         }
       ],
       "synonyms_simple": [
-        "syslog_hostname",
-        "dvchost",
-        "hostname",
-        "host",
-        "name",
-        "servicename",
-        "analyzerhostname",
-        "data",
-        "device",
-        "deviceexternalid",
-        "eventsource",
-        "origin",
-        "resourceid",
-        "source",
-        "tenantname",
         "analyzed_by",
         "analyzedby",
+        "analyzerhostname",
         "assigned_to",
         "cid",
         "commcell",
@@ -13214,35 +13246,50 @@
         "computername",
         "connector",
         "cs2",
+        "data",
         "details",
         "detectordisplayname",
+        "device",
+        "deviceexternalid",
+        "devname",
         "dvc",
+        "dvchost",
+        "eventsource",
         "extendedproperties",
         "feature_name",
         "feed",
+        "host",
+        "hostname",
         "iau_componenttype",
         "kind",
         "location",
         "log",
         "machine",
         "machinename",
+        "name",
         "nodeid",
         "observerhostname1",
         "observerhostname2",
+        "origin",
         "portalname",
         "report_name",
+        "resourceid",
         "s_computername",
         "s_supplier_name",
         "scannername",
         "sensorid",
+        "servicename",
         "site",
+        "source",
         "sourceproperties",
         "sourcetype",
         "strategy",
         "sys_name",
+        "syslog_hostname",
         "system",
         "system_name",
         "team_name",
+        "tenantname",
         "type",
         "unifidevicename",
         "wafmode"
@@ -13259,7 +13306,8 @@
         "claroty",
         "code42",
         "cohesity",
-        "commvault"
+        "commvault",
+        "fortinet"
       ]
     },
     "xdm.observer.product": {
@@ -13608,6 +13656,11 @@
           "count": 2
         },
         {
+          "synonym": "devid",
+          "count": 2,
+          "curated": true
+        },
+        {
           "synonym": "provider_guid",
           "count": 2
         },
@@ -13749,16 +13802,9 @@
         }
       ],
       "synonyms_simple": [
-        "deviceexternalid",
-        "id",
-        "tenantid",
-        "agentguid",
-        "customerid",
-        "debugcontext",
-        "devicefingerprint",
-        "provider_guid",
         "abxmessageid",
         "acc",
+        "agentguid",
         "agentid",
         "api_client_id",
         "appliance",
@@ -13766,21 +13812,28 @@
         "clientzen",
         "correlationid",
         "cs3",
+        "customerid",
         "data",
+        "debugcontext",
         "details",
         "detectorid",
         "device",
         "device_ip",
         "device_uid",
+        "deviceexternalid",
+        "devicefingerprint",
         "deviceguid",
         "deviceid",
+        "devid",
         "did",
         "dvc",
         "extendedproperties",
+        "id",
         "linktodetails",
         "mdm_connector_id",
         "modelid",
         "portalkey",
+        "provider_guid",
         "qg_hostid",
         "report_id",
         "resourceid",
@@ -13788,6 +13841,7 @@
         "tags",
         "team_id",
         "tenant_id",
+        "tenantid",
         "trendmicrodstenantid",
         "wafpolicyid",
         "weblink"
@@ -18100,6 +18154,11 @@
           "count": 2
         },
         {
+          "synonym": "srcintf",
+          "count": 2,
+          "curated": true
+        },
+        {
           "synonym": "analyzermac",
           "count": 1
         },
@@ -18177,11 +18236,9 @@
         }
       ],
       "synonyms_simple": [
-        "clientip",
-        "macaddress",
-        "sourcemac",
         "analyzermac",
         "client_type",
+        "clientip",
         "clientipaddress",
         "contact_type",
         "cs3",
@@ -18192,12 +18249,15 @@
         "ftntfgttamac",
         "generalciscolog",
         "ifname",
+        "macaddress",
         "message",
         "rawmacaddress",
         "senderip",
         "smac",
+        "sourcemac",
         "src_interface",
         "srcif",
+        "srcintf",
         "userip"
       ],
       "exampleVendors": [
@@ -19741,11 +19801,20 @@
           "count": 2
         },
         {
+          "synonym": "srccountry",
+          "count": 2,
+          "curated": true
+        },
+        {
           "synonym": "actor_location",
           "count": 1
         },
         {
           "synonym": "address",
+          "count": 1
+        },
+        {
+          "synonym": "c",
           "count": 1
         },
         {
@@ -19781,6 +19850,10 @@
           "count": 1
         },
         {
+          "synonym": "fields_region_id",
+          "count": 1
+        },
+        {
           "synonym": "ftntfgtsrccountry",
           "count": 1
         },
@@ -19794,6 +19867,10 @@
         },
         {
           "synonym": "httprequest",
+          "count": 1
+        },
+        {
+          "synonym": "infobloxb1region",
           "count": 1
         },
         {
@@ -19815,50 +19892,39 @@
         {
           "synonym": "srcip_country",
           "count": 1
-        },
-        {
-          "synonym": "infobloxb1region",
-          "count": 1
-        },
-        {
-          "synonym": "c",
-          "count": 1
-        },
-        {
-          "synonym": "fields_region_id",
-          "count": 1
         }
       ],
       "synonyms_simple": [
-        "country",
-        "client",
-        "location",
-        "countrycode",
         "access_device",
-        "country_code",
-        "properties",
         "actor_location",
         "address",
+        "c",
         "ccode",
+        "client",
         "client_cc",
         "clientcountry",
         "clientcountry_s",
         "clientcountrycode",
+        "country",
+        "country_code",
+        "countrycode",
         "countryname",
         "countryorregion",
         "cs9",
+        "fields_region_id",
         "ftntfgtsrccountry",
         "geo",
         "geo_location",
         "httprequest",
+        "infobloxb1region",
+        "location",
         "locations",
         "name",
+        "properties",
         "remote",
         "src_country",
-        "srcip_country",
-        "infobloxb1region",
-        "c",
-        "fields_region_id"
+        "srccountry",
+        "srcip_country"
       ],
       "exampleVendors": [
         "1password",
@@ -22070,6 +22136,11 @@
           "count": 2
         },
         {
+          "synonym": "sentbyte",
+          "count": 2,
+          "curated": true
+        },
+        {
           "synonym": "sentbytes",
           "count": 2
         },
@@ -22103,10 +22174,6 @@
         },
         {
           "synonym": "csbytes",
-          "count": 1
-        },
-        {
-          "synonym": "duration",
           "count": 1
         },
         {
@@ -22179,10 +22246,6 @@
         }
       ],
       "synonyms_simple": [
-        "out",
-        "requestsize",
-        "cs_bytes",
-        "sentbytes",
         "averagebyterate",
         "bytes_out",
         "bytesout",
@@ -22190,14 +22253,15 @@
         "client_bytes",
         "clientrequestbytes",
         "contentsize",
+        "cs_bytes",
         "csbytes",
-        "duration",
         "event_data",
         "generalciscolog",
         "http_request_bytes",
         "log",
         "orig_bytes",
         "originalsize",
+        "out",
         "outbytes",
         "parsed_fields_description",
         "rcvd_bytes",
@@ -22205,7 +22269,10 @@
         "request_body_len",
         "request_size",
         "requestbytes_s",
+        "requestsize",
         "sent_bytes",
+        "sentbyte",
+        "sentbytes",
         "size",
         "sizebytes",
         "srcbytes"
@@ -22228,6 +22295,11 @@
     "xdm.source.sent_packets": {
       "frequency": 9,
       "synonyms": [
+        {
+          "synonym": "sentpkt",
+          "count": 2,
+          "curated": true
+        },
         {
           "synonym": "client_outbound_packets",
           "count": 1
@@ -22274,6 +22346,7 @@
         "packets_sent",
         "packetsstod",
         "sentpackets",
+        "sentpkt",
         "total_packets"
       ],
       "exampleVendors": [
@@ -25083,29 +25156,35 @@
           "count": 1
         },
         {
+          "synonym": "srcintfrole",
+          "count": 1,
+          "curated": true
+        },
+        {
           "synonym": "vmzonename",
           "count": 1
         }
       ],
       "synonyms_simple": [
-        "location",
-        "client",
-        "name",
-        "zone",
         "accesstype",
+        "client",
         "cs3",
         "cs4",
         "cs5",
         "iau_domainname",
         "iau_identitydomain",
         "inzone",
+        "location",
         "logrecordsource",
+        "name",
         "network",
         "out_if",
         "region",
         "setname",
         "spriv",
-        "vmzonename"
+        "srcintfrole",
+        "vmzonename",
+        "zone"
       ],
       "exampleVendors": [
         "armis",
@@ -25115,6 +25194,7 @@
         "claroty",
         "cyberark",
         "forcepoint",
+        "fortinet",
         "gcp",
         "infoblox",
         "okta",
@@ -29070,6 +29150,11 @@
       "frequency": 9,
       "synonyms": [
         {
+          "synonym": "dstintf",
+          "count": 2,
+          "curated": true
+        },
+        {
           "synonym": "description",
           "count": 1
         },
@@ -29137,6 +29222,7 @@
         "dmac",
         "dst_interface",
         "dstif",
+        "dstintf",
         "ftntfgtdstmac",
         "ftntfgtinvalidmac",
         "ftntfgtmasterdstmac",
@@ -30049,6 +30135,11 @@
           "count": 2
         },
         {
+          "synonym": "dstcountry",
+          "count": 2,
+          "curated": true
+        },
+        {
           "synonym": "location",
           "count": 2
         },
@@ -30066,12 +30157,13 @@
         }
       ],
       "synonyms_simple": [
+        "client_geo",
         "country",
         "destcountry",
-        "location",
-        "client_geo",
         "dst_country",
-        "ftntfgtdstcountry"
+        "dstcountry",
+        "ftntfgtdstcountry",
+        "location"
       ],
       "exampleVendors": [
         "bitsight",
@@ -34931,6 +35023,15 @@
           "count": 4
         },
         {
+          "synonym": "bytes_received",
+          "count": 2
+        },
+        {
+          "synonym": "rcvdbyte",
+          "count": 2,
+          "curated": true
+        },
+        {
           "synonym": "receivedbytes",
           "count": 2
         },
@@ -34991,7 +35092,16 @@
           "count": 1
         },
         {
+          "synonym": "rcvdbytes",
+          "count": 1,
+          "curated": true
+        },
+        {
           "synonym": "received_bytes",
+          "count": 1
+        },
+        {
+          "synonym": "recv_bytes",
           "count": 1
         },
         {
@@ -35025,22 +35135,12 @@
         {
           "synonym": "server_bytes",
           "count": 1
-        },
-        {
-          "synonym": "bytes_received",
-          "count": 2
-        },
-        {
-          "synonym": "recv_bytes",
-          "count": 1
         }
       ],
       "synonyms_simple": [
-        "responsesize",
-        "receivedbytes",
-        "sc_bytes",
         "bytes",
         "bytes_in",
+        "bytes_received",
         "bytes_sent",
         "bytesdtos",
         "bytesin",
@@ -35052,17 +35152,21 @@
         "http_response_bytes",
         "inbytes",
         "parsed_fields_description",
+        "rcvdbyte",
+        "rcvdbytes",
         "received_bytes",
+        "receivedbytes",
+        "recv_bytes",
         "resp_bytes",
         "respdatasize",
         "response_body_len",
         "response_size",
         "responsebytes_s",
+        "responsesize",
+        "sc_bytes",
         "scbytes",
         "sent_bytes",
-        "server_bytes",
-        "bytes_received",
-        "recv_bytes"
+        "server_bytes"
       ],
       "exampleVendors": [
         "akamai",
@@ -35082,6 +35186,11 @@
     "xdm.target.sent_packets": {
       "frequency": 5,
       "synonyms": [
+        {
+          "synonym": "rcvdpkt",
+          "count": 2,
+          "curated": true
+        },
         {
           "synonym": "ftntfgtrcvdpkt",
           "count": 1
@@ -35106,6 +35215,7 @@
       "synonyms_simple": [
         "ftntfgtrcvdpkt",
         "packetsdtos",
+        "rcvdpkt",
         "receivedpackets",
         "resp_pkts",
         "server_outbound_packets"
@@ -36629,6 +36739,11 @@
           "count": 1
         },
         {
+          "synonym": "dstintfrole",
+          "count": 1,
+          "curated": true
+        },
+        {
           "synonym": "environment",
           "count": 1
         },
@@ -36677,6 +36792,7 @@
         "cs4",
         "cs5",
         "cs6",
+        "dstintfrole",
         "environment",
         "environmentname",
         "event_data",
@@ -36695,6 +36811,7 @@
         "cisco",
         "claroty",
         "cloudflare",
+        "fortinet",
         "lookout",
         "microsoft",
         "msft",
@@ -36715,6 +36832,22 @@
       ],
       "exampleVendors": [
         "zscaler"
+      ]
+    },
+    "xdm.intermediate.is_nat": {
+      "frequency": 1,
+      "synonyms": [
+        {
+          "synonym": "trandisp",
+          "count": 1,
+          "curated": true
+        }
+      ],
+      "synonyms_simple": [
+        "trandisp"
+      ],
+      "exampleVendors": [
+        "fortinet"
       ]
     }
   }

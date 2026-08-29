@@ -610,5 +610,321 @@ class TestSkillMdLintCodesExist(unittest.TestCase):
         )
 
 
+class TestDocumentedSeverityMatchesEmittedSeverity(unittest.TestCase):
+    """A code's description must not contradict the severity it fires at.
+
+    This exists because ERR-030 spent several releases documented as
+    "(advisory)" while being emitted at error severity, which blocks. The
+    description is not decoration: SKILL.md sends authors to
+    `--list-codes` as the single source of truth for the code list, and
+    `--list-codes` renders these descriptions verbatim. So the bundle was
+    telling authors that a check which fails their pack would not fail
+    their pack -- the most expensive direction for a doc bug to point,
+    because it is discovered on a tenant.
+
+    The rule enforced here: no code may call itself advisory while
+    emitting at error severity, and every ERR- code must actually block.
+    """
+
+    # WARN-038 is emitted at "info" despite its WARN- prefix, deliberately:
+    # it is an implication check ("if these two fields name the same host,
+    # a companion array is useful"), and a confident wrong fix there
+    # populates a field with a plausible but wrong address. Its description
+    # says "Info-severity" in as many words, so it is self-consistent and
+    # is NOT a defect. Do not "fix" it by raising the severity.
+    _PREFIX_EXCEPTIONS = {"WARN-038": "info"}
+
+    # INFO-006 (missing cleanup stage) is documented and deliberately never
+    # emitted: a MODEL rule surfaces only xdm.* fields, so no cleanup stage
+    # is needed and flagging its absence would be noise. SKILL.md records
+    # the decision. It therefore has a description but no call site.
+    _NEVER_EMITTED = {"INFO-006"}
+
+    def _documented(self):
+        src = (bundle_root() / "scripts" / "lint_rule.py").read_text(
+            encoding="utf-8"
+        )
+        doc = src.split('"""')[1]
+        entries, cur = {}, None
+        for line in doc.split("\n"):
+            m = re.match(r"\s*((?:ERR|WARN|INFO)-\d{3})\s+(.*)", line)
+            if m:
+                cur = m.group(1)
+                entries[cur] = m.group(2)
+            elif cur and line.startswith(" " * 13):
+                entries[cur] += " " + line.strip()
+            elif not line.strip():
+                cur = None
+        return entries
+
+    def _emitted(self):
+        src = (bundle_root() / "scripts" / "lint_rule.py").read_text(
+            encoding="utf-8"
+        )
+        out = {}
+        for m in re.finditer(
+            r'_violation\(\s*\n?\s*"((?:ERR|WARN|INFO)-\d{3})"\s*,\s*\n?\s*"(\w+)"',
+            src,
+        ):
+            out.setdefault(m.group(1), set()).add(m.group(2))
+        return out
+
+    def test_no_code_calls_itself_advisory_while_blocking(self):
+        documented, emitted = self._documented(), self._emitted()
+        offenders = []
+        for code, desc in documented.items():
+            if "error" not in emitted.get(code, set()):
+                continue
+            if re.search(r"\badvisor(?:y|ily)\b", desc, re.I):
+                offenders.append(code)
+        self.assertEqual(
+            offenders,
+            [],
+            f"{offenders} describe themselves as advisory but are emitted at "
+            "error severity, which returns exit 1 and fails a release gate. "
+            "`--list-codes` renders these descriptions verbatim, so this "
+            "tells an author a blocking check will not block.",
+        )
+
+    def test_every_err_code_actually_blocks(self):
+        emitted = self._emitted()
+        wrong = {
+            code: sorted(sev)
+            for code, sev in emitted.items()
+            if code.startswith("ERR-") and sev != {"error"}
+        }
+        self.assertEqual(
+            wrong, {}, f"ERR- codes not emitted at error severity: {wrong}"
+        )
+
+    def test_prefix_matches_severity_except_where_documented(self):
+        expected = {"ERR": "error", "WARN": "warning", "INFO": "info"}
+        documented, emitted = self._documented(), self._emitted()
+        for code, sev in sorted(emitted.items()):
+            want = self._PREFIX_EXCEPTIONS.get(
+                code, expected[code.split("-")[0]]
+            )
+            with self.subTest(code=code):
+                self.assertEqual(
+                    sorted(sev), [want],
+                    f"{code} emits {sorted(sev)}, expected {want}",
+                )
+                if code in self._PREFIX_EXCEPTIONS:
+                    # An exception is only tolerable while the description
+                    # says so out loud, so a reader of --list-codes is not
+                    # misled by the prefix.
+                    self.assertRegex(
+                        documented.get(code, ""),
+                        r"(?i)info-severity",
+                        f"{code} deviates from its prefix without saying so "
+                        "in its description",
+                    )
+
+    def test_every_documented_code_is_emitted_or_listed_as_deliberate(self):
+        documented, emitted = self._documented(), self._emitted()
+        missing = set(documented) - set(emitted) - self._NEVER_EMITTED
+        self.assertEqual(
+            missing, set(),
+            f"documented but never emitted: {sorted(missing)}. Either wire "
+            "the check up or record the decision not to.",
+        )
+
+    def test_err030_specifically_says_it_blocks(self):
+        # The regression this class was written for.
+        desc = self._documented()["ERR-030"]
+        self.assertNotRegex(desc, r"(?i)\badvisor")
+        self.assertRegex(desc, r"(?i)block")
+
+
+_LINT_MENTION_RE = re.compile(r"\blint(?:er|ing|_rule)?\b", re.IGNORECASE)
+
+# The claim shapes that disown a check. parser-idioms.md carried the first
+# two of these about ERR-019 and ERR-025.
+_DISOWN_RE = re.compile(
+    r"out of scope|reviewed by eye|not enforced|does not enforce|"
+    r"cannot be checked|beyond the linter|no linter check",
+    re.IGNORECASE,
+)
+
+# A sentence asserting what the linter covers, as opposed to one naming a
+# single code in passing ("the linter flags this as WARN-039").
+_COVERAGE_RE = re.compile(r"\b(?:covers|enforces|enforced by)\b", re.IGNORECASE)
+
+
+def _fenced_stripped(text: str) -> str:
+    """Drop ``` fenced blocks: rule bodies carry periods and code names
+    that would otherwise be read as prose claims."""
+    out, fenced = [], False
+    for line in text.splitlines():
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            continue
+        if not fenced:
+            out.append(line)
+    return "\n".join(out)
+
+
+def _sentences(text: str):
+    """Sentence-split within each paragraph. The split needs a period
+    FOLLOWED BY whitespace, so ``scripts/lint_rule.py`` survives intact."""
+    for para in _fenced_stripped(text).split("\n\n"):
+        flat = " ".join(para.split())
+        for sentence in re.split(r"(?<=\.)\s+", flat):
+            if sentence.strip():
+                yield sentence.strip()
+
+
+class TestReferencesDescribeTheLinterAccurately(unittest.TestCase):
+    """The reference guard above asserts that a cited code EXISTS. That is
+    one-directional, and it is why this drifted: "ERR-019, ERR-025 ... are
+    out of scope for the standalone linter and must be reviewed by eye"
+    names two real codes, so it passed cleanly while being false. ERR-019
+    is dispatched at lint_rule.py:4493 and returns error severity.
+
+    The cost was not theoretical. The release gate began running this
+    linter and refused a pack on ERR-019 x2; an author sent to
+    parser-idioms.md by SKILL.md's own reference map would have read that
+    the check does not exist, and concluded the gate was wrong.
+
+    README.md is compared against ``code_table()`` in BOTH directions by
+    TestReadmeCodeListMatchesTheLinter. These two checks give the
+    references the same protection for the two claim shapes they actually
+    make: disowning a code, and enumerating coverage."""
+
+    # A coverage sentence naming fewer than this is describing a related
+    # group in passing, not holding a copy of the registry.
+    _ENUMERATION_FLOOR = 3
+
+    def setUp(self) -> None:
+        sys.path.insert(0, str(bundle_root() / "scripts"))
+        import lint_rule  # noqa: PLC0415
+
+        self.registry = {e["code"] for e in lint_rule.code_table()}
+        root = bundle_root()
+        self.docs = [
+            (str(path.relative_to(root)), path.read_text(encoding="utf-8"))
+            for path in sorted((root / "references").rglob("*.md"))
+        ]
+
+    def test_no_reference_disowns_a_code_the_linter_enforces(self):
+        for rel, text in self.docs:
+            for sentence in _sentences(text):
+                if not _DISOWN_RE.search(sentence):
+                    continue
+                if not _LINT_MENTION_RE.search(sentence):
+                    continue
+                disowned = sorted(_codes_on(sentence) & self.registry)
+                with self.subTest(file=rel, sentence=sentence[:80]):
+                    self.assertEqual(
+                        disowned, [],
+                        f"{rel} says the linter does not enforce "
+                        f"{disowned}, but lint_rule.py dispatches them. "
+                        "An author triaging a gate refusal against this "
+                        "sentence concludes the gate is wrong. Fix the "
+                        f"sentence: {sentence!r}",
+                    )
+
+    def test_no_reference_holds_a_partial_coverage_list(self):
+        for rel, text in self.docs:
+            for sentence in _sentences(text):
+                if not (_COVERAGE_RE.search(sentence)
+                        and _LINT_MENTION_RE.search(sentence)):
+                    continue
+                named = _codes_on(sentence)
+                if len(named & self.registry) < self._ENUMERATION_FLOOR:
+                    continue
+                missing = sorted(self.registry - named)
+                with self.subTest(file=rel, sentence=sentence[:80]):
+                    self.assertEqual(
+                        missing, [],
+                        f"{rel} states the linter's coverage and then "
+                        f"enumerates it, but the list is {len(missing)} "
+                        f"codes behind: {missing}. An unguarded copy of the "
+                        "registry is what drifted last time -- replace the "
+                        "enumeration with a pointer to "
+                        "`python3 scripts/lint_rule.py --list-codes`.",
+                    )
+
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestMandatorySetCountsInProse(unittest.TestCase):
+    """Prose that advertises a mandatory-set size must match the set.
+
+    The network set moved to 17 (+3 conditional) in 1.8.14 and five
+    places across three files went on saying "20-field"; the
+    authentication set is 15 and two places said "12-field". Nothing
+    tested them, which is the only reason they survived. Counts are
+    DERIVED from the canonical tables here, so this cannot drift again
+    in either direction.
+    """
+
+    _ROW = re.compile(r"^\|\s*`(xdm\.[a-z0-9_.]+)`\s*\|")
+    # The story word must sit close to the count, otherwise a row that
+    # merely mentions both stories ("a dual authentication+network
+    # branch. Mandatory 17-field network-story mapping") is scored twice
+    # and fails against whichever set it was not talking about.
+    _CLAIM = re.compile(
+        r"\b(\d{1,2})[- ](?:field|item)\b[^.|]{0,30}?"
+        r"\b(network|authentication)\b",
+        re.IGNORECASE,
+    )
+
+    @classmethod
+    def _mandatory_rows(cls, reference: str, start: str, stop_prefix: str) -> int:
+        """Count the backtick-quoted xdm rows in one heading's table."""
+        seen, inside = set(), False
+        for ln in read_text(reference).splitlines():
+            if ln.startswith(start):
+                inside = True
+                continue
+            if inside and ln.startswith(stop_prefix):
+                break
+            if inside:
+                m = cls._ROW.match(ln)
+                if m:
+                    seen.add(m.group(1))
+        return len(seen)
+
+    @classmethod
+    def setUpClass(cls):
+        cls.network = cls._mandatory_rows(
+            "references/network-mapping.md", "## Mandatory fields", "## "
+        )
+        cls.auth = cls._mandatory_rows(
+            "references/authentication-mapping.md", "## Mandatory fields", "## "
+        )
+
+    def test_the_canonical_tables_are_the_expected_size(self):
+        # Pins the derivation itself: if these move, the story changed
+        # and every prose claim below must be revisited deliberately.
+        self.assertEqual(self.network, 17, "network mandatory table")
+        self.assertEqual(self.auth, 15, "authentication mandatory table")
+
+    def test_no_prose_advertises_a_stale_mandatory_count(self):
+        root = bundle_root()
+        expected = {"network": self.network, "authentication": self.auth}
+        targets = sorted((root / "references").rglob("*.md")) + [root / "SKILL.md"]
+        for p in targets:
+            rel = str(p.relative_to(root))
+            for line_no, line in enumerate(
+                p.read_text(encoding="utf-8").splitlines(), start=1
+            ):
+                for m in self._CLAIM.finditer(line):
+                    claimed = int(m.group(1))
+                    story = m.group(2).lower()
+                    # 3 is the conditional HTTP subset, not the set.
+                    if claimed == 3:
+                        continue
+                    size = expected[story]
+                    with self.subTest(file=rel, line=line_no, story=story):
+                        self.assertEqual(
+                            claimed,
+                            size,
+                            f"{rel}:{line_no} advertises a "
+                            f"{claimed}-field {story} mandatory set; "
+                            f"the canonical table has {size}",
+                        )

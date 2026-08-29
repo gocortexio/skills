@@ -33,6 +33,406 @@
   "bundle": "cortex-platform-xdm-author",
   "versions": [
     {
+      "version": "2.3.1",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.source.port",
+          "note": "Named only as the subject of the ERR-015 example that prompted a documentation review: an integer-typed field assigned to_number() without the to_integer() wrap. Neither the check nor the field moved in this release -- ERR-015 fires as it did in 2.3.0, the field is still integer-typed, still assignable, and still requires to_integer(to_number(...)). Values and populations are both comparable across this version."
+        }
+      ]
+    },
+    {
+      "version": "2.3.0",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.source.identity.upn",
+          "note": "Named only as the subject of a lint severity change: the mirror check moved from INFO-014 (info) to WARN-057 (warning), and a same-stage read of the user twin now blocks as ERR-024. The FIELD is unchanged in meaning, legality and required-ness -- still assignable, still recommended rather than mandatory, still absent from the authentication mandatory set. Values and populations are both comparable across this version."
+        },
+        {
+          "field": "xdm.source.identity.identity_type",
+          "note": "Named only as the subject of a lint severity change: the mirror check moved from INFO-014 (info) to WARN-057 (warning), and a same-stage read of the user twin now blocks as ERR-024. The FIELD is unchanged in meaning, legality and required-ness -- still assignable, still recommended rather than mandatory, still absent from the authentication mandatory set. Values and populations are both comparable across this version."
+        },
+        {
+          "field": "xdm.source.identity.user_type",
+          "note": "Named only as the subject of a lint severity change: the mirror check moved from INFO-014 (info) to WARN-057 (warning), and a same-stage read of the user twin now blocks as ERR-024. The FIELD is unchanged in meaning, legality and required-ness -- still assignable, still recommended rather than mandatory, still absent from the authentication mandatory set. Values and populations are both comparable across this version."
+        },
+        {
+          "field": "xdm.source.identity.username",
+          "note": "Named only as the subject of a lint severity change: the mirror check moved from INFO-014 (info) to WARN-057 (warning), and a same-stage read of the user twin now blocks as ERR-024. The FIELD is unchanged in meaning, legality and required-ness -- still assignable, still recommended rather than mandatory, still absent from the authentication mandatory set. Values and populations are both comparable across this version."
+        },
+        {
+          "field": "xdm.source.identity.identifier",
+          "note": "Named only as the subject of a lint severity change: the mirror check moved from INFO-014 (info) to WARN-057 (warning), and a same-stage read of the user twin now blocks as ERR-024. The FIELD is unchanged in meaning, legality and required-ness -- still assignable, still recommended rather than mandatory, still absent from the authentication mandatory set. Values and populations are both comparable across this version."
+        },
+        {
+          "field": "xdm.source.identity.domain",
+          "note": "Named only as the subject of a lint severity change: the mirror check moved from INFO-014 (info) to WARN-057 (warning), and a same-stage read of the user twin now blocks as ERR-024. The FIELD is unchanged in meaning, legality and required-ness -- still assignable, still recommended rather than mandatory, still absent from the authentication mandatory set. Values and populations are both comparable across this version."
+        },
+        {
+          "field": "xdm.target.identity.upn",
+          "note": "Named only as the subject of a lint severity change: the mirror check moved from INFO-014 (info) to WARN-057 (warning), and a same-stage read of the user twin now blocks as ERR-024. The FIELD is unchanged in meaning, legality and required-ness -- still assignable, still recommended rather than mandatory, still absent from the authentication mandatory set. Values and populations are both comparable across this version."
+        },
+        {
+          "field": "xdm.target.identity.identity_type",
+          "note": "Named only as the subject of a lint severity change: the mirror check moved from INFO-014 (info) to WARN-057 (warning), and a same-stage read of the user twin now blocks as ERR-024. The FIELD is unchanged in meaning, legality and required-ness -- still assignable, still recommended rather than mandatory, still absent from the authentication mandatory set. Values and populations are both comparable across this version."
+        },
+        {
+          "field": "xdm.target.identity.user_type",
+          "note": "Named only as the subject of a lint severity change: the mirror check moved from INFO-014 (info) to WARN-057 (warning), and a same-stage read of the user twin now blocks as ERR-024. The FIELD is unchanged in meaning, legality and required-ness -- still assignable, still recommended rather than mandatory, still absent from the authentication mandatory set. Values and populations are both comparable across this version."
+        },
+        {
+          "field": "xdm.target.identity.username",
+          "note": "Named only as the subject of a lint severity change: the mirror check moved from INFO-014 (info) to WARN-057 (warning), and a same-stage read of the user twin now blocks as ERR-024. The FIELD is unchanged in meaning, legality and required-ness -- still assignable, still recommended rather than mandatory, still absent from the authentication mandatory set. Values and populations are both comparable across this version."
+        },
+        {
+          "field": "xdm.target.identity.identifier",
+          "note": "Named only as the subject of a lint severity change: the mirror check moved from INFO-014 (info) to WARN-057 (warning), and a same-stage read of the user twin now blocks as ERR-024. The FIELD is unchanged in meaning, legality and required-ness -- still assignable, still recommended rather than mandatory, still absent from the authentication mandatory set. Values and populations are both comparable across this version."
+        },
+        {
+          "field": "xdm.target.identity.domain",
+          "note": "Named only as the subject of a lint severity change: the mirror check moved from INFO-014 (info) to WARN-057 (warning), and a same-stage read of the user twin now blocks as ERR-024. The FIELD is unchanged in meaning, legality and required-ness -- still assignable, still recommended rather than mandatory, still absent from the authentication mandatory set. Values and populations are both comparable across this version."
+        },
+        {
+          "field": "xdm.intermediate.identity.upn",
+          "note": "Named only as the subject of a lint severity change: the mirror check moved from INFO-014 (info) to WARN-057 (warning), and a same-stage read of the user twin now blocks as ERR-024. The FIELD is unchanged in meaning, legality and required-ness -- still assignable, still recommended rather than mandatory, still absent from the authentication mandatory set. Values and populations are both comparable across this version."
+        },
+        {
+          "field": "xdm.intermediate.identity.identity_type",
+          "note": "Named only as the subject of a lint severity change: the mirror check moved from INFO-014 (info) to WARN-057 (warning), and a same-stage read of the user twin now blocks as ERR-024. The FIELD is unchanged in meaning, legality and required-ness -- still assignable, still recommended rather than mandatory, still absent from the authentication mandatory set. Values and populations are both comparable across this version."
+        },
+        {
+          "field": "xdm.intermediate.identity.user_type",
+          "note": "Named only as the subject of a lint severity change: the mirror check moved from INFO-014 (info) to WARN-057 (warning), and a same-stage read of the user twin now blocks as ERR-024. The FIELD is unchanged in meaning, legality and required-ness -- still assignable, still recommended rather than mandatory, still absent from the authentication mandatory set. Values and populations are both comparable across this version."
+        },
+        {
+          "field": "xdm.intermediate.identity.username",
+          "note": "Named only as the subject of a lint severity change: the mirror check moved from INFO-014 (info) to WARN-057 (warning), and a same-stage read of the user twin now blocks as ERR-024. The FIELD is unchanged in meaning, legality and required-ness -- still assignable, still recommended rather than mandatory, still absent from the authentication mandatory set. Values and populations are both comparable across this version."
+        },
+        {
+          "field": "xdm.intermediate.identity.identifier",
+          "note": "Named only as the subject of a lint severity change: the mirror check moved from INFO-014 (info) to WARN-057 (warning), and a same-stage read of the user twin now blocks as ERR-024. The FIELD is unchanged in meaning, legality and required-ness -- still assignable, still recommended rather than mandatory, still absent from the authentication mandatory set. Values and populations are both comparable across this version."
+        },
+        {
+          "field": "xdm.intermediate.identity.domain",
+          "note": "Named only as the subject of a lint severity change: the mirror check moved from INFO-014 (info) to WARN-057 (warning), and a same-stage read of the user twin now blocks as ERR-024. The FIELD is unchanged in meaning, legality and required-ness -- still assignable, still recommended rather than mandatory, still absent from the authentication mandatory set. Values and populations are both comparable across this version."
+        },
+        {
+          "field": "xdm.source.user.upn",
+          "note": "Named only as the mirror twin in the ERR-024 example. Unchanged in every respect; the identity field is still appended beside it and never replaces it."
+        },
+        {
+          "field": "xdm.source.user.identity_type",
+          "note": "Named only as the mirror twin in the ERR-024 example. Unchanged in every respect; the identity field is still appended beside it and never replaces it."
+        },
+        {
+          "field": "xdm.source.user.user_type",
+          "note": "Named only as the mirror twin in the ERR-024 example. Unchanged in every respect; the identity field is still appended beside it and never replaces it."
+        },
+        {
+          "field": "xdm.source.user.username",
+          "note": "Named only as the mirror twin in the ERR-024 example. Unchanged in every respect; the identity field is still appended beside it and never replaces it."
+        },
+        {
+          "field": "xdm.source.user.identifier",
+          "note": "Named only as the mirror twin in the ERR-024 example. Unchanged in every respect; the identity field is still appended beside it and never replaces it."
+        },
+        {
+          "field": "xdm.source.user.domain",
+          "note": "Named only as the mirror twin in the ERR-024 example. Unchanged in every respect; the identity field is still appended beside it and never replaces it."
+        },
+        {
+          "field": "xdm.target.user.upn",
+          "note": "Named only as the mirror twin in the ERR-024 example. Unchanged in every respect; the identity field is still appended beside it and never replaces it."
+        },
+        {
+          "field": "xdm.target.user.identity_type",
+          "note": "Named only as the mirror twin in the ERR-024 example. Unchanged in every respect; the identity field is still appended beside it and never replaces it."
+        },
+        {
+          "field": "xdm.target.user.user_type",
+          "note": "Named only as the mirror twin in the ERR-024 example. Unchanged in every respect; the identity field is still appended beside it and never replaces it."
+        },
+        {
+          "field": "xdm.target.user.username",
+          "note": "Named only as the mirror twin in the ERR-024 example. Unchanged in every respect; the identity field is still appended beside it and never replaces it."
+        },
+        {
+          "field": "xdm.target.user.identifier",
+          "note": "Named only as the mirror twin in the ERR-024 example. Unchanged in every respect; the identity field is still appended beside it and never replaces it."
+        },
+        {
+          "field": "xdm.target.user.domain",
+          "note": "Named only as the mirror twin in the ERR-024 example. Unchanged in every respect; the identity field is still appended beside it and never replaces it."
+        },
+        {
+          "field": "xdm.intermediate.user.upn",
+          "note": "Named only as the mirror twin in the ERR-024 example. Unchanged in every respect; the identity field is still appended beside it and never replaces it."
+        },
+        {
+          "field": "xdm.intermediate.user.identity_type",
+          "note": "Named only as the mirror twin in the ERR-024 example. Unchanged in every respect; the identity field is still appended beside it and never replaces it."
+        },
+        {
+          "field": "xdm.intermediate.user.user_type",
+          "note": "Named only as the mirror twin in the ERR-024 example. Unchanged in every respect; the identity field is still appended beside it and never replaces it."
+        },
+        {
+          "field": "xdm.intermediate.user.username",
+          "note": "Named only as the mirror twin in the ERR-024 example. Unchanged in every respect; the identity field is still appended beside it and never replaces it."
+        },
+        {
+          "field": "xdm.intermediate.user.identifier",
+          "note": "Named only as the mirror twin in the ERR-024 example. Unchanged in every respect; the identity field is still appended beside it and never replaces it."
+        },
+        {
+          "field": "xdm.intermediate.user.domain",
+          "note": "Named only as the mirror twin in the ERR-024 example. Unchanged in every respect; the identity field is still appended beside it and never replaces it."
+        }
+      ]
+    },
+    {
+      "version": "2.2.1",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "2.2.0",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [
+        {
+          "field": "xdm.source.identity.upn",
+          "change": "added",
+          "detail": "Newly assignable and newly RECOMMENDED as the identity mirror of xdm.source.user.upn, which it is written BESIDE and never instead of. Required-ness did NOT become mandatory: the authentication mandatory set stays at fifteen and WARN-042 does not fire on this field's absence. No existing value changes, so values remain comparable across this version; the POPULATION rises as rules adopt the mirror, so do not compare counts. Admitted on vendor-documentation evidence; tenant verification is commissioned and had not returned at release."
+        },
+        {
+          "field": "xdm.source.identity.identity_type",
+          "change": "added",
+          "detail": "Newly assignable and newly RECOMMENDED as the identity mirror of xdm.source.user.identity_type, which it is written BESIDE and never instead of. Required-ness did NOT become mandatory: the authentication mandatory set stays at fifteen and WARN-042 does not fire on this field's absence. No existing value changes, so values remain comparable across this version; the POPULATION rises as rules adopt the mirror, so do not compare counts. Admitted on vendor-documentation evidence; tenant verification is commissioned and had not returned at release."
+        },
+        {
+          "field": "xdm.source.identity.user_type",
+          "change": "added",
+          "detail": "Newly assignable and newly RECOMMENDED as the identity mirror of xdm.source.user.user_type, which it is written BESIDE and never instead of. Required-ness did NOT become mandatory: the authentication mandatory set stays at fifteen and WARN-042 does not fire on this field's absence. No existing value changes, so values remain comparable across this version; the POPULATION rises as rules adopt the mirror, so do not compare counts. Admitted on vendor-documentation evidence; tenant verification is commissioned and had not returned at release."
+        },
+        {
+          "field": "xdm.source.identity.username",
+          "change": "added",
+          "detail": "Newly assignable and newly RECOMMENDED as the identity mirror of xdm.source.user.username, which it is written BESIDE and never instead of. Required-ness did NOT become mandatory: the authentication mandatory set stays at fifteen and WARN-042 does not fire on this field's absence. No existing value changes, so values remain comparable across this version; the POPULATION rises as rules adopt the mirror, so do not compare counts. Admitted on vendor-documentation evidence; tenant verification is commissioned and had not returned at release."
+        },
+        {
+          "field": "xdm.source.identity.identifier",
+          "change": "added",
+          "detail": "Newly assignable and newly RECOMMENDED as the identity mirror of xdm.source.user.identifier, which it is written BESIDE and never instead of. Required-ness did NOT become mandatory: the authentication mandatory set stays at fifteen and WARN-042 does not fire on this field's absence. No existing value changes, so values remain comparable across this version; the POPULATION rises as rules adopt the mirror, so do not compare counts. Admitted on vendor-documentation evidence; tenant verification is commissioned and had not returned at release."
+        },
+        {
+          "field": "xdm.source.identity.domain",
+          "change": "added",
+          "detail": "Newly assignable and newly RECOMMENDED as the identity mirror of xdm.source.user.domain, which it is written BESIDE and never instead of. Required-ness did NOT become mandatory: the authentication mandatory set stays at fifteen and WARN-042 does not fire on this field's absence. No existing value changes, so values remain comparable across this version; the POPULATION rises as rules adopt the mirror, so do not compare counts. Admitted on vendor-documentation evidence; tenant verification is commissioned and had not returned at release."
+        },
+        {
+          "field": "xdm.target.identity.upn",
+          "change": "added",
+          "detail": "Newly assignable and newly RECOMMENDED as the identity mirror of xdm.target.user.upn, which it is written BESIDE and never instead of. Required-ness did NOT become mandatory: the authentication mandatory set stays at fifteen and WARN-042 does not fire on this field's absence. No existing value changes, so values remain comparable across this version; the POPULATION rises as rules adopt the mirror, so do not compare counts. Admitted on vendor-documentation evidence; tenant verification is commissioned and had not returned at release."
+        },
+        {
+          "field": "xdm.target.identity.identity_type",
+          "change": "added",
+          "detail": "Newly assignable and newly RECOMMENDED as the identity mirror of xdm.target.user.identity_type, which it is written BESIDE and never instead of. Required-ness did NOT become mandatory: the authentication mandatory set stays at fifteen and WARN-042 does not fire on this field's absence. No existing value changes, so values remain comparable across this version; the POPULATION rises as rules adopt the mirror, so do not compare counts. Admitted on vendor-documentation evidence; tenant verification is commissioned and had not returned at release."
+        },
+        {
+          "field": "xdm.target.identity.user_type",
+          "change": "added",
+          "detail": "Newly assignable and newly RECOMMENDED as the identity mirror of xdm.target.user.user_type, which it is written BESIDE and never instead of. Required-ness did NOT become mandatory: the authentication mandatory set stays at fifteen and WARN-042 does not fire on this field's absence. No existing value changes, so values remain comparable across this version; the POPULATION rises as rules adopt the mirror, so do not compare counts. Admitted on vendor-documentation evidence; tenant verification is commissioned and had not returned at release."
+        },
+        {
+          "field": "xdm.target.identity.username",
+          "change": "added",
+          "detail": "Newly assignable and newly RECOMMENDED as the identity mirror of xdm.target.user.username, which it is written BESIDE and never instead of. Required-ness did NOT become mandatory: the authentication mandatory set stays at fifteen and WARN-042 does not fire on this field's absence. No existing value changes, so values remain comparable across this version; the POPULATION rises as rules adopt the mirror, so do not compare counts. Admitted on vendor-documentation evidence; tenant verification is commissioned and had not returned at release."
+        },
+        {
+          "field": "xdm.target.identity.identifier",
+          "change": "added",
+          "detail": "Newly assignable and newly RECOMMENDED as the identity mirror of xdm.target.user.identifier, which it is written BESIDE and never instead of. Required-ness did NOT become mandatory: the authentication mandatory set stays at fifteen and WARN-042 does not fire on this field's absence. No existing value changes, so values remain comparable across this version; the POPULATION rises as rules adopt the mirror, so do not compare counts. Admitted on vendor-documentation evidence; tenant verification is commissioned and had not returned at release."
+        },
+        {
+          "field": "xdm.target.identity.domain",
+          "change": "added",
+          "detail": "Newly assignable and newly RECOMMENDED as the identity mirror of xdm.target.user.domain, which it is written BESIDE and never instead of. Required-ness did NOT become mandatory: the authentication mandatory set stays at fifteen and WARN-042 does not fire on this field's absence. No existing value changes, so values remain comparable across this version; the POPULATION rises as rules adopt the mirror, so do not compare counts. Admitted on vendor-documentation evidence; tenant verification is commissioned and had not returned at release."
+        },
+        {
+          "field": "xdm.intermediate.identity.upn",
+          "change": "added",
+          "detail": "Newly assignable and newly RECOMMENDED as the identity mirror of xdm.intermediate.user.upn, which it is written BESIDE and never instead of. Required-ness did NOT become mandatory: the authentication mandatory set stays at fifteen and WARN-042 does not fire on this field's absence. No existing value changes, so values remain comparable across this version; the POPULATION rises as rules adopt the mirror, so do not compare counts. Admitted on vendor-documentation evidence; tenant verification is commissioned and had not returned at release."
+        },
+        {
+          "field": "xdm.intermediate.identity.identity_type",
+          "change": "added",
+          "detail": "Newly assignable and newly RECOMMENDED as the identity mirror of xdm.intermediate.user.identity_type, which it is written BESIDE and never instead of. Required-ness did NOT become mandatory: the authentication mandatory set stays at fifteen and WARN-042 does not fire on this field's absence. No existing value changes, so values remain comparable across this version; the POPULATION rises as rules adopt the mirror, so do not compare counts. Admitted on vendor-documentation evidence; tenant verification is commissioned and had not returned at release."
+        },
+        {
+          "field": "xdm.intermediate.identity.user_type",
+          "change": "added",
+          "detail": "Newly assignable and newly RECOMMENDED as the identity mirror of xdm.intermediate.user.user_type, which it is written BESIDE and never instead of. Required-ness did NOT become mandatory: the authentication mandatory set stays at fifteen and WARN-042 does not fire on this field's absence. No existing value changes, so values remain comparable across this version; the POPULATION rises as rules adopt the mirror, so do not compare counts. Admitted on vendor-documentation evidence; tenant verification is commissioned and had not returned at release."
+        },
+        {
+          "field": "xdm.intermediate.identity.username",
+          "change": "added",
+          "detail": "Newly assignable and newly RECOMMENDED as the identity mirror of xdm.intermediate.user.username, which it is written BESIDE and never instead of. Required-ness did NOT become mandatory: the authentication mandatory set stays at fifteen and WARN-042 does not fire on this field's absence. No existing value changes, so values remain comparable across this version; the POPULATION rises as rules adopt the mirror, so do not compare counts. Admitted on vendor-documentation evidence; tenant verification is commissioned and had not returned at release."
+        },
+        {
+          "field": "xdm.intermediate.identity.identifier",
+          "change": "added",
+          "detail": "Newly assignable and newly RECOMMENDED as the identity mirror of xdm.intermediate.user.identifier, which it is written BESIDE and never instead of. Required-ness did NOT become mandatory: the authentication mandatory set stays at fifteen and WARN-042 does not fire on this field's absence. No existing value changes, so values remain comparable across this version; the POPULATION rises as rules adopt the mirror, so do not compare counts. Admitted on vendor-documentation evidence; tenant verification is commissioned and had not returned at release."
+        },
+        {
+          "field": "xdm.intermediate.identity.domain",
+          "change": "added",
+          "detail": "Newly assignable and newly RECOMMENDED as the identity mirror of xdm.intermediate.user.domain, which it is written BESIDE and never instead of. Required-ness did NOT become mandatory: the authentication mandatory set stays at fifteen and WARN-042 does not fire on this field's absence. No existing value changes, so values remain comparable across this version; the POPULATION rises as rules adopt the mirror, so do not compare counts. Admitted on vendor-documentation evidence; tenant verification is commissioned and had not returned at release."
+        }
+      ],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.source.user.upn",
+          "note": "Named only as the mirror source. Unchanged in meaning, legality and required-ness -- the identity twin is APPENDED beside it and this field is never removed, renamed or rewritten. Its mandatory-set membership, where it has one, is untouched."
+        },
+        {
+          "field": "xdm.source.user.identity_type",
+          "note": "Named only as the mirror source. Unchanged in meaning, legality and required-ness -- the identity twin is APPENDED beside it and this field is never removed, renamed or rewritten. Its mandatory-set membership, where it has one, is untouched."
+        },
+        {
+          "field": "xdm.source.user.user_type",
+          "note": "Named only as the mirror source. Unchanged in meaning, legality and required-ness -- the identity twin is APPENDED beside it and this field is never removed, renamed or rewritten. Its mandatory-set membership, where it has one, is untouched."
+        },
+        {
+          "field": "xdm.source.user.username",
+          "note": "Named only as the mirror source. Unchanged in meaning, legality and required-ness -- the identity twin is APPENDED beside it and this field is never removed, renamed or rewritten. Its mandatory-set membership, where it has one, is untouched."
+        },
+        {
+          "field": "xdm.source.user.identifier",
+          "note": "Named only as the mirror source. Unchanged in meaning, legality and required-ness -- the identity twin is APPENDED beside it and this field is never removed, renamed or rewritten. Its mandatory-set membership, where it has one, is untouched."
+        },
+        {
+          "field": "xdm.source.user.domain",
+          "note": "Named only as the mirror source. Unchanged in meaning, legality and required-ness -- the identity twin is APPENDED beside it and this field is never removed, renamed or rewritten. Its mandatory-set membership, where it has one, is untouched."
+        },
+        {
+          "field": "xdm.target.user.upn",
+          "note": "Named only as the mirror source. Unchanged in meaning, legality and required-ness -- the identity twin is APPENDED beside it and this field is never removed, renamed or rewritten. Its mandatory-set membership, where it has one, is untouched."
+        },
+        {
+          "field": "xdm.target.user.identity_type",
+          "note": "Named only as the mirror source. Unchanged in meaning, legality and required-ness -- the identity twin is APPENDED beside it and this field is never removed, renamed or rewritten. Its mandatory-set membership, where it has one, is untouched."
+        },
+        {
+          "field": "xdm.target.user.user_type",
+          "note": "Named only as the mirror source. Unchanged in meaning, legality and required-ness -- the identity twin is APPENDED beside it and this field is never removed, renamed or rewritten. Its mandatory-set membership, where it has one, is untouched."
+        },
+        {
+          "field": "xdm.target.user.username",
+          "note": "Named only as the mirror source. Unchanged in meaning, legality and required-ness -- the identity twin is APPENDED beside it and this field is never removed, renamed or rewritten. Its mandatory-set membership, where it has one, is untouched."
+        },
+        {
+          "field": "xdm.target.user.identifier",
+          "note": "Named only as the mirror source. Unchanged in meaning, legality and required-ness -- the identity twin is APPENDED beside it and this field is never removed, renamed or rewritten. Its mandatory-set membership, where it has one, is untouched."
+        },
+        {
+          "field": "xdm.target.user.domain",
+          "note": "Named only as the mirror source. Unchanged in meaning, legality and required-ness -- the identity twin is APPENDED beside it and this field is never removed, renamed or rewritten. Its mandatory-set membership, where it has one, is untouched."
+        },
+        {
+          "field": "xdm.intermediate.user.upn",
+          "note": "Named only as the mirror source. Unchanged in meaning, legality and required-ness -- the identity twin is APPENDED beside it and this field is never removed, renamed or rewritten. Its mandatory-set membership, where it has one, is untouched."
+        },
+        {
+          "field": "xdm.intermediate.user.identity_type",
+          "note": "Named only as the mirror source. Unchanged in meaning, legality and required-ness -- the identity twin is APPENDED beside it and this field is never removed, renamed or rewritten. Its mandatory-set membership, where it has one, is untouched."
+        },
+        {
+          "field": "xdm.intermediate.user.user_type",
+          "note": "Named only as the mirror source. Unchanged in meaning, legality and required-ness -- the identity twin is APPENDED beside it and this field is never removed, renamed or rewritten. Its mandatory-set membership, where it has one, is untouched."
+        },
+        {
+          "field": "xdm.intermediate.user.username",
+          "note": "Named only as the mirror source. Unchanged in meaning, legality and required-ness -- the identity twin is APPENDED beside it and this field is never removed, renamed or rewritten. Its mandatory-set membership, where it has one, is untouched."
+        },
+        {
+          "field": "xdm.intermediate.user.identifier",
+          "note": "Named only as the mirror source. Unchanged in meaning, legality and required-ness -- the identity twin is APPENDED beside it and this field is never removed, renamed or rewritten. Its mandatory-set membership, where it has one, is untouched."
+        },
+        {
+          "field": "xdm.intermediate.user.domain",
+          "note": "Named only as the mirror source. Unchanged in meaning, legality and required-ness -- the identity twin is APPENDED beside it and this field is never removed, renamed or rewritten. Its mandatory-set membership, where it has one, is untouched."
+        }
+      ]
+    },
+    {
+      "version": "2.1.4",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.target.resource.name",
+          "note": "Subject of a candidate lint check that was built, measured and REJECTED before release; no check ships. The field was already mandatory for the authentication story as of 1.8.23 and its meaning, legality and required-ness are all unchanged. Values are comparable across this version."
+        },
+        {
+          "field": "xdm.source.user.upn",
+          "note": "Named as the false positive that ended the candidate: its prescribed UPN shape guard if(tmp_user != null, concat(...)) is a two-argument presence test, which the candidate misread as a record-class gate. Nothing about this field changes."
+        },
+        {
+          "field": "xdm.event.type",
+          "note": "Named as the source of most of the candidate's false fires -- classifier if-chains, not outcome chains. Correcting an earlier draft of the entry. Nothing about this field changes."
+        },
+        {
+          "field": "xdm.event.outcome",
+          "note": "Named ONLY to correct an earlier draft of this entry that wrongly blamed its if-chains for the false fires. Read this as a retraction, not a finding. Nothing about this field changes."
+        },
+        {
+          "field": "xdm.target.ipv4",
+          "note": "Named to restate an existing convention the entry warns against 'fixing': the empty-string pad remains prescribed and is NOT a defect. Unchanged."
+        },
+        {
+          "field": "xdm.target.port",
+          "note": "As xdm.target.ipv4: the to_integer(0) pad remains prescribed and unchanged."
+        },
+        {
+          "field": "xdm.source.port",
+          "note": "As xdm.target.ipv4: the to_integer(0) pad remains prescribed and unchanged."
+        },
+        {
+          "field": "xdm.network.ip_protocol",
+          "note": "Named because a peer session also mistook its prescribed IP_PROTOCOL_IP pad for a defect. The pad remains prescribed; nothing about this field changes."
+        }
+      ]
+    },
+    {
+      "version": "2.1.3",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.target.url",
+          "note": "Named only as the CONTROL probe in the config bisection, the one that proves the XDM field innocent: the same extracted value assigned to it from a differently-named column installed, while the pack failed when a raw column called config was read without backticks. Read it as evidence that this field is NOT gated. This release changes a lint check and no field: meaning, legality and required-ness are all unchanged."
+        }
+      ]
+    },
+    {
       "version": "2.1.2",
       "complete": true,
       "meaning_changed": [],
@@ -651,6 +1051,80 @@
       "mandatory_changed": [],
       "banned": [],
       "mentioned_only": []
+    },
+    {
+      "version": "2.4.0",
+      "complete": true,
+      "meaning_changed": [
+        {
+          "field": "xdm.source.host.device_id",
+          "was": "in the FortiGate worked example, the OBSERVING appliance's serial (devid)",
+          "now": "the client's device id, or the documented \"\" placeholder when the record carries none -- the appliance identity moves to xdm.observer.unique_identifier",
+          "migration": "A FortiGate rule authored from example 07 under 2.3.1 or earlier put the firewall's own serial in this field, so every flow through one appliance shared a source device id. Values are NOT comparable across this version for any pack that followed that example: re-read the appliance identity from xdm.observer.unique_identifier and expect this field to be empty on FortiGate traffic. The field's SCHEMA meaning never changed; the shipped guidance was wrong and is corrected here."
+        },
+        {
+          "field": "xdm.event.outcome",
+          "was": "in the FortiGate worked example, OUTCOME_FAILED for every action other than accept",
+          "now": "OUTCOME_SUCCESS for the session-completion verbs (close, timeout, server-rst, client-rst) and OUTCOME_FAILED only for deny and ip-conn",
+          "migration": "The old `tmp_action != null -> FAILED` fallback mapped an ordinary completed session (close) and an ordinary peer refusal (server-rst) to FAILED, which are the two commonest actions on a real traffic feed. Outcome on a flow describes whether the FIREWALL permitted the session, not whether the application succeeded. Counts of failed connections from a pack following the old example are inflated and are NOT comparable across this version."
+        }
+      ],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.observer.unique_identifier",
+          "note": "Newly the documented home for a firewall's own serial (FortiGate devid), and newly reachable from lookup_anchor.py. The field's meaning did not move and no existing value changes; the POPULATION rises as FortiGate rules adopt it, so do not compare counts across this version."
+        },
+        {
+          "field": "xdm.source.sent_bytes",
+          "note": "Gained the FortiGate-native synonym `sentbyte` and lost the corpus artefact `duration`, which had it as a second-ranked candidate. Ranking only: the field's meaning, type and required-ness are unchanged and values stay comparable."
+        },
+        {
+          "field": "xdm.target.sent_bytes",
+          "note": "Gained the FortiGate-native synonyms `rcvdbyte` / `rcvdbytes`. Ranking only; values stay comparable."
+        },
+        {
+          "field": "xdm.event.duration",
+          "note": "Lost the corpus artefact synonym `time`, which had ranked it top for a bare clock reading. A `time=14:16:41` now resolves to no candidate, which is correct -- the event time belongs in the dataset's _time, not an xdm path. Ranking only; values stay comparable."
+        },
+        {
+          "field": "xdm.intermediate.is_nat",
+          "note": "Newly present in the anchor index (seeded from FortiGate `trandisp`); it was already in the XDM schema. No value or meaning change."
+        },
+        {
+          "field": "xdm.network.http.http_header.header",
+          "note": "No longer padded by the FortiGate syslog worked example, which claimed an HTTP layer on a plain traffic line that has none. The all-or-nothing conditional rule is unchanged and the field is unchanged; a pack following the old example carried an empty string where it should have carried nothing. POPULATION falls on FortiGate traffic datasets; values elsewhere stay comparable."
+        },
+        {
+          "field": "xdm.network.http.http_header.value",
+          "note": "As for xdm.network.http.http_header.header in this release: dropped from the FortiGate syslog example's non-HTTP traffic branch. Field unchanged, population falls on that dataset only."
+        },
+        {
+          "field": "xdm.network.http.url_category",
+          "note": "Dropped from the FortiGate syslog example's non-HTTP branch (it had padded URL_CATEGORY_UNKNOWN with no catdesc and no URL present), and gained the FortiGate-native synonym `catdesc` in the anchor index. The JSON branch, which does map catdesc, is unchanged. Field meaning unchanged; values comparable."
+        },
+        {
+          "field": "xdm.network.ip_protocol",
+          "note": "The FortiGate syslog example now keys its if-chain on the IANA protocol NUMBER, because native FortiOS emits proto=6 rather than proto=tcp and the old name-only chain fell through to IP_PROTOCOL_IP on every record. The field, its constant group and its meaning are unchanged; values become CORRECT where they were previously the neutral default, so counts of IP_PROTOCOL_IP from a pack following the old example are inflated."
+        },
+        {
+          "field": "xdm.network.protocol_layers",
+          "note": "Same cause as xdm.network.ip_protocol in this release: the example derived the layer with uppercase(tmp_proto), which wrote the literal \"6\" as a protocol layer on native FortiOS. Now mapped explicitly. Field unchanged; values corrected on FortiGate traffic datasets only."
+        },
+        {
+          "field": "xdm.source.sent_packets",
+          "note": "Gained the FortiGate-native synonym `sentpkt`. Ranking only; meaning, type and values all unchanged."
+        },
+        {
+          "field": "xdm.target.sent_packets",
+          "note": "Gained the FortiGate-native synonym `rcvdpkt`. Ranking only; meaning, type and values all unchanged."
+        },
+        {
+          "field": "xdm.target.host.device_id",
+          "note": "Named only to record that the FortiGate worked example mapped the appliance serial (devid) to BOTH xdm.source.host.device_id and, in its VPN branch, to this field -- the same value on both ends of one flow. The VPN branch now takes the observer path like the others. This field's meaning, type and required-ness are unchanged; values fall to the documented placeholder on FortiGate datasets that followed the old example."
+        }
+      ]
     }
   ]
 }

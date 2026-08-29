@@ -283,15 +283,27 @@ The escape is a BACKTICK, and it is the established idiom rather than a workarou
 | alter xdm.event.tags = arraycreate(`tag`)
 ```
 
-Which names qualify was derived from that corpus rather than from how SQL-ish a word looks, and the guess is a bad guide. Reserved: `view` and `tag` (both confirmed by live-tenant bisection) plus `target`, `fields`, `in`, `transaction`, `table` and `filter` (never read bare in any shipped rule).
+Which names qualify was derived from that corpus rather than from how SQL-ish a word looks, and the guess is a bad guide. Reserved: `view`, `tag` and `config` (all three confirmed by live-tenant bisection) plus `target`, `fields`, `in`, `transaction`, `table` and `filter` (never read bare in any shipped rule).
 
 `in` was held out of the check until 1.9.0, on the reasoning that it is also the membership operator and flagging it would fire on every `action in (...)`. That was true of a cruder check and is false of this one, which measurement settles: the read patterns match only in VALUE position -- after `=`, `(` or `,` -- and the operator never appears there, because it follows an identifier. Re-measured against the corpus exactly as the check runs, with strings and comments stripped: 570 membership-operator uses, ZERO matched, against 9 backticked reads the check correctly accepts.
 
 Its pair `out` is NOT reserved, and must not be added on symmetry. `out` arrives beside `in` on every CEF firewall, which makes the symmetry tempting, and the corpus refuses it: `out` is read BARE in value position 8 times in shipped rules -- `to_integer(out)` on the sent-bytes mapping -- and never backticked. That is the `timestamp` and `dst` pattern below, not the `target` pattern. Reserving it would invent a hazard and call 8 demonstrably installable rules broken. A pair is not evidence about both halves.
 
+`config` is reserved as of 2.1.3, and it is the member that shows why corpus silence must never be read as safety. A GitHub Enterprise Cloud audit source spent five tenant uploads on it. The bisect needs THREE probes, not two, and the middle one is the one that gets skipped:
+
+```
+json_extract_scalar(config, "$.url")     -- 101704, install FAILED
+xdm.target.url = url_path                -- INSTALLED
+json_extract_scalar(`config`, "$.url")   -- INSTALLED
+```
+
+Feeding the same XDM field from a DIFFERENT column is what separates "this field is gated" from "this column NAME is gated". Skip it and the obvious conclusion is that `xdm.target.url` is a gated field, and the fix becomes not mapping a URL -- wrong, and expensive. The corpus holds zero bare and zero backticked reads of `config` (and zero of `configuration` either way), so on corpus evidence alone it looks exactly like `view`. It is not: of its 20 raw occurrences, the 12 that survive string and comment stripping are all the identical line `config case_sensitive = true`, which is XQL's own stage keyword. The linter had this written down all along -- `_STAGE_KEYWORDS` in `lint_rule.py` lists `config` beside `filter`, `fields` and `target`, three names that were already reserved -- and nothing compared that table to the reserved set. A word this bundle already classified as a language construct is a candidate whatever the corpus says.
+
+The stage keyword also means `config` is the one member needing a false-positive guard. `config case_sensitive = true` opens a line and is out of value position, so it never fired; but the parenthesised form `(config timeframe = 24h` puts the word straight after `(` and did. The read pattern now excludes a name followed by an identifier and an `=`, which is the stage shape and never a column read.
+
 Read the counterexample counts carefully, because it is easy to state them wrongly. `timestamp` is read bare in value position 39 times and `dst` 146, so both are demonstrably ordinary column names. `contains` and `call` are not evidence of anything: `contains` occurs 1429 times and 1428 of those are the OPERATOR, with zero value-position reads, so the corpus simply holds no column of that name. They are left out of the check because there is nothing to put them in on, which is a weaker claim than having measured them safe.
 
-The evidence is also uneven within the reserved set. `target` is attested by 31 backticked reads across 12 vendors, `fields` by 13, `in` by 10 across 10 distinct rules, `transaction` by 6; `table` and `filter` by 2 each; `tag` by 2; and `view` appears in the corpus in no form at all. The two thinnest are exactly the two that live-tenant bisection confirmed, which is why the bisection was necessary. Corpus silence is not evidence of safety.
+The evidence is also uneven within the reserved set. `target` is attested by 31 backticked reads across 12 vendors, `fields` by 13, `in` by 10 across 10 distinct rules, `transaction` by 6; `table` and `filter` by 2 each; `tag` by 2; `view` appears in the corpus in no form at all, and `config` appears in no form as a COLUMN. The three thinnest are exactly the three that live-tenant bisection confirmed, which is why the bisection was necessary. Corpus silence is not evidence of safety.
 
 `lint_rule.py` raises ERR-034 on the unquoted read. Renaming the column at source is still preferable where you control what writes it, because the backtick must be repeated at every read and a missed one fails the same silent way.
 

@@ -6,71 +6,272 @@
       "name": "cloudtrail console login success",
       "source": "aws_cloudtrail",
       "worked_example": "13-aws-cloudtrail-multi-event.md",
-      "sample": {"eventName": "ConsoleLogin", "eventSource": "signin.amazonaws.com", "eventID": "c1", "awsRegion": "us-east-1", "recipientAccountId": "111122223333", "sourceIPAddress": "203.0.113.7", "responseElements": {"ConsoleLogin": "Success"}, "userIdentity": {"type": "IAMUser", "userName": "alice"}},
-      "expect": {"xdm.event.operation": "XDM_CONST.OPERATION_TYPE_AUTH_LOGIN", "xdm.event.outcome": "XDM_CONST.OUTCOME_SUCCESS", "xdm.event.tags": ["XDM_CONST.EVENT_TAG_AUTHENTICATION", "XDM_CONST.EVENT_TAG_CLOUD"], "xdm.source.cloud.provider": "XDM_CONST.CLOUD_PROVIDER_AWS", "xdm.source.ipv4": "203.0.113.7", "xdm.source.user.upn": "alice@111122223333.aws", "xdm.auth.service": "IDP", "xdm.target.resource.name": "signin.amazonaws.com"}
+      "sample": {
+        "eventName": "ConsoleLogin",
+        "eventSource": "signin.amazonaws.com",
+        "eventID": "c1",
+        "awsRegion": "us-east-1",
+        "recipientAccountId": "111122223333",
+        "sourceIPAddress": "203.0.113.7",
+        "responseElements": {
+          "ConsoleLogin": "Success"
+        },
+        "userIdentity": {
+          "type": "IAMUser",
+          "userName": "alice"
+        }
+      },
+      "expect": {
+        "xdm.event.operation": "XDM_CONST.OPERATION_TYPE_AUTH_LOGIN",
+        "xdm.event.outcome": "XDM_CONST.OUTCOME_SUCCESS",
+        "xdm.event.tags": [
+          "XDM_CONST.EVENT_TAG_AUTHENTICATION",
+          "XDM_CONST.EVENT_TAG_CLOUD"
+        ],
+        "xdm.source.cloud.provider": "XDM_CONST.CLOUD_PROVIDER_AWS",
+        "xdm.source.ipv4": "203.0.113.7",
+        "xdm.source.user.upn": "alice@111122223333.aws",
+        "xdm.auth.service": "IDP",
+        "xdm.target.resource.name": "signin.amazonaws.com",
+        "xdm.source.identity.upn": "alice@111122223333.aws"
+      }
     },
     {
       "name": "cloudtrail runinstances (create)",
       "source": "aws_cloudtrail",
       "worked_example": "13-aws-cloudtrail-multi-event.md",
-      "sample": {"eventName": "RunInstances", "eventSource": "ec2.amazonaws.com", "eventID": "c2", "awsRegion": "eu-west-2", "recipientAccountId": "111122223333", "sourceIPAddress": "198.51.100.20", "userIdentity": {"type": "AssumedRole", "arn": "arn:aws:sts::111122223333:assumed-role/admin/s", "sessionContext": {"sessionIssuer": {"userName": "admin"}}}},
-      "expect": {"xdm.event.operation": "XDM_CONST.OPERATION_TYPE_CREATE", "xdm.event.outcome": "XDM_CONST.OUTCOME_SUCCESS", "xdm.event.tags": ["XDM_CONST.EVENT_TAG_CLOUD"], "xdm.source.cloud.provider": "XDM_CONST.CLOUD_PROVIDER_AWS", "xdm.source.cloud.region": "eu-west-2", "xdm.source.user.username": "admin"}
+      "sample": {
+        "eventName": "RunInstances",
+        "eventSource": "ec2.amazonaws.com",
+        "eventID": "c2",
+        "awsRegion": "eu-west-2",
+        "recipientAccountId": "111122223333",
+        "sourceIPAddress": "198.51.100.20",
+        "userIdentity": {
+          "type": "AssumedRole",
+          "arn": "arn:aws:sts::111122223333:assumed-role/admin/s",
+          "sessionContext": {
+            "sessionIssuer": {
+              "userName": "admin"
+            }
+          }
+        }
+      },
+      "expect": {
+        "xdm.event.operation": "XDM_CONST.OPERATION_TYPE_CREATE",
+        "xdm.event.outcome": "XDM_CONST.OUTCOME_SUCCESS",
+        "xdm.event.tags": [
+          "XDM_CONST.EVENT_TAG_CLOUD"
+        ],
+        "xdm.source.cloud.provider": "XDM_CONST.CLOUD_PROVIDER_AWS",
+        "xdm.source.cloud.region": "eu-west-2",
+        "xdm.source.user.username": "admin",
+        "xdm.source.identity.username": "admin"
+      }
     },
     {
       "name": "cloudtrail deletebucket denied (ip guard)",
       "source": "aws_cloudtrail",
       "worked_example": "13-aws-cloudtrail-multi-event.md",
-      "sample": {"eventName": "DeleteBucket", "eventSource": "s3.amazonaws.com", "eventID": "c3", "awsRegion": "us-east-1", "errorCode": "AccessDenied", "sourceIPAddress": "s3.amazonaws.com", "userIdentity": {"type": "IAMUser", "userName": "carol"}},
-      "expect": {"xdm.event.operation": "XDM_CONST.OPERATION_TYPE_DELETE", "xdm.event.outcome": "XDM_CONST.OUTCOME_FAILED", "xdm.source.cloud.provider": "XDM_CONST.CLOUD_PROVIDER_AWS", "xdm.source.ipv4": null, "xdm.event.outcome_reason": "AccessDenied"}
+      "sample": {
+        "eventName": "DeleteBucket",
+        "eventSource": "s3.amazonaws.com",
+        "eventID": "c3",
+        "awsRegion": "us-east-1",
+        "errorCode": "AccessDenied",
+        "sourceIPAddress": "s3.amazonaws.com",
+        "userIdentity": {
+          "type": "IAMUser",
+          "userName": "carol"
+        }
+      },
+      "expect": {
+        "xdm.event.operation": "XDM_CONST.OPERATION_TYPE_DELETE",
+        "xdm.event.outcome": "XDM_CONST.OUTCOME_FAILED",
+        "xdm.source.cloud.provider": "XDM_CONST.CLOUD_PROVIDER_AWS",
+        "xdm.source.ipv4": null,
+        "xdm.event.outcome_reason": "AccessDenied"
+      }
     },
     {
       "name": "azure activity write success",
       "source": "microsoft_azure",
       "worked_example": "14-azure-activity-signin.md",
-      "sample": {"operationName": "Microsoft.Compute/virtualMachines/write", "resultType": "Success", "category": "Administrative", "caller": "alice@contoso.com", "callerIpAddress": "20.1.2.3", "resourceId": "/subscriptions/s1/rg1/vm1"},
-      "expect": {"xdm.event.operation": "XDM_CONST.OPERATION_TYPE_UPDATE", "xdm.event.outcome": "XDM_CONST.OUTCOME_SUCCESS", "xdm.event.tags": ["XDM_CONST.EVENT_TAG_CLOUD"], "xdm.source.cloud.provider": "XDM_CONST.CLOUD_PROVIDER_AZURE", "xdm.source.user.upn": "alice@contoso.com"}
+      "sample": {
+        "operationName": "Microsoft.Compute/virtualMachines/write",
+        "resultType": "Success",
+        "category": "Administrative",
+        "caller": "alice@contoso.com",
+        "callerIpAddress": "20.1.2.3",
+        "resourceId": "/subscriptions/s1/rg1/vm1"
+      },
+      "expect": {
+        "xdm.event.operation": "XDM_CONST.OPERATION_TYPE_UPDATE",
+        "xdm.event.outcome": "XDM_CONST.OUTCOME_SUCCESS",
+        "xdm.event.tags": [
+          "XDM_CONST.EVENT_TAG_CLOUD"
+        ],
+        "xdm.source.cloud.provider": "XDM_CONST.CLOUD_PROVIDER_AZURE",
+        "xdm.source.user.upn": "alice@contoso.com",
+        "xdm.source.identity.upn": "alice@contoso.com"
+      }
     },
     {
       "name": "azure activity delete failure",
       "source": "microsoft_azure",
       "worked_example": "14-azure-activity-signin.md",
-      "sample": {"operationName": "Microsoft.Storage/storageAccounts/delete", "resultType": "Failure", "category": "Administrative", "caller": "svc-deploy@contoso.com", "callerIpAddress": "20.1.2.9"},
-      "expect": {"xdm.event.operation": "XDM_CONST.OPERATION_TYPE_DELETE", "xdm.event.outcome": "XDM_CONST.OUTCOME_FAILED", "xdm.source.user.user_type": "XDM_CONST.USER_TYPE_SERVICE_ACCOUNT"}
+      "sample": {
+        "operationName": "Microsoft.Storage/storageAccounts/delete",
+        "resultType": "Failure",
+        "category": "Administrative",
+        "caller": "svc-deploy@contoso.com",
+        "callerIpAddress": "20.1.2.9"
+      },
+      "expect": {
+        "xdm.event.operation": "XDM_CONST.OPERATION_TYPE_DELETE",
+        "xdm.event.outcome": "XDM_CONST.OUTCOME_FAILED",
+        "xdm.source.user.user_type": "XDM_CONST.USER_TYPE_SERVICE_ACCOUNT",
+        "xdm.source.identity.user_type": "XDM_CONST.USER_TYPE_SERVICE_ACCOUNT"
+      }
     },
     {
       "name": "entra sign-in failure",
       "source": "microsoft_azure",
       "worked_example": "14-azure-activity-signin.md",
-      "sample": {"userPrincipalName": "bob@contoso.com", "ipAddress": "20.4.5.6", "appDisplayName": "Azure Portal", "clientAppUsed": "Browser", "category": "SignInLogs", "status": {"errorCode": 50126}},
-      "expect": {"xdm.event.operation": "XDM_CONST.OPERATION_TYPE_AUTH_LOGIN", "xdm.event.outcome": "XDM_CONST.OUTCOME_FAILED", "xdm.event.tags": ["XDM_CONST.EVENT_TAG_AUTHENTICATION", "XDM_CONST.EVENT_TAG_CLOUD"], "xdm.source.user.upn": "bob@contoso.com", "xdm.auth.service": "IDP", "xdm.target.resource.name": "Azure Portal"}
+      "sample": {
+        "userPrincipalName": "bob@contoso.com",
+        "ipAddress": "20.4.5.6",
+        "appDisplayName": "Azure Portal",
+        "clientAppUsed": "Browser",
+        "category": "SignInLogs",
+        "status": {
+          "errorCode": 50126
+        }
+      },
+      "expect": {
+        "xdm.event.operation": "XDM_CONST.OPERATION_TYPE_AUTH_LOGIN",
+        "xdm.event.outcome": "XDM_CONST.OUTCOME_FAILED",
+        "xdm.event.tags": [
+          "XDM_CONST.EVENT_TAG_AUTHENTICATION",
+          "XDM_CONST.EVENT_TAG_CLOUD"
+        ],
+        "xdm.source.user.upn": "bob@contoso.com",
+        "xdm.auth.service": "IDP",
+        "xdm.target.resource.name": "Azure Portal",
+        "xdm.source.identity.upn": "bob@contoso.com"
+      }
     },
     {
       "name": "entra sign-in success",
       "source": "microsoft_azure",
       "worked_example": "14-azure-activity-signin.md",
-      "sample": {"userPrincipalName": "carol@contoso.com", "ipAddress": "20.4.5.7", "appDisplayName": "Office 365", "category": "SignInLogs", "status": {"errorCode": 0}},
-      "expect": {"xdm.event.operation": "XDM_CONST.OPERATION_TYPE_AUTH_LOGIN", "xdm.event.outcome": "XDM_CONST.OUTCOME_SUCCESS", "xdm.source.user.upn": "carol@contoso.com"}
+      "sample": {
+        "userPrincipalName": "carol@contoso.com",
+        "ipAddress": "20.4.5.7",
+        "appDisplayName": "Office 365",
+        "category": "SignInLogs",
+        "status": {
+          "errorCode": 0
+        }
+      },
+      "expect": {
+        "xdm.event.operation": "XDM_CONST.OPERATION_TYPE_AUTH_LOGIN",
+        "xdm.event.outcome": "XDM_CONST.OUTCOME_SUCCESS",
+        "xdm.source.user.upn": "carol@contoso.com",
+        "xdm.source.identity.upn": "carol@contoso.com"
+      }
     },
     {
       "name": "gcp create service account",
       "source": "gcp_cloud_audit",
       "worked_example": "15-gcp-cloud-audit.md",
-      "sample": {"protoPayload": {"methodName": "google.iam.admin.v1.CreateServiceAccount", "serviceName": "iam.googleapis.com", "authenticationInfo": {"principalEmail": "alice@example.com"}, "requestMetadata": {"callerIp": "34.1.2.3"}, "resourceName": "projects/p1/serviceAccounts/x"}, "resource": {"labels": {"project_id": "p1"}}},
-      "expect": {"xdm.event.operation": "XDM_CONST.OPERATION_TYPE_CREATE", "xdm.event.outcome": "XDM_CONST.OUTCOME_SUCCESS", "xdm.event.tags": ["XDM_CONST.EVENT_TAG_CLOUD"], "xdm.source.cloud.provider": "XDM_CONST.CLOUD_PROVIDER_GCP", "xdm.source.cloud.project_id": "p1", "xdm.source.user.identity_type": "XDM_CONST.IDENTITY_TYPE_USER", "xdm.source.ipv4": "34.1.2.3"}
+      "sample": {
+        "protoPayload": {
+          "methodName": "google.iam.admin.v1.CreateServiceAccount",
+          "serviceName": "iam.googleapis.com",
+          "authenticationInfo": {
+            "principalEmail": "alice@example.com"
+          },
+          "requestMetadata": {
+            "callerIp": "34.1.2.3"
+          },
+          "resourceName": "projects/p1/serviceAccounts/x"
+        },
+        "resource": {
+          "labels": {
+            "project_id": "p1"
+          }
+        }
+      },
+      "expect": {
+        "xdm.event.operation": "XDM_CONST.OPERATION_TYPE_CREATE",
+        "xdm.event.outcome": "XDM_CONST.OUTCOME_SUCCESS",
+        "xdm.event.tags": [
+          "XDM_CONST.EVENT_TAG_CLOUD"
+        ],
+        "xdm.source.cloud.provider": "XDM_CONST.CLOUD_PROVIDER_GCP",
+        "xdm.source.cloud.project_id": "p1",
+        "xdm.source.user.identity_type": "XDM_CONST.IDENTITY_TYPE_USER",
+        "xdm.source.ipv4": "34.1.2.3",
+        "xdm.source.identity.identity_type": "XDM_CONST.IDENTITY_TYPE_USER"
+      }
     },
     {
       "name": "gcp buckets delete denied (service account)",
       "source": "gcp_cloud_audit",
       "worked_example": "15-gcp-cloud-audit.md",
-      "sample": {"protoPayload": {"methodName": "storage.buckets.delete", "serviceName": "storage.googleapis.com", "authenticationInfo": {"principalEmail": "svc@p1.iam.gserviceaccount.com"}, "requestMetadata": {"callerIp": "34.1.2.9"}, "resourceName": "projects/_/buckets/b1", "status": {"code": 7}}, "resource": {"labels": {"project_id": "p1"}}},
-      "expect": {"xdm.event.operation": "XDM_CONST.OPERATION_TYPE_DELETE", "xdm.event.outcome": "XDM_CONST.OUTCOME_FAILED", "xdm.source.user.identity_type": "XDM_CONST.IDENTITY_TYPE_MACHINE", "xdm.source.user.user_type": "XDM_CONST.USER_TYPE_SERVICE_ACCOUNT"}
+      "sample": {
+        "protoPayload": {
+          "methodName": "storage.buckets.delete",
+          "serviceName": "storage.googleapis.com",
+          "authenticationInfo": {
+            "principalEmail": "svc@p1.iam.gserviceaccount.com"
+          },
+          "requestMetadata": {
+            "callerIp": "34.1.2.9"
+          },
+          "resourceName": "projects/_/buckets/b1",
+          "status": {
+            "code": 7
+          }
+        },
+        "resource": {
+          "labels": {
+            "project_id": "p1"
+          }
+        }
+      },
+      "expect": {
+        "xdm.event.operation": "XDM_CONST.OPERATION_TYPE_DELETE",
+        "xdm.event.outcome": "XDM_CONST.OUTCOME_FAILED",
+        "xdm.source.user.identity_type": "XDM_CONST.IDENTITY_TYPE_MACHINE",
+        "xdm.source.user.user_type": "XDM_CONST.USER_TYPE_SERVICE_ACCOUNT",
+        "xdm.source.identity.identity_type": "XDM_CONST.IDENTITY_TYPE_MACHINE",
+        "xdm.source.identity.user_type": "XDM_CONST.USER_TYPE_SERVICE_ACCOUNT"
+      }
     },
     {
       "name": "gcp setiampolicy (dotless verb)",
       "source": "gcp_cloud_audit",
       "worked_example": "15-gcp-cloud-audit.md",
-      "sample": {"protoPayload": {"methodName": "SetIamPolicy", "serviceName": "cloudresourcemanager.googleapis.com", "authenticationInfo": {"principalEmail": "bob@example.com"}, "requestMetadata": {"callerIp": "34.1.2.4"}, "resourceName": "projects/p1"}},
-      "expect": {"xdm.event.operation": "XDM_CONST.OPERATION_TYPE_UPDATE", "xdm.event.outcome": "XDM_CONST.OUTCOME_SUCCESS", "xdm.source.cloud.provider": "XDM_CONST.CLOUD_PROVIDER_GCP"}
+      "sample": {
+        "protoPayload": {
+          "methodName": "SetIamPolicy",
+          "serviceName": "cloudresourcemanager.googleapis.com",
+          "authenticationInfo": {
+            "principalEmail": "bob@example.com"
+          },
+          "requestMetadata": {
+            "callerIp": "34.1.2.4"
+          },
+          "resourceName": "projects/p1"
+        }
+      },
+      "expect": {
+        "xdm.event.operation": "XDM_CONST.OPERATION_TYPE_UPDATE",
+        "xdm.event.outcome": "XDM_CONST.OUTCOME_SUCCESS",
+        "xdm.source.cloud.provider": "XDM_CONST.CLOUD_PROVIDER_GCP"
+      }
     }
   ]
 }

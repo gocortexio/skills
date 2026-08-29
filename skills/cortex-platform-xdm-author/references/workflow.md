@@ -120,8 +120,8 @@ Apply transformation patterns from [transformation-patterns.md](transformation-p
 - Banded scoring -- vendor field names containing `"score"` or numeric severity scales (0-100, 0-10, 1-5) MUST use banded thresholds.
 - Categorical enum routing -- vendor `categories[]` arrays MUST first attempt `xdm.alert.category` via THREAT_CATEGORY constants before falling back to `xdm.alert.subcategory`.
 - One-sided actor mirroring -- when the vendor delivers ONE actor and no counterparty, mirror into BOTH `xdm.source.` and `xdm.target.`.
-- Authentication mandatory mapping -- when `scripts/profile_log.py` flags the sample as an authentication event (or the rule sets the `EVENT_TAG_AUTHENTICATION` tag / an `OPERATION_TYPE_AUTH_*` operation), map the full mandatory 12-field set from [authentication-mapping.md](authentication-mapping.md). The story is only created when every mandatory field is mapped; the linter raises advisory WARN-042 (warning only, exit code stays 0) for each one left unmapped.
-- Network mandatory mapping -- when the profiler flags a network / traffic event (or the rule sets the `EVENT_TAG_NETWORK` tag / a `network` event type), map the full mandatory 20-field set from [network-mapping.md](network-mapping.md), padding absent values with the type-valid placeholders. Advisory WARN-043 flags each one left unmapped. The two detections are independent: a dual event (a VPN login) takes both sets, with the union of the story tags in ONE `xdm.event.tags = arraycreate(...)`.
+- Authentication mandatory mapping -- when `scripts/profile_log.py` flags the sample as an authentication event (or the rule sets the `EVENT_TAG_AUTHENTICATION` tag / an `OPERATION_TYPE_AUTH_*` operation), map the full mandatory 15-field set from [authentication-mapping.md](authentication-mapping.md). The story is only created when every mandatory field is mapped; the linter raises advisory WARN-042 (warning only, exit code stays 0) for each one left unmapped.
+- Network mandatory mapping -- when the profiler flags a network / traffic event (or the rule sets the `EVENT_TAG_NETWORK` tag / a `network` event type), map the full mandatory 17-field set from [network-mapping.md](network-mapping.md), padding absent values with the type-valid placeholders. Advisory WARN-043 flags each one left unmapped. The two detections are independent: a dual event (a VPN login) takes both sets, with the union of the story tags in ONE `xdm.event.tags = arraycreate(...)`.
 
 ## Step 7 -- Write the rule
 
@@ -149,7 +149,7 @@ Stage discipline (parser idiom (xi)): Cortex evaluates all targets in one `alter
 python3 scripts/lint_rule.py <rule.xql>
 ```
 
-The bundled linter covers the parser-conformance rules detectable syntactically (ERR-012, ERR-013, ERR-014, ERR-015, ERR-016, ERR-017, ERR-018, ERR-024, plus the INFO-012 cascade hint). Output is a JSON array of `{rule_id, severity, line, message, recommendation}`.
+The bundled linter runs its whole registry in one pass -- structural, schema-aware and dataflow checks alike -- and exits non-zero when any finding is error severity. `python3 scripts/lint_rule.py --list-codes` prints the authoritative set; do not restate it here. Output is a JSON array of `{rule_id, severity, line, message, recommendation}`.
 
 This replaces the mental pre-flight checklist with deterministic checking. The checklist is preserved in [modeling-rules.md](modeling-rules.md) as a manual fallback if the linter cannot run.
 

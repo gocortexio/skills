@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: GoCortexIO
 SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
-# XDM schema -- 628 fields (12 categories)
+# XDM schema -- 643 fields (12 categories)
 
 Every field below is a valid XDM field path. Only map to fields listed here. Any field path not in this list will cause a validation error or internal error in the Cortex IDE.
 
@@ -75,6 +75,12 @@ This file is a snapshot of the published XDM field set. Refresh it when the sche
   xdm.source.virtualization.vm.hostname -- String
   xdm.source.virtualization.data_center.name -- String
   xdm.source.virtualization.data_store.name -- String
+  xdm.source.identity.domain -- String
+  xdm.source.identity.identifier -- String
+  xdm.source.identity.identity_type -- XDM_CONST.IDENTITY_TYPE
+  xdm.source.identity.upn -- String
+  xdm.source.identity.user_type -- XDM_CONST.USER_TYPE
+  xdm.source.identity.username -- String
   xdm.source.host -- String
   xdm.source.host.boot_time -- Timestamp
   xdm.source.host.device_category -- String
@@ -249,6 +255,12 @@ This file is a snapshot of the published XDM field set. Refresh it when the sche
   xdm.target.virtualization.data_store.uuid -- String
   xdm.target.virtualization.task.id -- String
   xdm.target.virtualization.task.name -- String
+  xdm.target.identity.domain -- String
+  xdm.target.identity.identifier -- String
+  xdm.target.identity.identity_type -- XDM_CONST.IDENTITY_TYPE
+  xdm.target.identity.upn -- String
+  xdm.target.identity.user_type -- XDM_CONST.USER_TYPE
+  xdm.target.identity.username -- String
   xdm.target.host -- String
   xdm.target.host.boot_time -- Timestamp
   xdm.target.host.device_category -- String
@@ -368,8 +380,11 @@ This file is a snapshot of the published XDM field set. Refresh it when the sche
   xdm.intermediate.is_proxy -- Boolean
   xdm.intermediate.user_agent -- String
   xdm.intermediate.identity -- String
+  xdm.intermediate.identity.domain -- String
   xdm.intermediate.identity.identifier -- String
   xdm.intermediate.identity.identity_type -- XDM_CONST.IDENTITY_TYPE
+  xdm.intermediate.identity.upn -- String
+  xdm.intermediate.identity.user_type -- XDM_CONST.USER_TYPE
   xdm.intermediate.identity.username -- String
   xdm.intermediate.host -- String
   xdm.intermediate.host.boot_time -- Timestamp

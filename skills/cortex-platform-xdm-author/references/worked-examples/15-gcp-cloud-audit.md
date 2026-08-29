@@ -53,14 +53,26 @@ filter
     xdm.source.ipv4 = if(tmp_ip ~= "^\d+\.\d+\.\d+\.\d+$", tmp_ip, null),
     xdm.source.ipv6 = if(to_string(tmp_ip) ~= ":", tmp_ip, null),
     xdm.source.user.username = tmp_princ,
+    // Identity mirror (recommended tier): same derivations, appended beside user.* -- never instead of it.
+    xdm.source.identity.username = tmp_princ,
     xdm.source.user.upn = if(
+        tmp_princ contains "@", tmp_princ,
+        tmp_princ != null, concat(tmp_princ, "@gcp")),
+    xdm.source.identity.upn = if(
         tmp_princ contains "@", tmp_princ,
         tmp_princ != null, concat(tmp_princ, "@gcp")),
     xdm.source.user.identity_type = if(
         to_string(tmp_princ) ~= "gserviceaccount", XDM_CONST.IDENTITY_TYPE_MACHINE,
         tmp_princ != null, XDM_CONST.IDENTITY_TYPE_USER,
         XDM_CONST.IDENTITY_TYPE_UNKNOWN),
+    xdm.source.identity.identity_type = if(
+        to_string(tmp_princ) ~= "gserviceaccount", XDM_CONST.IDENTITY_TYPE_MACHINE,
+        tmp_princ != null, XDM_CONST.IDENTITY_TYPE_USER,
+        XDM_CONST.IDENTITY_TYPE_UNKNOWN),
     xdm.source.user.user_type = if(
+        to_string(tmp_princ) ~= "gserviceaccount", XDM_CONST.USER_TYPE_SERVICE_ACCOUNT,
+        XDM_CONST.USER_TYPE_REGULAR),
+    xdm.source.identity.user_type = if(
         to_string(tmp_princ) ~= "gserviceaccount", XDM_CONST.USER_TYPE_SERVICE_ACCOUNT,
         XDM_CONST.USER_TYPE_REGULAR),
     xdm.source.user_agent = tmp_ua,

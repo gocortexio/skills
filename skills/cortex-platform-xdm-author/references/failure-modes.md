@@ -19,7 +19,7 @@ xdm.alert.bar -- Not available
 xdm.alert.baz -- Not in sample
 ```
 
-This happens when you walk the XDM schema field by field and note non-matches. The XDM schema has 628 fields. Even walking the top-level alert categories produces dozens of "Not available" lines, none of which add information. The downstream rule never references any of these fields, so the enumeration is pure latency.
+This happens when you walk the XDM schema field by field and note non-matches. The XDM schema has 643 fields. Even walking the top-level alert categories produces dozens of "Not available" lines, none of which add information. The downstream rule never references any of these fields, so the enumeration is pure latency.
 
 Recovery: stop the enumeration mid-sentence. Switch to a positive-only strategy: list only the vendor fields that DO have an XDM target. Anything not listed is implicitly unmapped. Document genuine notable omissions (a field a reviewer would expect to see mapped) in the NOT MAPPED block of the MAPPED-header, capped at about 5 to 10 entries with a one-line reason each.
 

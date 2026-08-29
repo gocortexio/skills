@@ -51,11 +51,12 @@ Schema-aware checks (XDM schema + XDM_CONST loaded from references):
              query hangs rather than failing.
     ERR-034  UNQUOTED read of a raw column whose NAME is a query-language
              construct (tag / view / target / fields / transaction /
-             table / filter). Fails the PACK INSTALL with an opaque 101704
-             naming no field and no line, while validate, the rest of this
-             linter and an ad-hoc SEARCH-mode query all pass. The READ is
-             the fault, not the assignment, so the tmp_ prefix is no
-             defence. The escape is a backtick, which the check accepts.
+             table / filter / in / config). Fails the PACK INSTALL with an
+             opaque 101704 naming no field and no line, while validate, the
+             rest of this linter and an ad-hoc SEARCH-mode query all pass.
+             The READ is the fault, not the assignment, so the tmp_ prefix
+             is no defence. The escape is a backtick, which the check
+             accepts.
     WARN-014 Quoted XDM_CONST value (dropped as a string literal).
     WARN-035 Array-typed XDM field assigned a scalar value.
     WARN-037 Log-level word (warning / error / notice / debug) echoed into
@@ -82,7 +83,10 @@ Schema-aware checks (XDM schema + XDM_CONST loaded from references):
              catch-all sentinel (advisory).
     ERR-030 Prepend-fragile syslog extraction: a body field captured with
              a ^-anchored / positional regex instead of a payload token, so
-             it misses the direct or relay-prepended arrival form (advisory).
+             it misses the direct or relay-prepended arrival form. BLOCKS
+             at error severity: a rule that models only the arrival form
+             its sample happened to show is incomplete, not merely
+             untidy.
     WARN-048 Incomplete HTTP response-code mapping: xdm.network.http.
              response_code assigned via an if()-chain that covers fewer status
              codes than the authoritative crosswalk (advisory).
@@ -96,6 +100,17 @@ Schema-aware checks (XDM schema + XDM_CONST loaded from references):
              the event targetless while satisfying the mandatory-field
              check -- the state an inverted rule passes the linter in. A
              meaningful constant is not flagged (advisory).
+    WARN-057 Identity mirror defect on a recommended pair. Fires two
+             ways: xdm.<side>.identity.<X> assigned with NO
+             xdm.<side>.user.<X> in the same block (a REPLACE, which
+             drops a mandatory field to satisfy a recommendation), or
+             both assigned from DIFFERENT derivations (a diverged
+             pair, where both halves look populated and one is
+             wrong). Absence of a mirror is NEVER flagged -- the tier
+             is recommended, so a rule mapping only user.* is
+             complete. Warning severity, matching the severity at
+             which the twin's own mandatory-set check reports
+             (advisory).
     INFO-013 Advisory: one underscore temp mapped across 3+ XDM entity
              families (likely over-mapping; event / observer excluded).
 
@@ -912,12 +927,19 @@ def _check_err024(
                 break
         s["rhs_end"] = end
 
-    temp_defs = [s for s in slots if s["kind"] == "_temp"]
+    # A sibling is anything ASSIGNED in the same alter stage -- a tmp_
+    # temp or another xdm.* target. Cortex evaluates the whole stage in
+    # parallel, so the mechanism is identical either way: the reader gets
+    # the pre-stage value, not the one being assigned beside it. The xdm
+    # case matters for a mirrored pair, where writing
+    # `xdm.<side>.identity.<X> = xdm.<side>.user.<X>` is the intuitive
+    # way to express "same value" and is silently wrong.
+    sibling_defs = [s for s in slots if s["kind"] in ("_temp", "xdm")]
     reported: set = set()
     for consumer in slots:
         siblings = [
             t
-            for t in temp_defs
+            for t in sibling_defs
             if t["stage_start"] == consumer["stage_start"] and t["line"] != consumer["line"]
         ]
         if not siblings:
@@ -929,7 +951,12 @@ def _check_err024(
         # Drop the LHS prefix of the first line.
         rhs_body = re.sub(r"^\s*(?:xdm\.[\w.]+|_?[A-Za-z]\w*)\s*=", "", rhs_text)
         for sib in siblings:
-            pat = re.compile(r"\b" + re.escape(sib["name"]) + r"\b")
+            # The trailing guard stops a shorter path matching inside a
+            # longer one: xdm.source.user must not match against
+            # xdm.source.user.upn.
+            pat = re.compile(
+                r"(?<![\w.])" + re.escape(sib["name"]) + r"(?![\w.])"
+            )
             if not pat.search(rhs_body):
                 continue
             key = (consumer["line"], sib["name"])
@@ -941,13 +968,23 @@ def _check_err024(
                     "ERR-024",
                     "error",
                     consumer["line"],
-                    f"'{consumer['name']}' references sibling temp "
-                    f"'{sib['name']}' defined in the same alter "
+                    f"'{consumer['name']}' references sibling "
+                    f"{'field' if sib['kind'] == 'xdm' else 'temp'} "
+                    f"'{sib['name']}' assigned in the same alter "
                     "stage. Cortex evaluates all targets in one alter "
-                    "in parallel and will reject this as 'unknown "
-                    f"field {sib['name']}'.",
-                    f"Split the alter stage: define '{sib['name']}' "
-                    "in stage N, reference it in stage N+1.",
+                    "in parallel, so this reads the PRE-stage value "
+                    "rather than the one being assigned beside it, and "
+                    f"is rejected as 'unknown field {sib['name']}'.",
+                    (
+                        f"Assign both from the same source expression "
+                        f"instead of reading '{sib['name']}': a mirrored "
+                        "pair repeats the derivation, it does not "
+                        "reference its twin."
+                        if sib["kind"] == "xdm"
+                        else f"Split the alter stage: define "
+                        f"'{sib['name']}' in stage N, reference it in "
+                        "stage N+1."
+                    ),
                 )
             )
     return out
@@ -1112,10 +1149,13 @@ _GC_RAW_HEADER_RE = re.compile(r'\s*\[MODEL:\s*dataset\s*=\s*"?(\w+)')
 
 
 def _is_gc_raw(code_lines: List[str]) -> bool:
-    """True when the MODEL header targets a ``_gc_raw`` dataset. The unused-
-    field rejections (ERR-019, ERR-025) are a hard block only on GoCortex
-    ``_gc_raw`` datasets; plain ``_raw`` datasets tolerate the same shapes,
-    so these checks are scoped to ``_gc_raw`` to match Cortex."""
+    """True when the MODEL header targets a ``_gc_raw`` dataset. ERR-025 --
+    the concat-hidden shape -- is a hard block only on GoCortex ``_gc_raw``
+    datasets; a plain ``_raw`` dataset tolerates it, so that check alone is
+    scoped here to match Cortex. ERR-019 is NOT scoped: Cortex rejects an
+    unused field regardless of dataset suffix, so ``_check_err019`` gates on
+    ``_is_model`` only and never calls this. Saying otherwise sent a reader
+    of parser-idioms.md looking for a false positive in a true one."""
     for ln in code_lines:
         m = _GC_RAW_HEADER_RE.match(ln)
         if m:
@@ -1984,6 +2024,127 @@ def _value_positions_only(expr: str) -> str:
     return "".join(out)
 
 
+# ----- WARN-057  identity mirror defects (recommended tier)
+
+# The six leaves the authentication story names, mirrored between the
+# user.* and identity.* families. Canonical source: the "Recommended
+# fields (the identity mirror)" table in references/authentication-
+# mapping.md. Mirrored in profile_log.py and scaffold_rule.py; the
+# three-way sync is pinned by a test.
+_IDENTITY_MIRROR_LEAVES = (
+    "upn",
+    "identity_type",
+    "user_type",
+    "username",
+    "identifier",
+    "domain",
+)
+
+_MIRROR_SIDES = ("source", "target", "intermediate")
+
+
+def _normalise_rhs(rhs: str) -> str:
+    """Collapse an RHS to compare two derivations for sameness. Whitespace
+    and a trailing comma carry no meaning across a line break, so a mirror
+    reformatted by an author is still the same derivation."""
+    return re.sub(r"\s+", "", rhs.strip().rstrip(",").strip())
+
+
+def _check_warn057(code_lines: List[str]) -> List[dict]:
+    """The identity mirror is a RECOMMENDED tier: a rule that maps
+    xdm.<side>.user.<X> is encouraged to also map xdm.<side>.identity.<X>
+    from the same derivation, so the Identity data model populates.
+
+    ABSENCE IS NEVER FLAGGED, deliberately and permanently. Every rule in
+    this bundle and every rule shipped before this tier existed maps
+    user.* without a mirror; a check that fired on that would report a
+    finding on correct, complete work and teach authors to mute it. What
+    IS reported is a mirror that is present and WRONG, in the two shapes
+    that are decidable from the rule text:
+
+      (a) identity.<X> assigned with no user.<X> on the same side in the
+          same block. The recommendation is APPEND, never replace, and
+          five of these six leaves are mandatory-set members -- so a rule
+          that moved the assignment across has dropped a mandatory field
+          to satisfy a recommendation, which is strictly worse than
+          ignoring the tier.
+
+      (b) both assigned, from different derivations. A pair is one fact
+          written twice; two derivations mean one of them is wrong, and
+          because both fields are populated nothing downstream can tell
+          which. This is reported as a QUESTION rather than an
+          instruction -- a deliberate divergence is conceivable (a rule
+          that genuinely knows a different value belongs on one side) and
+          the linter cannot see the intent, only the difference.
+
+    Advisory (info severity), one finding per side per block."""
+    if not _is_model(code_lines):
+        return []
+    assigns = _top_level_xdm_assignments(code_lines)
+    by_path = {a["path"]: a for a in assigns}
+    out: List[dict] = []
+    for side in _MIRROR_SIDES:
+        for leaf in _IDENTITY_MIRROR_LEAVES:
+            ident = by_path.get(f"xdm.{side}.identity.{leaf}")
+            if ident is None:
+                continue  # absence is not a finding, ever
+            user = by_path.get(f"xdm.{side}.user.{leaf}")
+            if user is None:
+                out.append(
+                    _violation(
+                        "WARN-057",
+                        "warning",
+                        ident["line"],
+                        f"xdm.{side}.identity.{leaf} is assigned but "
+                        f"xdm.{side}.user.{leaf} is not. The identity "
+                        "mirror is APPENDED beside the user field, never "
+                        "written instead of it: the user field is what the "
+                        "mandatory authentication set, the story "
+                        "correlation key and every existing consumer read. "
+                        "As written this rule has moved the value onto a "
+                        "surface most content does not query yet.",
+                        f"Add xdm.{side}.user.{leaf} with the SAME "
+                        "right-hand side and keep both. See the "
+                        "'Recommended fields (the identity mirror)' "
+                        "section of references/authentication-mapping.md.",
+                    )
+                )
+                continue
+            # An identity field whose RHS is exactly a read of its own
+            # user twin carries the same value by construction, so it is
+            # not a divergence. Where that read sits in the SAME alter
+            # stage it is structurally broken and ERR-024 owns it --
+            # reporting a divergence there too would send the author
+            # hunting for a value mismatch that does not exist.
+            if _normalise_rhs(ident["rhs"]) == f"xdm.{side}.user.{leaf}":
+                continue
+            if _normalise_rhs(ident["rhs"]) != _normalise_rhs(user["rhs"]):
+                out.append(
+                    _violation(
+                        "WARN-057",
+                        "warning",
+                        ident["line"],
+                        f"xdm.{side}.user.{leaf} and "
+                        f"xdm.{side}.identity.{leaf} are both assigned, "
+                        "from DIFFERENT derivations. A mirrored pair is one "
+                        "fact written twice, so IF these are meant to carry "
+                        "the same value, one of them is wrong and both are "
+                        "populated -- nothing downstream can tell which. If "
+                        "they are deliberately different values, this "
+                        "advisory does NOT apply and the pair should stay "
+                        "as it is.",
+                        "Decide which derivation is the correct one for "
+                        "this fact before editing. Where they should "
+                        "match, give both the same right-hand side -- "
+                        "assign the same temp, or repeat the same "
+                        "expression, since a rule cannot read a sibling "
+                        "xdm.* field. Where they should not, record why in "
+                        "the rule header.",
+                    )
+                )
+    return out
+
+
 def _check_info013(code_lines: List[str]) -> List[dict]:
     """A single underscore temp consumed by xdm.* assignments across 3+
     distinct top-level XDM categories is usually over-mapping (forcing one
@@ -2484,7 +2645,8 @@ def _check_warn050(code_lines: List[str]) -> List[dict]:
 # qualifier word cannot be captured in its place. Only the bare form is
 # flagged, which keeps this check quiet on ordinary structured sources.
 _PROSE_ACCOUNT_RE = re.compile(r"\b(?:for|user)\b(?:\\s[*+]|\s)+\(")
-_USER_FIELD_RE = re.compile(r"^xdm\.\w+\.user\.(?:username|upn)$")
+_USER_FIELD_RE = re.compile(
+    r"^xdm\.\w+\.(?:user|identity)\.(?:username|upn)$")
 # Qualifier / redaction vocabulary a prose capture can return instead of
 # an account. A rule that compares against any of these has a guard.
 _REDACTION_TOKENS = ("invalid", "masked", "unknown", "nobody")
@@ -2800,6 +2962,40 @@ def _check_err033(code_lines: List[str]) -> List[dict]:
 # and `out` are the standard byte-count extension keys, so this recurs on
 # every CEF firewall rather than being a one-off.
 #
+# `config` IS reserved as of 2.1.3, established on a live tenant at the
+# cost of five uploads while building a GitHub Enterprise Cloud audit
+# pack. The bisect took THREE probes, and the middle one is the one that
+# is easy to skip:
+#
+#     json_extract_scalar(config, "$.url")     <- 101704, install FAILED
+#     xdm.target.url = url_path                <- INSTALLED
+#     json_extract_scalar(`config`, "$.url")   <- INSTALLED
+#
+# Feeding the same XDM field from a DIFFERENT column is what separates
+# "this field is gated" from "this column NAME is gated". Without that
+# middle probe the obvious and wrong conclusion is that xdm.target.url is
+# a gated field, and the fix would have been to stop mapping a URL.
+#
+# Its corpus evidence is the `view` shape -- zero bare reads and zero
+# backticked reads, and zero of `configuration` either way -- but it does
+# NOT rest on silence the way `view` does. Of 20 raw occurrences, 8 sit
+# inside string literals, regexes or comments and vanish under stripping;
+# the 12 that survive are all the identical line `config case_sensitive =
+# true`, which is XQL's own STAGE keyword. The corpus does not merely
+# fail to mention a column of this name, it shows the word being used as
+# a language construct, which is the property this whole set is about.
+#
+# AND THIS BUNDLE ALREADY KNEW. _STAGE_KEYWORDS above lists `config`, and
+# has since long before this check existed, beside `filter`, `fields` and
+# `target` -- three names that were already reserved here. _DF_STAGE_WORDS
+# repeats it. So the fact was written down in one table and missing from
+# the other, and the two were never compared. That is the same defect as
+# the stale `--list-codes` name list this release also repairs, and it is
+# why the corpus was not the only place worth looking.
+#
+# The stage form is also why _ERR034_READ carries a lookahead the other
+# eight do not need; see the comment there.
+#
 # `out` is NOT reserved, and the same measurement is why. It is read BARE
 # in value position 8 times in shipped upstream rules -- `to_integer(out)`
 # on the sent-bytes mapping -- and never backticked. That is the
@@ -2814,9 +3010,12 @@ def _check_err033(code_lines: List[str]) -> List[dict]:
 # changing it. `target` (31 backticked reads, 12 vendors), `fields` (13),
 # `in` (10) and `transaction` (6) are strongly attested. `table` and
 # `filter` rest on 2 each. `tag` rests on 2 backticked reads, and `view`
-# does not appear in the corpus in ANY form -- both of those are here on
-# the strength of live-tenant bisection instead, which is the stronger
-# evidence anyway. Corpus silence is not evidence of safety.
+# and `config` do not appear in the corpus as a column in ANY form --
+# those three are here on the strength of live-tenant bisection instead,
+# which is the stronger evidence anyway. Corpus silence is not evidence
+# of safety, and `config` is the case that proves the point: an ordinary
+# configuration word certain to recur on SaaS, cloud and appliance
+# sources, absent from the corpus purely for want of evidence, and fatal.
 #
 # Kept deliberately identical to RESERVED_COLUMNS in the content-pack
 # bundle's scripts/preflight_release.py, which gates the same fault at
@@ -2827,11 +3026,14 @@ def _check_err033(code_lines: List[str]) -> List[dict]:
 # the MEMBERSHIP of this tuple is not a local edit: message the
 # cortex-content-pack-go-again bundle in the same change. SKILL.md records
 # that as a standing commitment under "Called as an instrument", and
-# test_lint_rule.py pins the eight members so an addition cannot land
+# test_lint_rule.py pins the nine members so an addition cannot land
 # silently -- both existing tests iterate a hard-coded name list and would
-# have passed a ninth member without a word.
+# have passed a tenth member without a word. The pin worked: it is what
+# routed the `config` report here rather than leaving the two lists to
+# drift, which is the failure it was written for.
 _ERR034_RESERVED = (
     "tag", "view",                                          # confirmed by bisection
+    "config",                                               # confirmed by bisection; already in _STAGE_KEYWORDS, see below
     "target", "fields", "transaction", "table", "filter",   # never read bare in a shipped rule
     "in",                                                   # 9 backticked reads, 0 bare, 570 operator uses all unmatched
 )
@@ -2841,8 +3043,20 @@ _ERR034_ALT = "|".join(sorted(_ERR034_RESERVED))
 # view_name, preview, etag, header_fields and xdm.event.tags out of it; and
 # the optional leading backtick plus the lookahead for a trailing one keep
 # the ESCAPED form out, which is the form shipped rules use.
+#
+# The trailing lookahead is for `config`, the one member that is also a
+# query STAGE -- `config case_sensitive = true`, `config timeframe = 24h`,
+# `config max_runtime_minutes = 5`. At the head of a stage the word is
+# already out of value position and never matched, but the PARENTHESISED
+# form `(config timeframe = 24h` puts it directly after '(' and did match,
+# which would have raised a false ERR-034 on valid XQL. A stage is the
+# only place one of these names is followed by an identifier and an '=',
+# so excluding that shape costs no true positive: a column read is
+# followed by ',', ')' or an operator. It is inert for the other eight,
+# none of which has a stage form, and it does NOT weaken `filter target =
+# "x"`, where nothing sits between the name and the '='.
 _ERR034_READ = re.compile(
-    rf"[=(,]\s*`?({_ERR034_ALT})\b(?!\s*[(`])", re.IGNORECASE
+    rf"[=(,]\s*`?({_ERR034_ALT})\b(?!\s*[(`])(?!\s+\w+\s*=)", re.IGNORECASE
 )
 # Creating a field of that name, which SEARCH mode rejects too.
 _ERR034_TARGET = re.compile(
@@ -4313,6 +4527,7 @@ def _lint_block(source: str) -> List[dict]:
     findings += _check_err033(code_lines)
     findings += _check_err034(code_lines)
     findings += _check_info013(code_lines)
+    findings += _check_warn057(code_lines)
 
     findings.sort(key=lambda v: (v["line"], v["rule_id"]))
     findings += _cascade_hint(findings)

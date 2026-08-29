@@ -205,8 +205,9 @@ def parse_records(text: str, fmt: str) -> List[dict]:
     if fmt in ("syslog-5424", "syslog-3164"):
         # We don't decompose the syslog wrapper itself -- the body is the
         # interesting payload. Record per line, with the message body
-        # extracted into "_message".
-        return [{"_message": ln} for ln in _non_blank_lines(text)]
+        # extracted into "_message", plus any key=value body merged in
+        # alongside (see _envelope_record).
+        return [_envelope_record(ln) for ln in _non_blank_lines(text)]
     if fmt == "kv":
         return [_parse_kv(ln) for ln in _non_blank_lines(text)]
     if fmt in ("csv", "tsv"):
@@ -217,11 +218,34 @@ def parse_records(text: str, fmt: str) -> List[dict]:
     # expose each line as _message, exactly like the syslog wrapper, so
     # the value-signal story detection still runs over the content
     # instead of silently seeing zero records.
-    return [{"_message": ln} for ln in _non_blank_lines(text)]
+    return [_envelope_record(ln) for ln in _non_blank_lines(text)]
 
 
 def _non_blank_lines(text: str) -> List[str]:
     return [ln for ln in text.splitlines() if ln.strip()]
+
+
+# A syslog envelope routinely wraps a key=value BODY: a relay in front of
+# a FortiGate produces `Aug 28 14:16:41 fw01 <189>date=... srcip=...`,
+# and detect_format answers syslog-3164 because the envelope is the more
+# specific marker. Keeping the line as one opaque _message hid every one
+# of the body's fields from anchor ranking and from all four story
+# detectors. Merge the body's pairs in alongside _message so both halves
+# are visible; the envelope stays intact, so recommended_pattern is still
+# correctly B and references/syslog-envelope.md still applies.
+_ENVELOPE_KV_MIN_TOKENS = 4
+
+
+def _envelope_record(line: str) -> dict:
+    """One record for an envelope-wrapped line: always ``_message``, plus
+    the key=value body merged in when the line carries enough pairs to be
+    a kv body rather than prose that happens to contain one ``foo=bar``."""
+    rec: dict = {"_message": line}
+    if len(_KV_TOKEN_RE.findall(line)) < _ENVELOPE_KV_MIN_TOKENS:
+        return rec
+    for key, value in _parse_kv(line).items():
+        rec.setdefault(key, value)
+    return rec
 
 
 def _parse_cef(line: str) -> dict:
@@ -721,6 +745,22 @@ def recommend_pattern(fmt: str, arrays: list) -> dict:
 # Mandatory XDM target set for the authentication story. Mirrors
 # _AUTH_MANDATORY in lint_rule.py (which raises the advisory WARN-042).
 # Kept here so the profiler can surface the checklist at analysis time.
+# The recommended identity mirror: each of these user leaves has an
+# xdm.<side>.identity.<leaf> twin that a rule is encouraged to assign
+# from the same derivation, appended beside the user field. Canonical
+# source: the "Recommended fields (the identity mirror)" table in
+# references/authentication-mapping.md. Mirrored in lint_rule.py as
+# _IDENTITY_MIRROR_LEAVES and in scaffold_rule.py as _AUTH_RECOMMENDED;
+# a test pins the three lists together.
+_AUTH_IDENTITY_MIRROR = [
+    "xdm.source.identity.upn",
+    "xdm.source.identity.identity_type",
+    "xdm.source.identity.user_type",
+    "xdm.source.identity.username",
+    "xdm.source.identity.identifier",
+    "xdm.source.identity.domain",
+]
+
 _AUTH_MANDATORY = [
     "xdm.source.ipv4",
     "xdm.source.port",
@@ -873,11 +913,17 @@ def detect_authentication(
     out: dict = _signal_block(detected, signals, capped)
     if detected:
         out["mandatory_fields"] = list(_AUTH_MANDATORY)
+        out["recommended_fields"] = list(_AUTH_IDENTITY_MIRROR)
         out["guidance"] = (
             "Authentication signal detected. Map the full mandatory XDM "
             "field set for the authentication story (see "
             "references/authentication-mapping.md). Enforcement is advisory "
-            "(lint WARN-042), never a block."
+            "(lint WARN-042), never a block. Recommended on top of the "
+            "mandatory set: mirror each user.* field listed above into its "
+            "xdm.<side>.identity.* twin from the SAME derivation, appended "
+            "beside the user assignment and never instead of it, so the "
+            "Identity data model populates. The mirror is recommended, not "
+            "required -- absence is never flagged."
         )
     return out
 
@@ -924,12 +970,32 @@ _NETWORK_HTTP_MANDATORY = [
 # detection: an IP or a port appears in almost every log, so transport
 # fields alone NEVER mark a sample as a network event. Only distinctive
 # traffic vocabulary counts as a name signal.
+# The counter half is morphology-tolerant rather than an ever-growing
+# alternation: vendors spell the same idea `sent_bytes`, `sentbytes`,
+# `sentbyte` (FortiGate), `orig_bytes` (Zeek) and `bytes_out`. Matching
+# the direction word plus the unit covers all of them, and still refuses
+# a bare `srcip` / `policyid` / `duration` / `sessionid`.
 _NETWORK_NAME_RE = re.compile(
     r"(?<![a-z])("
     r"firewall|netflow|flow|traffic|conn|connection|packets|packet|pkts|"
+    r"(?:sent|rcvd|recv|received|in|out|orig|resp)_?"
+    r"(?:bytes|byte|pkts|pkt|packets|packet)|"
     r"bytes_sent|bytes_received|sent_bytes|recv_bytes|bytes_in|bytes_out|"
     r"ip_protocol"
     r")(?![a-z])"
+)
+
+# The same traffic vocabulary, applied to VALUES -- but only to the value
+# of a discriminator-ish field. FortiGate carries the story in
+# `type="traffic"`, not in a field NAME, so a name-only scan misses it
+# entirely. Gating on the field name is what keeps a stray "connection"
+# inside a free-text `msg` from firing.
+_DISCRIMINATOR_FIELD_RE = re.compile(
+    r"(?:^|[._])(?:log)?(?:type|subtype|event_?type|category|class|logtype)$"
+)
+_NETWORK_VALUE_VOCAB_RE = re.compile(
+    r"(?<![a-z])(firewall|netflow|flow|traffic|connection|session)(?![a-z])",
+    re.IGNORECASE,
 )
 
 # Value signal, in two families. These carry detection on syslog /
@@ -955,6 +1021,38 @@ _NETWORK_ACTION_VALUE_RE = re.compile(
 _NETWORK_PROTO_VALUE_RE = re.compile(
     r"(?<![a-z0-9])(tcp|udp|icmp)(?![a-z0-9])",
     re.IGNORECASE,
+)
+
+# Many firewalls emit the IANA protocol NUMBER, not the name -- FortiGate
+# sends `proto=6`. A bare integer is meaningless on its own, so this only
+# counts when the field name is protocol-ish (_TUPLE_PROTO_RE), which
+# stops every other integer column from firing.
+_NETWORK_PROTO_NUMBERS = {
+    "1": "icmp", "6": "tcp", "17": "udp",
+    "47": "gre", "50": "esp", "58": "ipv6-icmp",
+}
+
+# Session-teardown dispositions. These are gated to an action-ish field
+# NAME, unlike the allow / deny family above which scans every value: the
+# bare word "timeout" appears inside exception strings and log prose
+# (measured against tests/fixtures/nokia_nfmp.jsonl), and only its
+# appearance as the value of an `action` field means a flow disposition.
+_ACTION_FIELD_RE = re.compile(
+    r"(?:^|[._])(?:action|disposition|verdict|outcome|result|event_action|"
+    r"utmaction)(?:$|[._])"
+)
+_NETWORK_TEARDOWN_VALUE_RE = re.compile(
+    r"^(?:close|closed|timeout|teardown|passthrough|server-rst|client-rst|"
+    r"ip-conn)$",
+    re.IGNORECASE,
+)
+# The subset that is unambiguously a TRANSPORT event and therefore lifts
+# the AAA suppression below: an authentication gateway never emits a TCP
+# reset. The rest (close / timeout / passthrough / teardown) stay inside
+# the suppression, because a session on an auth gateway also closes and
+# also times out.
+_NETWORK_TEARDOWN_FLOW_ONLY_RE = re.compile(
+    r"^(?:server-rst|client-rst|ip-conn)$", re.IGNORECASE
 )
 
 # Transport-pair evidence: TWO or more IPv4:port tokens inside one value
@@ -1046,16 +1144,37 @@ def detect_network(
     # the per-field representative samples.
     def _scan_value(path: str, value: str) -> None:
         nonlocal non_action_evidence
+        lower_path = path.lower()
         pm = _NETWORK_PROTO_VALUE_RE.search(value)
         if pm:
             _add(path, pm.group(1).lower(), "value")
             non_action_evidence = True
+        # IANA protocol number, only under a protocol-ish field name.
+        if _TUPLE_PROTO_RE.search(lower_path):
+            named = _NETWORK_PROTO_NUMBERS.get(value.strip())
+            if named:
+                _add(path, named, "value")
+                non_action_evidence = True
+        # Traffic vocabulary in the value of a discriminator field --
+        # FortiGate's type="traffic" and friends.
+        if _DISCRIMINATOR_FIELD_RE.search(lower_path):
+            vm = _NETWORK_VALUE_VOCAB_RE.search(value)
+            if vm:
+                _add(path, vm.group(1).lower(), "value")
+                non_action_evidence = True
         if len(_NETWORK_ENDPOINT_RE.findall(value)) >= 2:
             _add(path, "ip:port pair", "value")
             non_action_evidence = True
         am = _NETWORK_ACTION_VALUE_RE.search(value)
         if am:
             _add(path, am.group(1).lower(), "value")
+        # Session-teardown disposition, only under an action-ish name.
+        if _ACTION_FIELD_RE.search(lower_path):
+            stripped = value.strip()
+            if _NETWORK_TEARDOWN_VALUE_RE.match(stripped):
+                _add(path, stripped.lower(), "value")
+                if _NETWORK_TEARDOWN_FLOW_ONLY_RE.match(stripped):
+                    non_action_evidence = True
 
     if records:
         for rec in records:
@@ -1543,6 +1662,10 @@ def _format_text(worksheet: dict) -> str:
         lines.append(
             "  map the mandatory set (advisory WARN-042): "
             + ", ".join(auth.get("mandatory_fields", []))
+        )
+        lines.append(
+            "  recommended (identity mirror): "
+            + ", ".join(auth.get("recommended_fields", []))
         )
     net = worksheet.get("network") or {}
     if net.get("detected"):

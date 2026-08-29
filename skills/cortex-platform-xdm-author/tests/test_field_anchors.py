@@ -140,6 +140,36 @@ EXPECTED_TOP_CANDIDATES = {
     "Src.IP": "xdm.source.ipv4",
 }
 
+# FortiGate-native curated seeds (2.4.0). The index is built from
+# already-written rules, so it knew FortiGate's CEF dialect (ftntfgt*)
+# and almost none of the short native spellings the syslog / key=value
+# formats emit. Pinned here so a corpus re-cut cannot silently drop them.
+FORTIGATE_NATIVE_SEEDS = {
+    "sentbyte": "xdm.source.sent_bytes",
+    "rcvdbyte": "xdm.target.sent_bytes",
+    "sentpkt": "xdm.source.sent_packets",
+    "rcvdpkt": "xdm.target.sent_packets",
+    "devname": "xdm.observer.name",
+    "devid": "xdm.observer.unique_identifier",
+    "srcintf": "xdm.source.interface",
+    "dstintf": "xdm.target.interface",
+    "srcintfrole": "xdm.source.zone",
+    "dstintfrole": "xdm.target.zone",
+    "srccountry": "xdm.source.location.country",
+    "dstcountry": "xdm.target.location.country",
+    "appcat": "xdm.network.application_protocol_category",
+    "catdesc": "xdm.network.http.url_category",
+    "poluuid": "xdm.network.rule",
+    "trandisp": "xdm.intermediate.is_nat",
+    "utmaction": "xdm.observer.action",
+}
+
+# Names that must resolve to NOTHING. A zero here is the correct answer,
+# not a gap: the event time belongs in the dataset's own _time, never an
+# xdm.* path, and ranking one of these top sends an author to a wrong
+# field with apparent precedent behind it.
+MUST_NOT_RESOLVE = ("time",)
+
 GIBBERISH = "__no_such_field_zzz__"
 
 
@@ -238,3 +268,48 @@ class TestNormalisation(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestFortiGateNativeSeeds(unittest.TestCase):
+    """The curated FortiGate-native dialect (2.4.0)."""
+
+    @classmethod
+    def setUpClass(cls):
+        j = read_json("assets/field_anchors.json")
+        cls.j = j
+        cls.reverse = build_reverse_index(j["anchors"])
+
+    def test_every_native_seed_resolves_top_1(self):
+        for synonym, expected in FORTIGATE_NATIVE_SEEDS.items():
+            with self.subTest(synonym=synonym):
+                cands = self.reverse.get(normalise_synonym(synonym), [])
+                self.assertTrue(cands, f"'{synonym}' resolves to nothing")
+                self.assertEqual(cands[0]["xdm_path"], expected)
+
+    def test_clock_reading_resolves_to_nothing(self):
+        for synonym in MUST_NOT_RESOLVE:
+            with self.subTest(synonym=synonym):
+                self.assertFalse(
+                    self.reverse.get(normalise_synonym(synonym), []),
+                    f"'{synonym}' should have no candidate: a bare clock "
+                    f"reading is not an elapsed interval, and the event "
+                    f"time belongs in _time",
+                )
+
+    def test_curated_never_outweighs_corpus_evidence(self):
+        # Curation fills gaps; it must not out-rank what the corpus
+        # actually observed. Counts stay at the seed weights.
+        for path, entry in self.j["anchors"].items():
+            for syn in entry["synonyms"]:
+                if syn.get("origin") == "curated" or syn.get("curated"):
+                    with self.subTest(path=path, synonym=syn["synonym"]):
+                        self.assertLessEqual(syn["count"], 2, syn)
+
+    def test_anchor_count_matches_the_map(self):
+        # Nothing checked this before, so adding an anchor without
+        # bumping the header silently falsified it.
+        self.assertEqual(
+            self.j["anchor_count"],
+            len(self.j["anchors"]),
+            "anchor_count header does not match the number of anchors",
+        )

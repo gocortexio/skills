@@ -41,7 +41,7 @@ One allowed outbound web session: client `10.20.30.40:51544` reaches `203.0.113.
 | `$.srcip` / `$.srcport` | string / int | `xdm.source.ipv4` / `xdm.source.port`; the IP also drives `xdm.source.is_internal_ip` via `incidr()` |
 | `$.dstip` / `$.dstport` | string / int | `xdm.target.ipv4` / `xdm.target.port`; drives `xdm.target.is_internal_ip` |
 | `$.sentbyte` / `$.rcvdbyte` | int | `xdm.source.sent_bytes` / `xdm.target.sent_bytes` (bytes received by the client are bytes sent by the target) |
-| `$.devid` | string | `xdm.source.host.device_id` (the observing appliance's stable id) |
+| `$.devid` | string | `xdm.observer.unique_identifier` -- the appliance's OWN serial describes the observer, not either end of the flow. `xdm.source.host.device_id` is mandatory and takes `""`: the record carries no client device id. |
 | `$.catdesc` | string | `xdm.network.http.url_category` via the URL_CATEGORY if-chain |
 
 Gaps: FortiGate traffic logs carry no IPv6 pair, no HTTP header, and no target device id. Those mandatory fields take their documented placeholders (`""`) rather than being dropped.
@@ -70,7 +70,12 @@ filter
     xdm.event.tags = arraycreate(XDM_CONST.EVENT_TAG_NETWORK),
     xdm.event.outcome = if(
         tmp_action = "accept", XDM_CONST.OUTCOME_SUCCESS,
-        tmp_action != null, XDM_CONST.OUTCOME_FAILED,
+        tmp_action = "close", XDM_CONST.OUTCOME_SUCCESS,
+        tmp_action = "timeout", XDM_CONST.OUTCOME_SUCCESS,
+        tmp_action = "server-rst", XDM_CONST.OUTCOME_SUCCESS,
+        tmp_action = "client-rst", XDM_CONST.OUTCOME_SUCCESS,
+        tmp_action = "deny", XDM_CONST.OUTCOME_FAILED,
+        tmp_action = "ip-conn", XDM_CONST.OUTCOME_FAILED,
         XDM_CONST.OUTCOME_UNKNOWN),
     xdm.network.ip_protocol = if(
         tmp_proto = "tcp", XDM_CONST.IP_PROTOCOL_TCP,
@@ -95,7 +100,8 @@ filter
         false),
     xdm.source.port = to_integer(to_number(tmp_src_port)),
     xdm.source.sent_bytes = to_integer(to_number(tmp_sent)),
-    xdm.source.host.device_id = tmp_devid,
+    xdm.observer.unique_identifier = tmp_devid,
+    xdm.source.host.device_id = "",
     xdm.target.ipv4 = tmp_dst_ip,
     xdm.target.ipv6 = "",
     xdm.target.is_internal_ip = if(
@@ -115,10 +121,10 @@ The same session as a syslog line. Stage 0 parses the envelope first
 (PRI-anchored host capture + priority decode, from
 [syslog-envelope.md](../syslog-envelope.md)); the key=value payload is
 then extracted with Pattern C regextracts. The XDM assignment stage is
-the same 20-field block as the JSON rule.
+the same 17-field block as the JSON rule.
 
 ```
-<134>Jun 30 12:00:01 fw01 fortigate: action=accept proto=tcp srcip=10.20.30.40 srcport=51544 dstip=203.0.113.9 dstport=443 sentbyte=1220 rcvdbyte=8480 devid=FGT60E1234567890
+<134>Jun 30 12:00:01 fw01 fortigate: action="server-rst" proto=6 srcip=10.20.30.40 srcport=51544 dstip=203.0.113.9 dstport=443 sentbyte=1220 rcvdbyte=8480 devid="FGT60E1234567890"
 ```
 
 ### The full rule (syslog)
@@ -147,15 +153,15 @@ filter
         tmp_pri_severity = 5,  XDM_CONST.LOG_LEVEL_NOTICE,
         tmp_pri_severity != null, XDM_CONST.LOG_LEVEL_INFORMATIONAL)
 | alter
-    tmp_action = arrayindex(regextract(_raw_log, "action=(\w+)"), 0),
-    tmp_proto = arrayindex(regextract(_raw_log, "proto=(\w+)"), 0),
+    tmp_action = arrayindex(regextract(_raw_log, "action=\"?([\w-]+)"), 0),
+    tmp_proto = arrayindex(regextract(_raw_log, "proto=\"?(\w+)"), 0),
     tmp_src_ip = arrayindex(regextract(_raw_log, "srcip=([\d.]+)"), 0),
     tmp_src_port = arrayindex(regextract(_raw_log, "srcport=(\d+)"), 0),
     tmp_dst_ip = arrayindex(regextract(_raw_log, "dstip=([\d.]+)"), 0),
     tmp_dst_port = arrayindex(regextract(_raw_log, "dstport=(\d+)"), 0),
     tmp_sent = arrayindex(regextract(_raw_log, "sentbyte=(\d+)"), 0),
     tmp_rcvd = arrayindex(regextract(_raw_log, "rcvdbyte=(\d+)"), 0),
-    tmp_devid = arrayindex(regextract(_raw_log, "devid=(\w+)"), 0)
+    tmp_devid = arrayindex(regextract(_raw_log, "devid=\"?(\w+)"), 0)
 | alter
     xdm.observer.vendor = "Fortinet",
     xdm.observer.product = "FortiGate",
@@ -165,19 +171,23 @@ filter
     xdm.event.tags = arraycreate(XDM_CONST.EVENT_TAG_NETWORK),
     xdm.event.outcome = if(
         tmp_action = "accept", XDM_CONST.OUTCOME_SUCCESS,
-        tmp_action != null, XDM_CONST.OUTCOME_FAILED,
+        tmp_action = "close", XDM_CONST.OUTCOME_SUCCESS,
+        tmp_action = "timeout", XDM_CONST.OUTCOME_SUCCESS,
+        tmp_action = "server-rst", XDM_CONST.OUTCOME_SUCCESS,
+        tmp_action = "client-rst", XDM_CONST.OUTCOME_SUCCESS,
+        tmp_action = "deny", XDM_CONST.OUTCOME_FAILED,
+        tmp_action = "ip-conn", XDM_CONST.OUTCOME_FAILED,
         XDM_CONST.OUTCOME_UNKNOWN),
     xdm.network.ip_protocol = if(
-        tmp_proto = "tcp", XDM_CONST.IP_PROTOCOL_TCP,
-        tmp_proto = "udp", XDM_CONST.IP_PROTOCOL_UDP,
-        tmp_proto = "icmp", XDM_CONST.IP_PROTOCOL_ICMP,
+        tmp_proto = "6", XDM_CONST.IP_PROTOCOL_TCP,
+        tmp_proto = "17", XDM_CONST.IP_PROTOCOL_UDP,
+        tmp_proto = "1", XDM_CONST.IP_PROTOCOL_ICMP,
         XDM_CONST.IP_PROTOCOL_IP),
     xdm.network.protocol_layers = if(
-        tmp_proto != null, arraycreate(uppercase(tmp_proto)),
-        arraycreate("TCP")),
-    xdm.network.http.http_header.header = "",
-    xdm.network.http.http_header.value = "",
-    xdm.network.http.url_category = XDM_CONST.URL_CATEGORY_UNKNOWN,
+        tmp_proto = "6", arraycreate("TCP"),
+        tmp_proto = "17", arraycreate("UDP"),
+        tmp_proto = "1", arraycreate("ICMP"),
+        arraycreate("IP")),
     xdm.source.ipv4 = tmp_src_ip,
     xdm.source.ipv6 = "",
     xdm.source.is_internal_ip = if(
@@ -187,7 +197,8 @@ filter
         false),
     xdm.source.port = to_integer(to_number(tmp_src_port)),
     xdm.source.sent_bytes = to_integer(to_number(tmp_sent)),
-    xdm.source.host.device_id = tmp_devid,
+    xdm.observer.unique_identifier = tmp_devid,
+    xdm.source.host.device_id = "",
     xdm.target.ipv4 = tmp_dst_ip,
     xdm.target.ipv6 = "",
     xdm.target.is_internal_ip = if(
@@ -202,10 +213,25 @@ filter
 ```
 
 Differences versus the JSON rule, all in the transport layer: Stage 0
-adds `xdm.observer.name` and the priority-derived `xdm.event.log_level`;
-the payload regexes replace `json_extract_scalar`; the basic syslog
-traffic line carries no `catdesc`, so `url_category` takes its
-placeholder. The 20-field network block itself is unchanged.
+adds `xdm.observer.name` and the priority-derived `xdm.event.log_level`,
+and the payload regexes replace `json_extract_scalar`.
+
+This line carries no web layer -- no `catdesc`, no URL, no header -- so
+the rule does not claim one, and the three conditional HTTP fields are
+absent rather than padded. That is what the all-or-nothing rule in
+[network-mapping.md](../network-mapping.md) requires. Format 1 maps
+`catdesc` and therefore genuinely has the layer, which is why its HTTP
+block is complete and this one has none.
+
+Two captures are deliberately quote-tolerant, and this is not cosmetic:
+native FortiOS quotes its string values and its actions are hyphenated,
+so a bare `action=(\w+)` matches NOTHING against `action="server-rst"`
+and truncates the unquoted form to `server`. `proto` arrives as the IANA
+number, so `protocol_layers` maps it to a name explicitly rather than
+reusing the raw value -- `uppercase("6")` would have written "6" as a
+protocol layer. The mapping is repeated rather than hoisted into a temp
+because an `alter` stage evaluates its targets in parallel, so a temp
+cannot read a sibling temp assigned beside it (ERR-024). The 17-field network block itself is unchanged.
 
 ## Format 3 -- the dual story: SSL-VPN login (authentication AND network)
 
@@ -314,7 +340,7 @@ Dual-branch decisions worth copying:
 ## Checklist
 
 ```
-[ ] every field in the 20-item network mandatory set assigned in every branch
+[ ] every field in the 17-item network mandatory set assigned in every branch
 [ ] placeholders are type-valid: to_integer(0), "", false, OUTCOME_UNKNOWN,
     IP_PROTOCOL_IP, URL_CATEGORY_UNKNOWN, arraycreate("IP")
 [ ] is_internal_ip derived via incidr() when the IP is mapped

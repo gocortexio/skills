@@ -374,3 +374,106 @@ authentication meaning, but the account is in the captured command TEXT
 and is attacker-visible by definition -- map the flow, and treat the
 credential as an alert rather than an identity.
 
+
+## FortiGate: the native key=value dialect
+
+FortiOS emits two unrelated dialects and the field names do not overlap.
+CEF carries `FTNTFGT`-prefixed extension keys (`ftntfgtlogid`,
+`ftntfgtappcat`); the native syslog and key=value formats carry short
+unprefixed names (`logid`, `appcat`). A rule written against one dialect
+maps nothing when the collector is configured for the other, so confirm
+which one the tenant actually receives before mapping.
+
+The native line is `key=value` with quoted strings, usually behind a
+bare priority token and no RFC 3164 header:
+
+```
+<189>date=2026-08-28 time=14:16:41 devname="FW01" devid="FG5H0E9845800432" vd="root" logid="0000000013" type="traffic" subtype="forward" srcip=10.1.1.5 srcport=55434 srcintf="port1" dstip=10.2.2.9 dstport=443 dstintf="port2" proto=6 action="close" policyid=13 service="HTTPS" sentbyte=92 rcvdbyte=132 sentpkt=2 rcvdpkt=3 appcat="unscanned"
+```
+
+A relay in front of the firewall prepends its own RFC 3164 header, so the
+same event arrives as a syslog envelope wrapping a key=value body. Anchor
+every body field on its own token, never on `^` and never on a fixed
+offset from the header -- see [syslog-envelope.md](syslog-envelope.md).
+
+### `type` and `subtype` are the record discriminator
+
+A FortiGate dataset is NOT uniformly network. `type` names the family and
+`subtype` the specific record, and only two families carry a flow:
+
+| `type` | Typical `subtype` | Story |
+| --- | --- | --- |
+| `traffic` | `forward`, `local`, `multicast`, `sniffer` | network -- the flow record, carries the byte pair |
+| `utm` | `webfilter`, `ips`, `virus`, `app-ctrl`, `dns`, `ssl` | network, plus an alert; `webfilter` is the only one with an HTTP layer |
+| `event` | `system`, `vpn`, `user`, `admin` | usually authentication or management, NOT a flow |
+| `anomaly` | `anomaly` | an alert about traffic, not a flow record |
+
+Branch on `type` per record with the CLASSIFY-ONCE idiom in
+[record-classification.md](record-classification.md). Modelling the whole
+dataset as network invents a flow on every admin login.
+
+### The action vocabulary is wider than allow / deny
+
+The outcome rule in the mandatory table above covers allow / deny / drop
+/ block. FortiGate traffic records frequently carry none of those -- a
+normal completed session closes, and a refused one is reported as a TCP
+reset. Neither word appears in the generic vocabulary, so a rule that
+only tests for allow / deny sends the common cases to
+`OUTCOME_UNKNOWN`:
+
+| `action` | Meaning | `xdm.event.outcome` |
+| --- | --- | --- |
+| `accept` | the policy permitted the session | `OUTCOME_SUCCESS` |
+| `close` | the session completed and closed normally | `OUTCOME_SUCCESS` |
+| `timeout` | the session expired without a clean close | `OUTCOME_SUCCESS` -- it was permitted; expiry is not a policy denial |
+| `server-rst` / `client-rst` | one end sent a TCP reset | `OUTCOME_SUCCESS` -- the policy permitted it; the peer refused it |
+| `deny` | the policy blocked the session | `OUTCOME_FAILED` |
+| `start` | session opened, no verdict yet | `OUTCOME_UNKNOWN` |
+| `ip-conn` | a failed IP-level connection attempt | `OUTCOME_FAILED` |
+| `dns` | a DNS session record | derive from the record, not the verb |
+
+The distinction that matters: `xdm.event.outcome` on a flow describes
+whether the FIREWALL permitted it, not whether the application
+succeeded. A `server-rst` is a policy success and an application
+failure, and mapping it to `OUTCOME_FAILED` makes every ordinary refused
+connection look like a blocked one on the dashboard.
+
+### Field inventory (native key=value)
+
+| Native key | XDM target |
+| --- | --- |
+| `srcip` / `srcport` | `xdm.source.ipv4` / `xdm.source.port`; the IP also drives `xdm.source.is_internal_ip` via `incidr()` |
+| `dstip` / `dstport` | `xdm.target.ipv4` / `xdm.target.port`; drives `xdm.target.is_internal_ip` |
+| `proto` | `xdm.network.ip_protocol` -- an IANA NUMBER, not a name; `6` is TCP |
+| `sentbyte` / `rcvdbyte` | `xdm.source.sent_bytes` / `xdm.target.sent_bytes` (bytes received by the client are bytes sent by the target) |
+| `sentpkt` / `rcvdpkt` | `xdm.source.sent_packets` / `xdm.target.sent_packets` |
+| `devname` / `devid` | `xdm.observer.name` / `xdm.observer.unique_identifier` -- see below |
+| `srcintf` / `dstintf` | `xdm.source.interface` / `xdm.target.interface` |
+| `srcintfrole` / `dstintfrole` | `xdm.source.zone` / `xdm.target.zone` |
+| `srccountry` / `dstcountry` | `xdm.source.location.country` / `xdm.target.location.country` |
+| `policyid` / `poluuid` | `xdm.network.rule` |
+| `appcat` | `xdm.network.application_protocol_category` |
+| `catdesc` | `xdm.network.http.url_category` (webfilter records only) |
+| `logid` | `xdm.event.id` |
+| `utmaction` | `xdm.observer.action` |
+| `trandisp` / `tranip` / `tranport` | `xdm.intermediate.is_nat` / `xdm.intermediate.ipv4` / `xdm.intermediate.port`; `trandisp="noop"` means NO translation occurred |
+
+Fields with no XDM home: `date`, `time`, `timestamp` and `eventtime` are
+the event time and belong in the dataset's own `_time`, not an `xdm.*`
+path. `tz` is the device's timezone offset, not a location. `vd` is the
+virtual domain -- a FortiGate tenancy construct with no XDM equivalent;
+carry it in the dataset name rather than forcing it into a user or
+identity domain field, which it is not.
+
+### `devid` is the firewall, not the client
+
+`devid` is the appliance's own serial and `devname` its own hostname.
+Both describe the OBSERVER, so they belong under `xdm.observer.*`.
+Putting `devid` in `xdm.source.host.device_id` conflates the firewall
+with one end of the flow it is reporting, and every flow through that
+appliance then claims the same source device.
+
+`xdm.source.host.device_id` is nonetheless in the mandatory set, and a
+FortiGate traffic record carries no client device id at all. The honest
+answer is the documented `""` placeholder -- not the appliance serial
+borrowed to fill a required slot.

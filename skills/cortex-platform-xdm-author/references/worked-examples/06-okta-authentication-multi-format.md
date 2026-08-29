@@ -101,10 +101,21 @@ filter
         tmp_factor = "PASSWORD", "password",
         tmp_factor != null, "application"),
     xdm.source.user.upn = tmp_upn,
+    // Identity mirror (recommended tier): same derivations, appended beside user.* -- never instead of it.
+    xdm.source.identity.upn = tmp_upn,
     xdm.source.user.identity_type = if(
         tmp_upn != null, XDM_CONST.IDENTITY_TYPE_USER,
         XDM_CONST.IDENTITY_TYPE_UNKNOWN),
+    xdm.source.identity.identity_type = if(
+        tmp_upn != null, XDM_CONST.IDENTITY_TYPE_USER,
+        XDM_CONST.IDENTITY_TYPE_UNKNOWN),
     xdm.source.user.user_type = if(
+        tmp_upn = null, XDM_CONST.USER_TYPE_REGULAR,
+        tmp_upn contains "$", XDM_CONST.USER_TYPE_MACHINE_ACCOUNT,
+        lowercase(tmp_upn) ~= "^svc[-_.]|service|gserviceaccount",
+            XDM_CONST.USER_TYPE_SERVICE_ACCOUNT,
+        XDM_CONST.USER_TYPE_REGULAR),
+    xdm.source.identity.user_type = if(
         tmp_upn = null, XDM_CONST.USER_TYPE_REGULAR,
         tmp_upn contains "$", XDM_CONST.USER_TYPE_MACHINE_ACCOUNT,
         lowercase(tmp_upn) ~= "^svc[-_.]|service|gserviceaccount",
@@ -117,6 +128,7 @@ filter
     xdm.network.ip_protocol = XDM_CONST.IP_PROTOCOL_TCP,
     // Optional enrichment (map when present, omit otherwise)
     xdm.source.user.username = tmp_display_name,
+    xdm.source.identity.username = tmp_display_name,
     xdm.source.user_agent = tmp_user_agent,
     xdm.source.host.os = tmp_os,
     xdm.source.host.os_family = if(tmp_os ~= "[Ww]indows", XDM_CONST.OS_FAMILY_WINDOWS),
@@ -196,10 +208,21 @@ alter
         tmp_factor = "PASSWORD", "password",
         tmp_factor != null, "application"),
     xdm.source.user.upn = tmp_upn,
+    // Identity mirror (recommended tier): same derivations, appended beside user.* -- never instead of it.
+    xdm.source.identity.upn = tmp_upn,
     xdm.source.user.identity_type = if(
         tmp_upn != null, XDM_CONST.IDENTITY_TYPE_USER,
         XDM_CONST.IDENTITY_TYPE_UNKNOWN),
+    xdm.source.identity.identity_type = if(
+        tmp_upn != null, XDM_CONST.IDENTITY_TYPE_USER,
+        XDM_CONST.IDENTITY_TYPE_UNKNOWN),
     xdm.source.user.user_type = if(
+        tmp_upn = null, XDM_CONST.USER_TYPE_REGULAR,
+        tmp_upn contains "$", XDM_CONST.USER_TYPE_MACHINE_ACCOUNT,
+        lowercase(tmp_upn) ~= "^svc[-_.]|service|gserviceaccount",
+            XDM_CONST.USER_TYPE_SERVICE_ACCOUNT,
+        XDM_CONST.USER_TYPE_REGULAR),
+    xdm.source.identity.user_type = if(
         tmp_upn = null, XDM_CONST.USER_TYPE_REGULAR,
         tmp_upn contains "$", XDM_CONST.USER_TYPE_MACHINE_ACCOUNT,
         lowercase(tmp_upn) ~= "^svc[-_.]|service|gserviceaccount",
@@ -211,6 +234,7 @@ alter
     xdm.target.port = to_integer(0),
     xdm.network.ip_protocol = XDM_CONST.IP_PROTOCOL_TCP,
     xdm.source.user.username = tmp_display_name,
+    xdm.source.identity.username = tmp_display_name,
     xdm.source.user_agent = tmp_user_agent,
     xdm.source.host.os = tmp_os,
     xdm.source.host.os_family = if(tmp_os ~= "[Ww]indows", XDM_CONST.OS_FAMILY_WINDOWS),

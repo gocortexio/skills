@@ -76,7 +76,13 @@ filter
     xdm.target.resource.name = if(tmp_is_auth = "y", tmp_source),
     xdm.network.ip_protocol = XDM_CONST.IP_PROTOCOL_TCP,
     xdm.source.user.username = tmp_uid_name,
+    // Identity mirror (recommended tier): same derivations, appended beside user.* -- never instead of it.
+    xdm.source.identity.username = tmp_uid_name,
     xdm.source.user.upn = if(
+        tmp_uid_name contains "@", tmp_uid_name,
+        tmp_uid_name != null and tmp_account != null, concat(tmp_uid_name, "@", tmp_account, ".aws"),
+        tmp_uid_name != null, concat(tmp_uid_name, "@aws")),
+    xdm.source.identity.upn = if(
         tmp_uid_name contains "@", tmp_uid_name,
         tmp_uid_name != null and tmp_account != null, concat(tmp_uid_name, "@", tmp_account, ".aws"),
         tmp_uid_name != null, concat(tmp_uid_name, "@aws")),
@@ -85,7 +91,15 @@ filter
         tmp_uid_type = "Root", XDM_CONST.IDENTITY_TYPE_BUILTIN,
         tmp_uid_name != null, XDM_CONST.IDENTITY_TYPE_USER,
         XDM_CONST.IDENTITY_TYPE_UNKNOWN),
+    xdm.source.identity.identity_type = if(
+        tmp_uid_type contains "Service", XDM_CONST.IDENTITY_TYPE_MACHINE,
+        tmp_uid_type = "Root", XDM_CONST.IDENTITY_TYPE_BUILTIN,
+        tmp_uid_name != null, XDM_CONST.IDENTITY_TYPE_USER,
+        XDM_CONST.IDENTITY_TYPE_UNKNOWN),
     xdm.source.user.user_type = if(
+        tmp_uid_type contains "Service", XDM_CONST.USER_TYPE_MACHINE_ACCOUNT,
+        XDM_CONST.USER_TYPE_REGULAR),
+    xdm.source.identity.user_type = if(
         tmp_uid_type contains "Service", XDM_CONST.USER_TYPE_MACHINE_ACCOUNT,
         XDM_CONST.USER_TYPE_REGULAR),
     xdm.auth.service = if(tmp_is_auth = "y", "IDP"),

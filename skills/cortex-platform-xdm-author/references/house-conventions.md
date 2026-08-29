@@ -49,6 +49,35 @@ these -- it is just accountable.
 
 ## Register
 
+### The identity mirror beside user.* (append, never replace)
+
+WHAT WE REQUIRE: a rule that maps `xdm.<side>.user.<X>` for X in
+{upn, identity_type, user_type, username, identifier, domain} is
+strongly encouraged to also assign `xdm.<side>.identity.<X>` from the
+character-identical derivation, and `identity.*` is only ever written
+BESIDE its user twin, never instead of it. The user assignment is never
+removed, renamed or rewritten to make room for the mirror.
+
+WHAT THE SCHEMA ALONE SAYS: `user.*` and `identity.*` are two
+independent families documented side by side, with no stated
+relationship, no cross-reference and no deprecation notice either way.
+
+WHY WE DIVERGE: the families are field-for-field twins (measured
+2026-08-25 against all six vendor pages), and the Identity data model
+reads the `identity.*` surface. Mirroring costs one assignment per pair
+from a temp the rule already derives, populates identity analytics,
+and leaves every existing consumer of `user.*` -- the mandatory set,
+correlation content, dashboards -- untouched. The tier is recommended
+rather than mandatory because an absent mirror loses enrichment only,
+while a wrong or diverged one corrupts two surfaces at once.
+
+WHAT WOULD RETIRE THIS: a vendor deprecation notice on either family
+(which turns the mirror into a migration, a separate and
+separately-registered release), or tenant evidence that modeler writes
+to `identity.*` are rejected at install or overwritten by
+auto-enrichment. See the tenant-verification record in
+[authentication-mapping.md](authentication-mapping.md).
+
 ### xdm.target.resource.name on authentication events
 
 WHAT WE REQUIRE: on any record classified as an authentication event,

@@ -266,11 +266,38 @@ class TestScaffoldAuthMandatory(unittest.TestCase):
                   if v["severity"] == "error"]
         self.assertEqual(errors, [], f"auth scaffold not error-clean: {errors}")
 
+    def test_recommended_identity_mirror_listed_as_todo(self):
+        # The mirror is emitted as guidance, never as a seeded assignment:
+        # it must repeat its user twin's derivation character for
+        # character, and the scaffolder does not know that derivation yet.
+        rule = self._rule()
+        self.assertIn("AUTH RECOMMENDED", rule)
+        self.assertIn("xdm.source.identity.upn", rule)
+        self.assertIn("mirror of xdm.source.user.upn", rule)
+
+    def test_mirror_is_never_seeded_as_an_assignment(self):
+        rule = self._rule()
+        for line in rule.splitlines():
+            if ".identity." in line:
+                self.assertTrue(
+                    line.lstrip().startswith("//"),
+                    f"identity mirror emitted as code, not a TODO: {line}",
+                )
+
+    def test_scaffold_does_not_trip_the_mirror_check(self):
+        # A scaffold that raised INFO-014 on its own output would be
+        # telling the author their worksheet is defective before they
+        # have written anything.
+        vios = [v for v in _lint.lint(self._rule())
+                if v["rule_id"] == "INFO-014"]
+        self.assertEqual(vios, [], vios)
+
     def test_non_auth_worksheet_has_no_auth_block(self):
         rule = _make("sample.kv")
         self.assertNotIn('xdm.event.type = "authentication"', rule)
         self.assertNotIn("EVENT_TAG_AUTHENTICATION", rule)
         self.assertNotIn("AUTH MANDATORY", rule)
+        self.assertNotIn("AUTH RECOMMENDED", rule)
 
 
 class TestScaffoldNetworkMandatory(unittest.TestCase):

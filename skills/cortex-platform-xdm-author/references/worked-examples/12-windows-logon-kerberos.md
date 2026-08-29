@@ -79,8 +79,15 @@ filter
     xdm.network.ip_protocol = XDM_CONST.IP_PROTOCOL_TCP,
     xdm.source.host.os_family = XDM_CONST.OS_FAMILY_WINDOWS,
     xdm.source.user.username = tmp_user,
+    // Identity mirror (recommended tier): same derivations, appended beside user.* -- never instead of it.
+    xdm.source.identity.username = tmp_user,
     xdm.source.user.domain = tmp_domain,
+    xdm.source.identity.domain = tmp_domain,
     xdm.source.user.upn = if(
+        tmp_user contains "@", tmp_user,
+        tmp_user != null and tmp_domain != null, concat(tmp_user, "@", tmp_domain),
+        tmp_user != null, concat(tmp_user, "@localhost")),
+    xdm.source.identity.upn = if(
         tmp_user contains "@", tmp_user,
         tmp_user != null and tmp_domain != null, concat(tmp_user, "@", tmp_domain),
         tmp_user != null, concat(tmp_user, "@localhost")),
@@ -88,7 +95,15 @@ filter
         tmp_user contains "$", XDM_CONST.IDENTITY_TYPE_MACHINE,
         tmp_user != null, XDM_CONST.IDENTITY_TYPE_USER,
         XDM_CONST.IDENTITY_TYPE_UNKNOWN),
+    xdm.source.identity.identity_type = if(
+        tmp_user contains "$", XDM_CONST.IDENTITY_TYPE_MACHINE,
+        tmp_user != null, XDM_CONST.IDENTITY_TYPE_USER,
+        XDM_CONST.IDENTITY_TYPE_UNKNOWN),
     xdm.source.user.user_type = if(
+        tmp_user contains "$", XDM_CONST.USER_TYPE_MACHINE_ACCOUNT,
+        lowercase(to_string(tmp_user)) ~= "^svc[-_.]|service", XDM_CONST.USER_TYPE_SERVICE_ACCOUNT,
+        XDM_CONST.USER_TYPE_REGULAR),
+    xdm.source.identity.user_type = if(
         tmp_user contains "$", XDM_CONST.USER_TYPE_MACHINE_ACCOUNT,
         lowercase(to_string(tmp_user)) ~= "^svc[-_.]|service", XDM_CONST.USER_TYPE_SERVICE_ACCOUNT,
         XDM_CONST.USER_TYPE_REGULAR),
