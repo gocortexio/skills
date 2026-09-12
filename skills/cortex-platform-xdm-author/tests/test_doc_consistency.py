@@ -95,6 +95,13 @@ ALLOW_KNOWN_BAD_XDM_CONSTS = {
     "XDM_CONST.CLOUD_PROVIDER_ORACLE": "failure-modes.md #6 invented-constant counter-example",
     "XDM_CONST.OS_FAMILY_BSD": "failure-modes.md #6 invented-constant counter-example",
     "XDM_CONST.THREAT_CATEGORY_SECURITY": "failure-modes.md #6 invented-constant counter-example",
+    # Same shape, one release later and self-inflicted. The VIRTUALIZATION story
+    # marker is a bare string; this constant does not exist. 2.8.0 documented it
+    # here as real and 2.10.0 taught the linter to accept it, so several pages
+    # now name it precisely to say it is not real -- house-conventions.md registers
+    # the divergence, virtualization-mapping.md warns off the tidy-up, and
+    # CHANGELOG.md records the releases that got it wrong. It MUST stay citable.
+    "XDM_CONST.EVENT_TAG_VIRTUALIZATION": "house-conventions.md: named to be refused, not prescribed",
 }
 
 # Token-prefix excludes -- match starts-with so we can ignore whole
@@ -572,7 +579,14 @@ class TestSkillMdLintCodesExist(unittest.TestCase):
         self.assertGreater(len(self.registry), 35, self.registry)
 
     def test_every_code_named_in_skill_md_exists(self):
-        named = set(re.findall(r"(?:ERR|WARN|INFO)-\d+", read_text("SKILL.md")))
+        # The card AND the hard-rules reference. Twelve of the sixteen hard rules moved to
+        # references/hard-rules.md at 2.15.0 when the card hit its ceiling, and four lint codes
+        # went with them -- WARN-037, WARN-049, WARN-052 and WARN-054. Reading the card alone
+        # would have left this test green while checking four fewer codes than it did the day
+        # before, which is how a guard stops guarding without anyone noticing.
+        named = set(re.findall(
+            r"(?:ERR|WARN|INFO)-\d+",
+            read_text("SKILL.md") + read_text("references/hard-rules.md")))
         unknown = sorted(named - self.registry - self._NON_LINTER_CODES)
         self.assertEqual(
             unknown,

@@ -7,6 +7,482 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 Per-version change history for the `cortex-platform-xdm-author` bundle. The current version is declared in the `SKILL.md` frontmatter; this file is not loaded at runtime and exists for provenance.
 
+## 2.15.0
+
+SEVENTEEN WORDS OF HEADROOM IS NOT HEADROOM. The card sat at 4,983 against the 5,000 ceiling, so
+the next sentence anyone added would have failed the suite and forced a restructure mid-edit. The
+harness gave up its own over-standard exemption at its 2.50.0 and every bundle now passes on the
+plain ceiling; this is the one that was a sentence away from breaking that.
+
+Twelve of the sixteen hard rules move to `references/hard-rules.md`. Four stay on the card because
+they are cheap to state and expensive to miss: claim a story only where its mandatory set can be
+populated, never invent an XDM path, never assign a banned field, never invent an `XDM_CONST`
+value. Card: 4,983 -> 4,291 words, headroom 17 -> 709.
+
+MOVING PROSE INTO `references/` REWRITES WHAT ITS LINKS MEAN, which cost two rounds to see. Every
+link in those rules was written from the bundle root -- `references/process-mapping.md`,
+`assets/modeling_header_template.xql` -- and resolved perfectly from `SKILL.md`. Inside
+`references/` the first form points at `references/references/...` and the second at
+`references/assets/...`. Nine broken links, caught by the bundle's own link test rather than by
+reading, and the fix is different for each class: siblings lose the prefix, assets gain a `../`.
+
+A GUARD ALMOST STOPPED GUARDING IN SILENCE. `test_every_code_named_in_skill_md_exists` reads the
+lint codes cited in the hard rules and checks each exists in the linter's registry. Twelve rules
+left the card and took WARN-037, WARN-049, WARN-052 and WARN-054 with them, so the test would have
+stayed green while checking four fewer codes than the day before. It reads the card AND the
+reference now. The suite passing after a move is not evidence the move was clean; what the test
+still covers has to be measured.
+
+## 2.14.0
+
+The shared bundle-standard suite gains a resolving arm on
+`test_no_instrument_cites_a_path_inside_another_bundle`, which had never matched anything. It
+looked for a path prefixed with a bundle's own directory name, and nobody writes those thirty
+characters before a filename -- an author writes `references/<page>.md`, which is the same shape
+as a path into their own bundle. The new arm RESOLVES instead: a citation shaped like an
+in-bundle reference that does not exist here is a path a standalone reader cannot open.
+
+The arm is narrow because a looser one was measured first and would have shipped noise, flagging a
+ratio, a URL path, a repository name and eighty-odd `../` links that resolve correctly against
+their own directory. Only a bundle-relative prefix or an explicit `../` counts, globs are skipped,
+relative links resolve against the citing FILE, and CHANGELOG.md is exempt because this project
+does not rewrite history to keep a checker quiet.
+
+A third arm -- refusing a path into the private content repository -- was measured and REFUSED,
+with the reason recorded in the test: a private pack and a public one are the same seven
+characters followed by a name, so the check would flag legitimate upstream evidence to catch one
+line. That trade was already refused once over British English.
+
+The suite stays byte-identical in all five bundles, so all five carry this release.
+
+## 2.13.0
+
+THE BANNER HAD NO CHECK IN THE INSTALL THIS BUNDLE SHIPS INTO. The rule is standing -- every stage
+is announced, every time -- and four things in this estate named
+`references/console-output.md` while nothing here opened it. The only pins lived in the maestro's
+`tests/test_preflight.py`, they reach ACROSS bundles to do it, and they open with
+`if not sibs: pytest.skip("standalone install: no sibling bundles to check")`. Installed alone,
+which is the only way this skill is meant to be installed and exactly what a public reader gets,
+the banner was unchecked. A claim about a control mistaken for a control (LAW A56).
+
+`tests/test_console_output.py` pins it from inside this bundle, reading only files inside it, and
+cannot skip: the page ships, the art and the squirrel survive, the page shows a STAGE form an
+instrument can copy, and SKILL.md still tells the author to print one and to COPY rather than type
+it. `test_bundle_standard.py` was the obvious home and is the wrong one -- it must stay
+byte-identical across all five bundles, and the maestro announces a PHASE where an instrument
+announces a STAGE, so a shared assertion would have to be vague enough to pass on either.
+
+THE FIRST DRAFT OF THAT TEST WAS ITSELF THE DEFECT IT GUARDS AGAINST, which is why the squirrel is
+now COUNTED PER BANNER. It asserted the strokes were present somewhere on the page. Deleting a
+squirrel from one banner left it green, because the strokes still existed in the other three. The
+banner count is also derived from the page rather than assumed: an early version counted the `#`
+rules, and only the STAGE banner is framed in `#`, so it read four banners as two and failed on a
+correct page.
+
+Nothing else changed. No rule, reference, linter or asset is touched, and the four assertions were
+each watched failing before being believed (LAW N23): the page deleted, one squirrel stripped,
+SKILL.md's COPY instruction reworded, and the STAGE form changed to PHASE.
+
+## 2.12.0
+
+2.11.0 reverted the right thing for a reason that overreached, and left the root cause standing.
+An adversarial review of it found nine defects; this release closes them and cites the source
+2.8.0 should have had.
+
+THE ROOT CAUSE WAS A CONFLATION, and it is now named in every page that carried it.
+`xdm.event.tags` is NOT a closed field. What is closed is the `EVENT_TAG` constant GROUP, a
+compile-time namespace you cannot invent a member of. The FIELD is an ordinary array of strings,
+and upstream packs assign runtime values to it -- vendor tag arrays, policy labels, a concatenated
+CVE list, a bare `execution_name`. Three of our pages called the FIELD "an Array over the closed
+six-member enum", and reading it that way is what forced 2.8.0's conclusion that a seventh story
+marker had to be a seventh CONSTANT. It could not be. Corrected in `record-classification.md`
+(including its checklist, which a rule obeying `virtualization-mapping.md` previously FAILED),
+`pitfall-traps.md`, `xdm-const.md`, `SKILL.md` and two worked examples.
+
+THE VENDOR WRITES THE STRING, which is the citation this convention never had.
+`VMwareESXi_2_9.xif` and `VMwareVcenter_2_9.xif` -- the canonical upstream sources for this story,
+the vCenter block headed "Virtualization Story general field mapping" -- both assign
+`arraycreate("VIRTUALIZATION")`. The constant appears in NO upstream modelling rule. That also
+sources the SPELLING, which `virtualization-mapping.md` calls the whole specification and which no
+check can enforce. Recorded as corroboration rather than proof: `EVENT_TAG_ONPREM` appears in no
+upstream rule either and demonstrably resolves, so absence upstream is not an oracle for the
+namespace. The tenant bisect remains the load-bearing measurement.
+
+AN OVERREACH REMOVED. 2.11.0 argued the string "dominates" the constant and that refusing it
+"costs nothing". The pack's own bisect record refuses that premise in terms: whether the platform
+RECOGNISES a bare-string tag or merely STORES it is not established, and the read-back that would
+have settled it returned a 504. "The literal installs" was measured; "the literal works" was not,
+and 2.11.0's own register conceded as much three paragraphs further down. The entry now rests on
+what was measured -- the constant FAILS, the vendor WRITES the string -- and states the asymmetry
+in both directions, including the uncomfortable one: the constant fails loudly at install with a
+procedure attached, while a misspelled string fails silently and forever.
+
+THE ENFORCEMENT WAS UNDERSTATED IN FOUR PLACES. The revert did not notice that removing the member
+from `xdm-const.md` re-armed ERR-031 as well, because `EVENT_TAG` is a closed constant family and
+that gate is DERIVED from the reference. The constant is refused TWICE and the lint EXITS 1; four
+pages described it as an advisory warning. Both checks are also `_is_model`-gated, so the symbol in
+an `[INGEST:...]` rule is refused by nothing -- stated now rather than implied away. The register
+additionally records that restoring the member would silently DISARM ERR-031, so the retirement
+condition cannot be met by an enum edit alone.
+
+BOTH CHECKS GAVE WRONG ADVICE FOR THIS MEMBER, which is A54's shape and the consuming session's
+strongest point. WARN-045 offered six alternatives, none of them the answer; ERR-031 said to BAND
+into the closed list, which for this member would file a virtualization record under a story it
+does not belong to. `_ABSENT_CONST_MEMBERS` now carries a per-member FIX and this member has one
+naming the bare string; WARN-045 reuses that same text rather than making a third copy.
+
+A RETRACTED CLAIM WAS STILL REACHABLE THROUGH THE REGISTRY'S RANGE QUERY.
+`field_impact.py --field xdm.event.tags --from 2.7.0 --to 2.9.0` returned "safe to measure" and
+printed the 2.8.0 note alone, telling a consumer the constant was real -- and a pack pinned at
+2.9.0 or 2.10.0 is exactly the population the original mistake came from. The historical notes are
+NOT rewritten; a retraction clause is APPENDED to each so it travels with the note into any range.
+
+NINE TEST DEFEATS CLOSED, each demonstrated green before the fix and red after. `SKILL.md`, the
+rule GENERATOR `scaffold_rule.py`, `assets/*.xql` and every script but one went unscanned; 4-space
+indented blocks and nested or 4-backtick fences were invisible; and the whole check turned on ONE
+literal spelling, so `EVENT_TAG_VIRTUALISATION` -- the British spelling this repo's dialect invites
+-- passed everything once mirrored into both copies of the enum. The replacement checks the
+PRESCRIBING FORM (a line carrying an EVENT_TAG token AND an assignment or `arraycreate`), which is
+structural: it survives fences, indentation and spelling, and leaves prose free to name a member in
+order to refuse it.
+
+THE TEST IS NOW THE ANCHOR. That check first derived the valid six from `_VALID_EVENT_TAGS` and was
+therefore moveable by the very edit it refused: reference, linter and check could travel together,
+because the drift test only proves the two copies AGREE -- as they did, wrongly, for a whole
+release. The six are a PLATFORM fact, so they are pinned in the test and asserted against the
+linter's copy. Changing them means the platform changed, which takes a tenant install.
+
+THE REGISTER WAS UNPINNED. Deleting all 75 lines of the house-conventions entry left the suite
+green, while three tests and an allowlist comment cited it as the reason something was safe -- four
+claims that a control exists and zero assertions that opened it (A56). It is pinned now, along with
+a check that EVERY register entry carries its four parts; that immediately found one entry using
+two different headings, now normalised.
+
+The drift test's parse was defeated by a DECOY FENCE: a usage example between the anchor sentence
+and the member list became what was compared, leaving the real list unconstrained. It now selects
+the fence that IS a member list and refuses to find two.
+
+## 2.11.0
+
+THE CONSTANT DOES NOT EXIST. `XDM_CONST.EVENT_TAG_VIRTUALIZATION` is not defined by the platform,
+which REJECTS the symbol: a MODEL rule naming it fails the pack install with an opaque 101704
+naming nothing. The VIRTUALIZATION story marker is a BARE QUOTED STRING,
+`xdm.event.tags = arraycreate("VIRTUALIZATION")`.
+
+MEASURED, NOT INFERRED. A consuming pack bisected it on a live tenant in both directions with the
+story's field assignments held fixed -- constant without the assignments FAILS, assignments
+without the constant INSTALLS, literal for constant INSTALLS -- so the failure is the symbol and
+not the fields, and the bisect clears the dimension it varied (LAW A65). That pack's own comment
+reasons the constant is documented in the vocabulary it was written against, so the platform must
+be behind. The vocabulary was this bundle's `xdm-const.md` and it had invented the member. A
+correct workaround reached for the wrong reason still records a platform defect that never
+existed, which is the second cost of inventing a constant.
+
+2.10.0 fixed the wrong copy. The disagreement it closed was real: three files prescribed a tag the
+linter refused, and a consuming session was right to report it. The diagnosis was backwards. It
+read the linter as lagging `references/xdm-const.md` and added the seventh member, when
+`xdm-const.md` had invented that member at 2.8.0. Both copies then agreed on something untrue,
+which is the only outcome worse than the disagreement -- the drift test went green over it, because
+a test that two copies MATCH cannot say whether either is right.
+
+This release removes the member from `references/xdm-const.md` (back to six) and from
+`_VALID_EVENT_TAGS`, and corrects every page that prescribed it:
+`references/virtualization-mapping.md`, `references/process-mapping.md` and `profile_log.py`'s
+process guidance. WARN-045 refuses `XDM_CONST.EVENT_TAG_VIRTUALIZATION` again, and that refusal is
+now CORRECT: the fix an author should make on hitting it is the string, never a wider enum.
+
+REGISTERED, NOT JUST CORRECTED. The string looks wrong -- every other story marker this bundle
+prescribes is a constant, and mixing the two in one `arraycreate` looks like an oversight to tidy.
+This bundle tidied it twice. `references/house-conventions.md` now carries the divergence beside
+`"Universal"`, in the same four parts: what we require, what the schema alone says, why we diverge,
+and what evidence would retire it.
+
+THE GAP IS STATED RATHER THAN CLOSED (LAW A56). WARN-045 matches `EVENT_TAG_*` TOKENS, and a quoted
+string carries none, so the one tag this bundle prescribes is the one tag it cannot check. A
+misspelling, a lower-case `"virtualization"` or a plural passes silently. That is written into
+`virtualization-mapping.md`, `xdm-const.md` and the register rather than glossed, and
+`test_the_bare_virtualization_string_is_not_checked` pins it so a change that starts checking bare
+strings has to update all three.
+
+Three new controls, each watched failing before being believed (LAW N23):
+`test_the_virtualization_constant_is_refused` and the existing drift test both go red on re-adding
+the member, so the exact 2.10.0 mistake is now refused twice over;
+`test_no_code_example_writes_the_virtualization_constant` scans reference CODE FENCES and the whole
+of `profile_log.py`, which is the control that was missing when three files asserted the constant
+and nothing objected. It reads fences and not prose deliberately: the register and the mapping page
+both NAME the constant in order to refuse it, and a check that cannot tell "write this" from "never
+write this" would force those pages to describe the trap without naming it.
+
+`test_the_event_tag_enum_matches_the_reference` survives 2.10.0 unchanged in purpose, and its
+docstring now records what it cannot do. Its parse was tightened to the first fenced block after
+the anchor, because the looser "up to a blank run" read swept in the new prose about a marker that
+is NOT a member and made the two copies look like they disagreed.
+
+`assets/field_impact.json` records `xdm.event.tags` as mentioned_only, which is a positive
+statement and not a gap: no value that ever reached a dataset changes. A rule carrying the constant
+never compiled, so there is nothing to compare across this version. What changed is the guidance
+and what the linter refuses.
+
+Historical entries are left as written. The 2.8.0, 2.9.0 and 2.10.0 changelog entries and their
+field-impact notes still describe the enum opening to seven, because that is what those releases
+did and what a reader crossing that range must be told. `XDM_CONST.EVENT_TAG_VIRTUALIZATION` is
+added to the doc-consistency allow-known-bad list for the same reason the invented-constant
+counter-examples are on it: three pages now name it precisely in order to say it is not real.
+
+## 2.10.0
+
+WARN-045 refused the tag this bundle spent 2.9.0 prescribing. Reported by a consuming session that
+followed `references/virtualization-mapping.md` exactly and was warned for it.
+
+THREE FILES SAID SEVEN AND TWO SAID SIX. `references/xdm-const.md` opened the EVENT_TAG enum to
+seven members at 2.8.0, and `virtualization-mapping.md` and `profile_log.py`'s process guidance
+both instruct an author to write `EVENT_TAG_VIRTUALIZATION`. `lint_rule.py` kept a SECOND COPY of
+the member list, hardcoded at six, and refused it -- citing `references/xdm-const.md`, the file
+that contradicted the refusal. `profile_log.py` managed to disagree with itself inside one run: its
+process section said to tag it, its classification section said the enum has six members.
+
+The incentive that creates is the one this project keeps recording: following the reference earned
+a warning, ignoring it ran clean. A check that punishes the compliant answer selects for the
+non-compliant one.
+
+The field itself is untouched: `xdm.event.tags` has the same type and the same population, and a tag that was always valid per the reference simply stops being warned about.
+
+THE FIX IS THE TEST, NOT THE MEMBER. Adding the seventh member takes one line; what stops the next
+divergence is `test_the_event_tag_enum_matches_the_reference`, which parses the members out of
+`xdm-const.md` and compares them to `_VALID_EVENT_TAGS`. That is the ERR-034 precedent applied to a
+second mirrored set: a copy is only safe while something refuses drift. WARN-045's recommendation
+is now DERIVED from the set rather than retyped, because the retyped one was a third copy and went
+on naming six after the enum opened.
+
+`verify_rule.py` NOW READS A RAW-LINE CORPUS. It refused anything that was not JSON or JSONL, which
+is the normal shape of a syslog sample and exactly what the pack-building harness's
+`collect_samples.py` writes as `<dataset>.log` -- so this bundle's verifier could not read the file
+that bundle's collector produces, for the source family this bundle documents at greatest length.
+Non-JSON input is now read as raw lines and each wrapped as `{"_raw_log": <line>}`, which is what
+the ingest path presents to a MODEL rule for an unparsed source, so it is closer to what the rule
+will see than a hand-built object would be. The wrap is ANNOUNCED on stderr and never silent, and
+a sample that opens like JSON and then fails is still refused: that is a typo in a structured
+sample, not a syslog corpus.
+
+## 2.9.0
+
+The virtualization story reaches parity with authentication: a full field table, and registration
+everywhere a story is registered.
+
+`references/virtualization-mapping.md` gains the field set as a table, in four parts, with types
+read off `references/xdm-schema.md` rather than asserted. The STORY CORE is the three slots the
+analytic reads, and the two that are load-bearing are marked as such: without an entity and an
+action there is no pair to baseline and the story is not claimed. The SUPPORTING SET is what a rule
+usually already maps, listed so it can be checked in one place rather than because the story
+introduces it. THE ACTION'S DETAIL is the process family. Optional platform fields sit last. Every
+row names the field it MIRRORS, because this tier costs no new extraction.
+
+The five paths the table documents are `xdm.target.virtualization.vm.hostname`, `xdm.target.virtualization.task.name` and
+`xdm.target.virtualization.data_center.name` as the core, with `xdm.target.virtualization.task.id`
+and `xdm.target.virtualization.data_store.name` optional where the source is a real virtualization
+platform. The mirror sources were classified at 2.8.0 and none of them changed.
+
+WHERE IT IS NOW REGISTERED, which was the point. `record-classification.md` lists it in the
+defining-entity table alongside authentication and network, and says why it is the only story whose
+subject is a PAIR: a record with an action and no entity has nothing to baseline against.
+`network-mapping.md` extends the dual-event section to cover it, since a hypervisor login is
+authentication and virtualization and a command over SSH can be all three. `workflow.md` names it
+as a step. `authentication-mapping.md` cross-links it for the two-story case. `process-mapping.md`
+routes AAA command accounting to it explicitly -- that record leaves the authentication story and
+had no story of its own until this one existed, which is exactly the gap it fills.
+
+`scripts/profile_log.py` now names it too, and the change is deliberately small: the profiler
+ALREADY detects a `cmd=` command-accounting record and says it is not authentication. That finding
+now also names the story it does belong to. A new detector was considered and not written -- every
+virtualization anchor in the corpus was mined from a syslog message body rather than a field name,
+so there is no field-name signal to detect on, and a weak detector would cry wolf on a tier that is
+recommended rather than mandatory.
+
+## 2.8.1
+
+`references/modeling-rules.md` gains the multi-block section.
+
+A file carrying more than one `[MODEL:]` block is the normal shape for a pack modelling several
+datasets. This linter once analysed such a file as one unit and broke in both directions: ERR-019
+was suppressed by a second block, so a multi-block pack could lint at zero errors while carrying a
+defect Cortex rejects, and the duplicate-tags warning fired falsely against `xdm.event.tags`
+assignments that must stay separate. Fixed at 1.8.10 and covered by `tests/test_multi_block.py`
+ever since, but never written down in a reference -- so the obsolete workaround of splitting blocks
+into temporary single-block files had no page saying it was obsolete.
+
+It arrived from the pack-building harness's own gotchas catalogue, which was carrying it because
+this bundle was not.
+
+## 2.8.0
+
+A third story tier: VIRTUALIZATION, and the EVENT_TAG enum opens from six members to seven.
+
+The story baselines an (ENTITY, ACTION) pair and alerts on deviation from normal. It was
+designed for hypervisor platforms and the field names still carry that history, but the analytic
+behind them does not care what the entity is: any record of the form "who did what to which thing"
+fits it. The network-device estate is where it earns the most, because a router does not otherwise
+tell you that a configuration-erasing command on a particular device was the first time.
+
+`references/virtualization-mapping.md` is new. A draft of it was held back at 2.0.0 because it
+self-declared PROVISIONAL, was unconfirmed against any tenant, carried open questions, and nothing
+linked to it. Every one of those is now closed. The tag form is settled as
+`XDM_CONST.EVENT_TAG_VIRTUALIZATION`, which is added to `references/xdm-const.md` and takes that
+closed enum from six members to seven.
+
+RECOMMENDED, NOT MANDATORY, on the identity mirror's model. Nothing joins a mandatory set, no
+advisory fires on absence, and a rule that maps none of it is complete. The law of the tier is the
+same one: append, never replace.
+
+THE THREE SLOTS ARE MIRRORED, NOT EXTRACTED. `xdm.target.virtualization.vm.hostname` takes the
+entity a rule already derives for `xdm.target.resource.name` or `xdm.target.host.hostname`;
+`xdm.target.virtualization.task.name` takes the action already derived for
+`xdm.target.process.command_line`, `xdm.event.operation_sub_type` or
+`xdm.event.original_event_type`; and `xdm.target.virtualization.data_center.name` takes the
+container already derived for `xdm.target.cloud.project`, `xdm.target.cloud.project_id` or
+`xdm.target.resource.parent_id`. `xdm.event.tags` gains the story marker, merged into the one
+arraycreate the record already emits. No new extraction is required for any of them, which is why
+the tier is cheap to adopt.
+
+THE ACTION'S DETAIL LIVES IN THE PROCESS FAMILY. `xdm.target.virtualization.task.name` is a name;
+what the action actually was belongs to `xdm.target.process.name`,
+`xdm.target.process.command_line`, `xdm.target.process.pid`, `xdm.target.process.identifier` and
+`xdm.target.process.causality_id`. `references/process-mapping.md` owns how those are mapped and is
+not restated. Two points belong to this story instead: `command_line` is the field `task.name`
+mirrors on a command record, so the two carry the same value by design; and `causality_id` is the
+key that lets the analytic follow an action back to what caused it, which is the difference between
+"this command ran" and "this command ran from that session". No derivation for it is documented or
+invented here, because a synthesised causality id would join chains that are not related.
+
+THE CONTAINER SLOT WAS THE OPEN QUESTION AND IT WAS SETTLED BY MEASUREMENT. Across the shipped
+modelling rules, entity and action are close to universal while a container is present in fewer
+than half. Where it is present it is always the same idea: a project, an account, an organisation,
+a workspace, a tenant, a FortiManager ADOM. It is never a physical location and never the
+observer. So the rule is to mirror the container where one exists and leave the slot unset where
+none does. Reaching for the nearest available string was considered and refused: the AAA server,
+the collector host and the syslog envelope host are the witness rather than the container, and the
+witness already has a home in `xdm.observer.name`.
+
+ENTITY AND ACTION ARE THE MINIMUM; THE CONTAINER IS NOT DEFINING. A record that cannot supply both
+must not claim the story however well it fills the rest, because the defining entity of this story
+is the thing acted upon and without it there is nothing to baseline. That rules out two families
+that look like a fit: a cloud audit record naming only a service label and an account id has an
+action and a container and no entity, and an endpoint process-creation record names the process
+and its arguments but never a thing the process was performed on.
+
+The entity is frequently known only by ADDRESS. Network-device AAA identifies the administered
+device by IPv4 and carries no device name, so `vm.hostname` receives an address. That is
+acceptable and is not padding: the field names the entity and an address is what the source knows
+it by.
+
+## 2.7.3
+
+Banners, and one path this bundle should never have cited.
+
+This bundle had no banner art at all. It announces STAGES now, and stops loudly, the same way every other bundle in the project does.
+
+Two places named the pack-building harness's release gate BY PATH -- SKILL.md and `references/install-blockers.md`, both on the mirrored ERR-034 reserved set. A skill has to ship on its own, and a path into a bundle the reader has not installed is a citation they cannot open. Both now name the constant and the role instead, which is what a reader can actually act on.
+
+- Added `references/console-output.md`: the STAGE, ACTION REQUIRED and KEY DECISION banners, with the squirrel, the rules for each and the test for when a banner is due. The page is identical in every instrument bundle and is complete on its own -- nothing on it needs another bundle installed. The art was lifted from the harness's own templates rather than retyped, because a hand-rendered banner loses the squirrel first.
+- SKILL.md gains a short pointer at it. The templates stayed out of the card deliberately: they cost 486 words and this card had 171 words of headroom under the standard's ceiling.
+
+## 2.7.2
+
+Conformance with the project-wide bundle standard.
+
+SKILL.md carried no SPDX header. It has one now, directly under the frontmatter, matching the other three bundles.
+
+- Added `tests/test_bundle_standard.py`, an identical copy of which every bundle in this project carries and runs. It checks the four required files, the frontmatter keys and their order, the declared name against the directory, the AGPL licence, a CHANGELOG entry for the declared version, the version named in prose, an SPDX header on every source file, ASCII-only text, and a ceiling on the SKILL.md body. The written standard is `references/bundle-standard.md` in `cortex-content-pack-go-again`, and a test there refuses any drift between the copies.
+- A British English check was written, measured against every bundle, and rejected before it shipped. The estate is already British and an unrestricted match returns only `otherwise`, `size`, `premise` and the SPDX identifier. A check whose every finding is wrong advice does not ship.
+
+## 2.7.1
+
+The maestro's phase 902, the bundle-publication gate, ran against this bundle for the first time
+and found two fixtures that place the source geographically.
+
+`tests/fixtures/tacacs_aaa.log` carried `timezone=AEST` twice and eleven host names naming two
+cities; `tests/fixtures/nokia_nfmp.jsonl` carried a `+1000` offset sixteen times, and
+`references/extraction-recipes.md` quoted that offset twice more in illustrative samples. No single
+one identifies anything. Together they say which part of the world the samples came from, which is
+the class the maestro's LAW A66 exists for.
+
+- `timezone=AEST` becomes `timezone=UTC`, which the same fixture already used on another record.
+- The city-named hosts become `site-a` and `site-b`, keeping the two-site shape the profiler tests
+  read.
+- Every `+1000` becomes `+0000`.
+
+Nothing else changed. The suite is 646 passing before and after, so the fixtures still exercise
+what they were written to exercise: no test asserted on a converted timestamp, and the two profiler
+tests that quote a host name by hand were updated alongside the fixture.
+
+The gate that should have caught this could not. The maestro's timezone pattern requires the word
+"estate" within thirty characters of the abbreviation, so it matched none of this in any file, and
+the six checks phase 902 calls its deterministic half live in the maestro and read the maestro --
+this bundle's 646 green tests had checked none of them. Both limits are recorded against the
+maestro at 2.30.0; the finding here came from the judgement half, by eye.
+
+## 2.7.0
+
+SKILL.md carried 8409 words, roughly 1.7 times the point at which the skill-authoring guidance stops advising and starts recommending a split. Most of the excess was not detail that had to live there: it was prose already carried by the reference each passage pointed at, which is the duplication the same guidance warns about.
+
+- Reduced the SKILL.md body from 8409 words to 4823. Every sentence removed was checked against the references first, claim by claim, and nothing was deleted that did not already have a home. Three passages had no home and were moved rather than dropped: the stratified-sampling rule and the profiler's `recommended_pattern` block, both now in `references/workflow.md`, and the ERR-030 to ERR-034 family, now in `references/install-blockers.md`.
+- The nine-bullet capability catalogue in the preamble became a table of capability, trigger, lint codes and reference. The bullets restated their own references at length; the table says which reference to open and the reference says the rest. The Hard rules and the Mapping decision checklist keep every rule, because those are read whether or not a reference is loaded.
+- Added `references/install-blockers.md`. ERR-031 and ERR-032 had no reference documentation at all -- they existed only in the linter and in one SKILL.md bullet -- and ERR-030, ERR-033 and ERR-034 were mentioned in passing across three other files with no home of their own. The file carries the LOG_LEVEL five-member list that ERR-031 turns on, and the ERR-034 evidence trail including why `out` must not be added on symmetry with `in`.
+- `references/workflow.md` documented ten steps while SKILL.md described thirteen. The two now agree: re-lint, the syslog prepend proof and the replacing-rule field-set diff are Steps 10 to 12, and emit is Step 13. The field-set diff had no reference home at all, so a reader following workflow.md alone would never have met it.
+- Added `.gitignore` to the bundle root. `.pytest_cache/` was untracked only because pytest writes a self-ignoring `.gitignore` inside it, which is an implementation detail of pytest and no protection at all against a copy made with `cp`, `tar` or `rsync`. The directory has already broken this suite once, which is why `tests/_helpers.py` carries `in_dot_directory()`.
+- `tests/test_asset_integrity.py` now requires `CHANGELOG.md`, locks the frontmatter version against the SKILL.md prose line and the CHANGELOG heading, asserts `license` and the `name`-to-directory match, and checks the frontmatter against the constraints the published skill validator enforces: kebab-case name within 64 characters, description within 1024 and free of angle brackets, and no unexpected key. `version` is asserted as the one deliberate divergence, so removing it fails the suite rather than passing quietly.
+- Added a 5000-word ceiling on the SKILL.md body, so the size cannot drift back without the suite saying so.
+- Made the eight scripts that declare `#!/usr/bin/env python3` executable. Three already were; the other eight named an interpreter they could not use.
+- Qualified the cross-bundle citation of `preflight_release.py` with its bundle name. It was correct in prose and read as a bundle-relative path.
+- README.md listed neither `scripts/field_impact.py` nor `scripts/score_mappings.py` nor `assets/field_impact.json`, all three of which ship and are documented in SKILL.md.
+
+## 2.6.0
+
+Two alter stages, each defensible on its own, combine into a fallback that can never fire. One of the six sites found in a shipped rule was discarding a real column rather than a placeholder.
+
+- WARN-058: A COALESCE FALLBACK BEHIND AN ALREADY-DEFAULTED TEMP. Stage one writes `tmp_role = coalesce(role, "")`; a later stage writes `coalesce(tmp_role, "none")`. `coalesce` returns its first NON-NULL argument and `""` is a value, so the second call always yields `""` and the description renders "at role " with a gap where the author intended "at role none". It survives review because it reads as defensive -- two coalesces look more careful than one, the output is a non-empty string either way, so nothing is null, nothing is empty-checked, and no count reveals it. Advisory, because it is dead code rather than an install failure.
+
+- THE WORSE SHAPE IS THE SAME BUG WITH A COLUMN AS THE FALLBACK. `coalesce(tmp_type_name, tmp_type)` discards a value the rule successfully READ, not a placeholder, so the two are reported with different messages. A rule losing real data reads identically to one losing a default until you look at the second argument.
+
+- THE DISCRIMINATOR IS CLEAN AND THE CHECK STAYS NARROW. A coalesce on a temp that was never defaulted -- `coalesce(tmp_name, "unknown")` where `tmp_name = name` -- is correct and is never reported. Only a LITERAL default counts: `coalesce(a, null)` leaves the temp nullable and `coalesce(a, other_col)` may still yield null, so neither arms the check. A temp re-assigned from a bare column after being defaulted is nullable again and its later fallback is live.
+
+- XQL SPELLS ASSIGNMENT AND EQUALITY THE SAME WAY, and the first cut of this check got it wrong. `if(tmp_role = "", null, tmp_role)` is a COMPARISON that reads exactly like a definition; taken for a re-assignment it cleared the recorded default and suppressed every finding after it. The first implementation found one of six sites for that reason. Assignments are now recognised at paren depth zero only, and the comparison shape is pinned in the tests.
+
+- BLOCK SCOPING IS NOT OPTIONAL AND IS ALREADY FREE. The same temp name is routinely defined in several `[MODEL]` blocks of one file, so a whole-file scan keeps one definition per name and silently drops the sites in every other block. `_lint_block` already runs each check over exactly one block, so the check inherits the scoping; the tests pin it rather than trusting it.
+
+- THE MESSAGE NAMES A SECOND LINE, which no renumbering reaches. `lint` renumbers a finding's own line by its block offset but cannot rewrite a number embedded in prose, so the block offset is now threaded into the check and the default's line is file-absolute like the finding's. Pinned by a test on a two-block file.
+
+- MEASURED. Six findings on the pre-fix version of the rule that prompted this, at the six sites identified independently by hand, and zero on the fixed version. Zero findings across all 50 rules and worked examples the bundle ships.
+
+- REPORTED BY THE PACK SESSION, which proposed it as a WARNING and supplied the live/dead discriminator. Their own fix landed before this did.
+
+## 2.5.1
+
+The profiler classified a record as network because a column somewhere in it contained the word "blocked". On the source that surfaced it, the column was an identifier and the word meant the identifier was UNAVAILABLE.
+
+- THE ACTION FAMILY WAS THE ONE VALUE SIGNAL WITH NO NAME GATE. Every other value scan in `detect_network` requires the field NAME to license the reading: the IANA protocol number needs a protocol-ish name, the traffic vocabulary needs a discriminator name, and the teardown dispositions need an action-ish name. The action verbs (`allow` / `deny` / `drop` / `block` / `reject` / ...) matched wherever they appeared, so an HTTP body sample, a cloud status message and an opaque identifier all read as transport verdicts. There IS a suppression path, but it only fires when the sample is ALSO detected as authentication, so any record with no auth signals took the verb at face value.
+
+- THIS FALSIFIED A CLAIM IN 2.4.0. That entry states every widening is "gated on a field name licensing the wider reading". It was true of the three widenings it described and untrue of the action family, which predates them and was never gated. The sentence is now accurate rather than aspirational; it is corrected here rather than rewritten above, because the claim was published and the correction is the useful record.
+
+- MEASURED, NOT ASSUMED. Swept across all 63 fixtures: one detected family changes. A GCP IAM `CreateServiceAccount` audit record stops being classified as network -- its only network evidence was the word "denied" inside `protoPayload.status.message`. Four more fixtures drop a spurious signal while keeping the detection they already had, from an HTTP body sample, a rule NAME and a CEF event NAME. No fixture loses a detection it should have.
+
+- `act` JOINS THE ACTION-NAME VOCABULARY, because it is the CEF standard key and gating without it would have cost every CEF sample its disposition.
+
+- THE RAW LINE IS EXEMPT, AND IT IS NOT A LOOPHOLE. `_message` carries the whole unparsed line and appears when the record has no parsed fields at all. Positional formats have no field names by construction -- an AWS VPC Flow export is the standard case -- so requiring a name there would mean never classifying them. Where names exist the name decides; where none exist the line is all there is. Both cases were caught by existing tests before this shipped, which is the only reason the distinction is drawn.
+
+- REPORTED BY THE PACK SESSION that hit it while authoring against this bundle, and offered in passing as "worth knowing about" rather than as a defect.
+
+## 2.5.0
+
+The anchor index is mined from rules somebody already wrote, so it can only know source classes somebody has already modelled. Mobile app-integrity telemetry was not one of them, and its short column spellings resolved to nothing.
+
+- ELEVEN CURATED SEEDS FOR A CLASS THE CORPUS HAD NEVER SEEN. `ct_host`, `ct_port`, `dev_brand`, `dev_model`, `env_reason`, `env_type`, `install_id`, `proj_id`, `proj_name`, `proj_version` and `view` each returned zero candidates, so an author profiling this kind of log got no precedent for eleven columns that have obvious XDM homes. Taken from one authored, tenant-verified rule and seeded onto paths the index already carried -- `xdm.target.host.hostname`, `xdm.target.port`, `xdm.source.host.manufacturer`, `xdm.source.host.device_model`, `xdm.alert.original_threat_name`, `xdm.alert.subcategory`, `xdm.source.host.device_id`, `xdm.target.cloud.project_id`, `xdm.target.application.name`, `xdm.target.application.version` and `xdm.alert.name` -- so no anchor key was created and `anchor_count` is unchanged at 377. Each carries `count: 1` and `"curated": true`, and no path's `frequency` moved: frequency is corpus evidence, and curation must not inflate the confidence the scaffolder gates on.
+
+- THE CONTRIBUTING SOURCE IS DELIBERATELY NOT NAMED. `exampleVendors` is machine-derived elsewhere as the dataset prefix, which would have published a vendor token. These eleven paths carry the class label `mobile-app-integrity` instead. That is a substitution, not missing provenance, and the reason now sits in the index's own `notes` field where a reader meets it before concluding the data is broken. A test asserts the label survives on every seeded path, because the label going missing is the failure mode that matters. Do not "correct" it to a vendor name.
+
+- TWO CANDIDATES WERE REJECTED RATHER THAN SEEDED. A product-version column mapping to `xdm.observer.version` had a verified path and was dropped anyway: the column name identifies the product line, so seeding it would have named the source through the back door regardless of the label. A code-fingerprint column mapping to `xdm.source.host.image` was the only candidate needing a new anchor key, and its general reading in this industry -- a TLS or device fingerprint -- is not the sense this source uses; one weak, atypical mapping is not worth a key that would then rank first for everyone.
+
+- THE 2.4.0 ENTRY ABOVE NAMES THE WRONG KEY. It records the FortiGate seeds as marked `"origin": "curated"`. The data has always used `"curated": true`; `origin` appears nowhere in the index. The test tolerates either spelling, so nothing failed and the prose went unchecked. These seeds use `"curated": true`, which is what the index actually reads.
+
 ## 2.4.0
 
 A FortiGate traffic log resolved 21 of its 36 fields to nothing, detection rested on a single signal, and the worked example that was supposed to show the way had three defects of its own.

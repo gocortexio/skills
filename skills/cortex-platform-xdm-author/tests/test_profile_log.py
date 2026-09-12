@@ -763,6 +763,39 @@ class TestNetworkDetection(unittest.TestCase):
                          ws["authentication"])
         self.assertTrue(ws["network"]["detected"], ws["network"])
 
+    def test_action_verb_under_an_unlicensed_field_name_is_not_network(self) -> None:
+        # The reported defect. Every other value signal in the scan is
+        # gated on the field NAME -- the IANA protocol number needs a
+        # protocol-ish name, the traffic vocabulary a discriminator name,
+        # the teardown dispositions an action-ish name -- and the action
+        # family was the one that fired on the value wherever it appeared.
+        # On the source that surfaced it, `android_id: "blocked"` reports
+        # that the identifier is UNAVAILABLE. Nothing about the record is
+        # network, and nothing about the NAME says otherwise.
+        ws = profile("/tmp/x.jsonl", '{"android_id": "blocked"}\n')
+        self.assertFalse(ws["network"]["detected"], ws["network"])
+
+    def test_action_verb_under_an_action_name_still_counts(self) -> None:
+        # The other half: gating on the name must not cost a real
+        # disposition. `action` licenses the reading, so this still
+        # classifies as network on the verb alone.
+        ws = profile("/tmp/x.jsonl", '{"action": "blocked"}\n')
+        self.assertTrue(ws["network"]["detected"], ws["network"])
+
+    def test_cef_act_key_licenses_the_action_reading(self) -> None:
+        # `act` is the CEF standard action key, so the name vocabulary
+        # has to carry it or every CEF sample loses its disposition.
+        ws = profile("/tmp/x.jsonl", '{"act": "block"}\n')
+        self.assertTrue(ws["network"]["detected"], ws["network"])
+
+    def test_cloud_status_message_is_not_a_network_disposition(self) -> None:
+        # A GCP IAM CreateServiceAccount audit record was classified as
+        # network because its status MESSAGE contains the word "denied".
+        # A message is prose about an outcome, not a transport verdict.
+        ws = _profile_fixture("gcp_cloud_audit.jsonl")
+        self.assertTrue(ws["cloud"]["detected"])
+        self.assertFalse(ws["network"]["detected"], ws["network"])
+
     def test_aaa_permit_deny_stays_authentication_only(self) -> None:
         # AAA precision rule: a TACACS+ gateway logs PERMIT / DENY as the
         # AUTHENTICATION outcome with no transport flow behind it. The
@@ -783,10 +816,10 @@ class TestNetworkDetection(unittest.TestCase):
         # auth=False, network=True -- exactly backwards.
         import tempfile
         lines = "\n".join([
-            '<14>Jun 19 09:51:59 aaa05.syd.example.local tacacsd[13844]: '
+            '<14>Jun 19 09:51:59 aaa05.site-a.example.local tacacsd[13844]: '
             '00000000 Authorization permitted for alice.admin at '
             '10.0.64.10, group Net Admins A, args service=shell cmd=show',
-            '<14>Jun 19 13:42:14 legacy-aaa01.syd.example.local '
+            '<14>Jun 19 13:42:14 legacy-aaa01.site-a.example.local '
             'consumer_tacacs[2490]: Authorization denied for svc_vm at '
             '10.0.72.10: No context found. Expired?',
         ])

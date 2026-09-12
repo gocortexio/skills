@@ -512,6 +512,38 @@ XDM_CONST.EVENT_TAG_ONPREM
 XDM_CONST.EVENT_TAG_VPN
 ```
 
+The VIRTUALIZATION story marker is NOT in that list, and its absence is
+deliberate. There is no `XDM_CONST.EVENT_TAG_VIRTUALIZATION`. The platform
+rejects the symbol, and a MODEL rule that names it fails the pack install
+with an opaque 101704 naming nothing. The marker is written as a BARE
+QUOTED STRING:
+
+```
+xdm.event.tags = arraycreate("VIRTUALIZATION")
+```
+
+It is the only story marker in this bundle written that way; every other one
+is a constant. Do not "tidy" it into the enum above, and do not add the
+constant to the list on the reasoning that the other six are constants. The
+reason and the evidence are in
+[house-conventions.md](house-conventions.md); the mapping is in
+[virtualization-mapping.md](virtualization-mapping.md).
+
+WHAT IS CLOSED IS THIS GROUP, NOT THE FIELD. `xdm.event.tags` is an ordinary
+array of strings; upstream packs assign vendor tag arrays, policy labels and
+concatenated CVE lists to it. You cannot invent an `XDM_CONST.EVENT_TAG_*`
+member, because that is a compile-time namespace. Reading the closed GROUP as
+a closed FIELD is exactly what produced an invented seventh member here at
+2.8.0, so keep the two apart: invent no constant, and write a bare string only
+where one is prescribed.
+
+The constant is refused TWICE on a MODEL rule -- ERR-031 at ERROR severity, so
+the lint exits 1, and WARN-045 as an advisory -- and both name the string as
+the fix. Both are gated on the rule being a MODEL rule, so neither sees the
+symbol inside an `[INGEST:...]` parsing rule. Neither can see the STRING at
+all, because both match `EVENT_TAG_*` tokens and a quoted string carries none:
+the prescribed form is the one form no check validates.
+
 `xdm.event.tags` is an Array, so one event can carry SEVERAL markers:
 an Okta login is authentication AND SaaS
 (`arraycreate(XDM_CONST.EVENT_TAG_AUTHENTICATION, XDM_CONST.EVENT_TAG_SAAS)`),

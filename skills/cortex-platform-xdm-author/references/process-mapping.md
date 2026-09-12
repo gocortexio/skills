@@ -286,12 +286,24 @@ discriminate by record kind:
   `XDM_CONST.OPERATION_TYPE_AUDIT` (an audit trail of what was run) with no
   outcome, put the operator on `xdm.source.user.*` and the administered device on
   `xdm.target.*`, and do NOT tag it `EVENT_TAG_AUTHENTICATION`.
+  This record is the canonical VIRTUALIZATION story member: an operator, an
+  action, and a thing the action was performed on is exactly the (entity,
+  action) pair that story baselines. It leaves the authentication story and
+  had no story of its own until virtualization existed. Tag it with the
+  bare string `"VIRTUALIZATION"` (there is no `EVENT_TAG_VIRTUALIZATION`
+  constant -- see [xdm-const.md](xdm-const.md)) and mirror the command to
+  `xdm.target.virtualization.task.name` and the administered device to
+  `.vm.hostname` -- both from temps the rule already derives. The container
+  slot stays UNSET on a network-device feed, which carries no administrative
+  domain. See [virtualization-mapping.md](virtualization-mapping.md).
 - accounting with no command (a session Start / Stop) -> a session-audit record:
   operation `OPERATION_TYPE_AUDIT`, no outcome, and `elapsed_time` ->
   `xdm.event.duration` (seconds to milliseconds, see
   [authentication-mapping.md](authentication-mapping.md)).
 
-See [authentication-mapping.md](authentication-mapping.md) (AAA gateways).
+See [authentication-mapping.md](authentication-mapping.md) (AAA gateways) and
+[virtualization-mapping.md](virtualization-mapping.md) for the command-accounting
+records that leave the authentication story.
 
 ## Worked shape (Sysmon process creation, EventID 1)
 

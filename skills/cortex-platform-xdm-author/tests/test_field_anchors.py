@@ -164,6 +164,31 @@ FORTIGATE_NATIVE_SEEDS = {
     "utmaction": "xdm.observer.action",
 }
 
+# Mobile app-integrity / RASP curated seeds (2.5.0). The corpus is mined
+# from already-written rules and had no coverage of this class of source
+# at all, so the short column spellings its telemetry emits resolved to
+# nothing. Taken from one authored, tenant-verified rule, so each carries
+# count 1. Pinned here so a corpus re-cut cannot silently drop them.
+#
+# The contributing source is deliberately not named, here or in the
+# index: exampleVendors carries the class label "mobile-app-integrity"
+# instead of a vendor token. That is a deliberate substitution, not
+# missing provenance -- see the notes field in field_anchors.json. Do NOT
+# "correct" these to a vendor name.
+MOBILE_APP_INTEGRITY_SEEDS = {
+    "ct_host": "xdm.target.host.hostname",
+    "ct_port": "xdm.target.port",
+    "dev_brand": "xdm.source.host.manufacturer",
+    "dev_model": "xdm.source.host.device_model",
+    "env_reason": "xdm.alert.original_threat_name",
+    "env_type": "xdm.alert.subcategory",
+    "install_id": "xdm.source.host.device_id",
+    "proj_id": "xdm.target.cloud.project_id",
+    "proj_name": "xdm.target.application.name",
+    "proj_version": "xdm.target.application.version",
+    "view": "xdm.alert.name",
+}
+
 # Names that must resolve to NOTHING. A zero here is the correct answer,
 # not a gap: the event time belongs in the dataset's own _time, never an
 # xdm.* path, and ranking one of these top sends an author to a wrong
@@ -313,3 +338,47 @@ class TestFortiGateNativeSeeds(unittest.TestCase):
             len(self.j["anchors"]),
             "anchor_count header does not match the number of anchors",
         )
+
+
+class TestMobileAppIntegritySeeds(unittest.TestCase):
+    """The curated mobile app-integrity dialect (2.5.0)."""
+
+    @classmethod
+    def setUpClass(cls):
+        j = read_json("assets/field_anchors.json")
+        cls.j = j
+        cls.reverse = build_reverse_index(j["anchors"])
+
+    def test_every_seed_resolves_top_1(self):
+        for synonym, expected in MOBILE_APP_INTEGRITY_SEEDS.items():
+            with self.subTest(synonym=synonym):
+                cands = self.reverse.get(normalise_synonym(synonym), [])
+                self.assertTrue(cands, f"'{synonym}' resolves to nothing")
+                self.assertEqual(cands[0]["xdm_path"], expected)
+
+    def test_seeds_are_marked_curated_and_do_not_outrank_the_corpus(self):
+        # A seed that lost its curated flag would read as corpus evidence
+        # the corpus never observed, and one that gained weight would
+        # outrank a real precedent on a path it only contributes to.
+        for synonym, path in MOBILE_APP_INTEGRITY_SEEDS.items():
+            with self.subTest(synonym=synonym):
+                entry = next(
+                    s
+                    for s in self.j["anchors"][path]["synonyms"]
+                    if s["synonym"] == synonym
+                )
+                self.assertTrue(entry.get("curated"), entry)
+                self.assertLessEqual(entry["count"], 2, entry)
+
+    def test_no_seed_path_names_a_vendor_for_this_source(self):
+        # The whole point of the class label. If a corpus re-cut or a
+        # later hand-edit puts a vendor token on one of these paths, the
+        # source this dialect came from stops being unnamed.
+        for path in set(MOBILE_APP_INTEGRITY_SEEDS.values()):
+            with self.subTest(path=path):
+                self.assertIn(
+                    "mobile-app-integrity",
+                    self.j["anchors"][path]["exampleVendors"],
+                    f"{path} lost the class label that stands in for the "
+                    f"unnamed source",
+                )

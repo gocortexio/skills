@@ -37,6 +37,7 @@ from _helpers import (  # noqa: E402
 REQUIRED_FILES = [
     "SKILL.md",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE",
     "assets/field_anchors.json",
     "assets/modeling_header_template.xql",
@@ -65,6 +66,22 @@ def _strip_code(text: str) -> str:
     text = _FENCED.sub("", text)
     text = _INLINE_CODE.sub("", text)
     return text
+
+
+
+def _frontmatter_mapping():
+    """SKILL.md frontmatter as a dict of key -> value (top-level scalars)."""
+    lines = read_text("SKILL.md").splitlines()
+    closes = [i for i, ln in enumerate(lines[1:20], start=1) if ln == "---"]
+    if not lines or lines[0] != "---" or not closes:
+        raise AssertionError("SKILL.md has no closed YAML frontmatter block")
+    out = {}
+    for ln in lines[1:closes[0]]:
+        if ":" not in ln or ln.startswith((" ", "\t", "#")):
+            continue
+        k, _, v = ln.partition(":")
+        out[k.strip()] = v.strip()
+    return out
 
 
 class TestFilePresence(unittest.TestCase):
@@ -134,6 +151,150 @@ class TestSkillMdFrontmatter(unittest.TestCase):
             with self.subTest(field=required):
                 self.assertIn(required, keys)
                 self.assertTrue(keys[required])
+
+
+class TestSkillMdMatchesPublishedSkillSpec(unittest.TestCase):
+    """The frontmatter must satisfy the published skill validator.
+
+    ``quick_validate.py``, which ships with the skill-creator plugin and
+    gates ``package_skill.py``, enforces a small set of constraints on
+    SKILL.md frontmatter. Nothing in this repository ran it, so the
+    bundle could drift out of conformance silently. These assertions are
+    that validator's rules, restated so a regression fails here.
+
+    ONE constraint is deliberately not adopted. That validator's
+    ALLOWED_PROPERTIES is::
+
+        {name, description, license, allowed-tools, metadata, compatibility}
+
+    which excludes ``version``. This bundle keeps ``version`` anyway:
+    the Claude Code runtime schema defines it, every bundle in this
+    repository declares it, the CHANGELOG framing line points at it as
+    the single machine-readable declaration, and the version lock below
+    depends on it. The repository publishes through a plugin marketplace
+    rather than as a ``.skill`` archive, so ``package_skill.py`` is not
+    on the path this bundle ships by.
+
+    The divergence is therefore ONE key and no more. The key-set test
+    below fails on any OTHER unexpected key, and it also fails if
+    ``version`` is removed -- so a future session that "fixes" the
+    validator complaint by deleting the key has to read this docstring
+    first.
+    """
+
+    VALIDATOR_ALLOWED = {
+        "name",
+        "description",
+        "license",
+        "allowed-tools",
+        "metadata",
+        "compatibility",
+    }
+    DELIBERATE_DIVERGENCE = {"version"}
+
+    def setUp(self):
+        self.fm = _frontmatter_mapping()
+
+    def test_name_is_kebab_case_within_64_chars(self):
+        name = self.fm["name"]
+        self.assertRegex(
+            name,
+            r"^[a-z0-9-]+$",
+            "name must be kebab-case: lowercase letters, digits and hyphens only",
+        )
+        self.assertFalse(
+            name.startswith("-") or name.endswith("-") or "--" in name,
+            "name must not start or end with a hyphen, nor contain a doubled hyphen",
+        )
+        self.assertLessEqual(len(name), 64, f"name is {len(name)} characters; the maximum is 64")
+
+    def test_name_matches_the_bundle_directory(self):
+        self.assertEqual(
+            self.fm["name"],
+            bundle_root().name,
+            "frontmatter name must equal the bundle directory name, because the "
+            "runtime derives the skill id from the directory",
+        )
+
+    def test_description_within_1024_chars_and_free_of_angle_brackets(self):
+        desc = self.fm["description"]
+        self.assertLessEqual(
+            len(desc), 1024, f"description is {len(desc)} characters; the maximum is 1024"
+        )
+        self.assertNotIn("<", desc, "description must not contain angle brackets")
+        self.assertNotIn(">", desc, "description must not contain angle brackets")
+
+    def test_licence_is_declared_agpl(self):
+        self.assertEqual(self.fm.get("license"), "AGPL-3.0-or-later")
+
+    def test_key_set_is_the_allowed_set_plus_one_declared_divergence(self):
+        keys = set(self.fm)
+        unexpected = keys - self.VALIDATOR_ALLOWED - self.DELIBERATE_DIVERGENCE
+        self.assertEqual(
+            unexpected,
+            set(),
+            f"frontmatter key(s) {sorted(unexpected)} are rejected by the published "
+            "skill validator and are not a declared divergence. Either remove them or, "
+            "if the key is deliberate, add it to DELIBERATE_DIVERGENCE with the reason "
+            "in this class's docstring.",
+        )
+        missing = self.DELIBERATE_DIVERGENCE - keys
+        self.assertEqual(
+            missing,
+            set(),
+            f"frontmatter no longer declares {sorted(missing)}. That key is kept on "
+            "purpose despite the published validator rejecting it -- read this class's "
+            "docstring before removing it.",
+        )
+
+
+class TestVersionIsLockedAcrossTheBundle(unittest.TestCase):
+    """Frontmatter, SKILL.md prose and CHANGELOG must name one version.
+
+    Three copies of the version number ship. Any two can agree while the
+    third drifts, and nothing else in the suite compares them.
+    """
+
+    def setUp(self):
+        self.version = _frontmatter_mapping()["version"]
+
+    def test_skill_md_prose_agrees(self):
+        self.assertIn(
+            f"The current version is {self.version}",
+            read_text("SKILL.md"),
+            "SKILL.md prose disagrees with the frontmatter version",
+        )
+
+    def test_changelog_has_an_entry(self):
+        self.assertIn(
+            f"## {self.version}",
+            read_text("CHANGELOG.md"),
+            "CHANGELOG.md has no entry for the declared version",
+        )
+
+
+class TestSkillMdStaysWithinItsWordBudget(unittest.TestCase):
+    """SKILL.md is always loaded when the skill triggers, so it is budgeted.
+
+    The published skill-authoring guidance recommends splitting a body
+    past 5000 words into references. 2.7.0 brought this file from 8409
+    words to under that, by deleting prose the references already
+    carried. This ceiling stops it drifting back: content that does not
+    fit belongs in a reference, not in a larger SKILL.md.
+    """
+
+    CEILING = 5000
+
+    def test_body_is_within_the_ceiling(self):
+        body = read_text("SKILL.md").split("---", 2)[2]
+        words = len(body.split())
+        self.assertLessEqual(
+            words,
+            self.CEILING,
+            f"SKILL.md body is {words} words against a {self.CEILING}-word ceiling. "
+            "Move the new material into a file under references/ and point at it "
+            "from SKILL.md rather than raising this number.",
+        )
 
 
 class TestLicenseFile(unittest.TestCase):

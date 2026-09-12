@@ -118,7 +118,9 @@ For the following groups, treat with OMIT-and-fall-back:
 
 Do NOT invent constants for any of the above. The Cortex IDE rejects unknown `XDM_CONST` values with a hard validation error, and a hallucinated constant typically passes a local-LLM self-check while failing the server-side compile.
 
-`xdm.event.tags` is NOT one of these groups and used to be listed here in error. `EVENT_TAG` is fully enumerated -- six members, documented in [xdm-const.md](xdm-const.md) -- so the OMIT-and-fall-back reasoning does not apply to it. The tag is decided per record from that closed set, and it is a mandatory member of both the authentication and the network story sets, so omitting it drops the event out of the story it belongs to. The rule that survives is the narrow one: never invent a tag outside the six (WARN-045). See [record-classification.md](record-classification.md).
+`xdm.event.tags` is NOT one of these groups and used to be listed here in error. `EVENT_TAG` is fully enumerated -- six members, documented in [xdm-const.md](xdm-const.md) -- so the OMIT-and-fall-back reasoning does not apply to it. The tag is decided per record, and it is a mandatory member of both the authentication and the network story sets, so omitting it drops the event out of the story it belongs to.
+
+The rule that survives is narrower than "never a tag outside the six", and the wider version of it caused a defect: NEVER INVENT AN `XDM_CONST.EVENT_TAG_*` MEMBER (ERR-031, WARN-045). The closed thing is the CONSTANT GROUP. The FIELD is an ordinary string array -- upstream packs assign vendor tag lists and policy labels to it -- and the VIRTUALIZATION story marker is a prescribed bare string, `arraycreate("VIRTUALIZATION")`, with no constant behind it. Reading "the group is closed" as "the field is closed" is what produced an invented seventh member at 2.8.0. See [record-classification.md](record-classification.md) and [house-conventions.md](house-conventions.md).
 
 ## Unused temp variable rule
 

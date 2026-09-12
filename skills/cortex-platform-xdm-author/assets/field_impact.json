@@ -1053,6 +1053,83 @@
       "mentioned_only": []
     },
     {
+      "version": "2.6.0",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "2.5.1",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "2.5.0",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.alert.name",
+          "note": "Received one curated synonym ('view') in the anchor index. The index is precedent data consulted while authoring; it is not the schema and does not constrain a rule. This path's meaning, type and mandatory status are unchanged, its frequency did not move, and its top-ranked synonym is the same one as in 2.4.0. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.alert.original_threat_name",
+          "note": "Received one curated synonym ('env_reason') in the anchor index. The index is precedent data consulted while authoring; it is not the schema and does not constrain a rule. This path's meaning, type and mandatory status are unchanged, its frequency did not move, and its top-ranked synonym is the same one as in 2.4.0. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.alert.subcategory",
+          "note": "Received one curated synonym ('env_type') in the anchor index. The index is precedent data consulted while authoring; it is not the schema and does not constrain a rule. This path's meaning, type and mandatory status are unchanged, its frequency did not move, and its top-ranked synonym is the same one as in 2.4.0. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.source.host.device_id",
+          "note": "Received one curated synonym ('install_id') in the anchor index. The index is precedent data consulted while authoring; it is not the schema and does not constrain a rule. This path's meaning, type and mandatory status are unchanged, its frequency did not move, and its top-ranked synonym is the same one as in 2.4.0. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.source.host.device_model",
+          "note": "Received one curated synonym ('dev_model') in the anchor index. The index is precedent data consulted while authoring; it is not the schema and does not constrain a rule. This path's meaning, type and mandatory status are unchanged, its frequency did not move, and its top-ranked synonym is the same one as in 2.4.0. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.source.host.manufacturer",
+          "note": "Received one curated synonym ('dev_brand') in the anchor index. The index is precedent data consulted while authoring; it is not the schema and does not constrain a rule. This path's meaning, type and mandatory status are unchanged, its frequency did not move, and its top-ranked synonym is the same one as in 2.4.0. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.target.application.name",
+          "note": "Received one curated synonym ('proj_name') in the anchor index. The index is precedent data consulted while authoring; it is not the schema and does not constrain a rule. This path's meaning, type and mandatory status are unchanged, its frequency did not move, and its top-ranked synonym is the same one as in 2.4.0. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.target.application.version",
+          "note": "Received one curated synonym ('proj_version') in the anchor index. The index is precedent data consulted while authoring; it is not the schema and does not constrain a rule. This path's meaning, type and mandatory status are unchanged, its frequency did not move, and its top-ranked synonym is the same one as in 2.4.0. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.target.cloud.project_id",
+          "note": "Received one curated synonym ('proj_id') in the anchor index. The index is precedent data consulted while authoring; it is not the schema and does not constrain a rule. This path's meaning, type and mandatory status are unchanged, its frequency did not move, and its top-ranked synonym is the same one as in 2.4.0. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.target.host.hostname",
+          "note": "Received one curated synonym ('ct_host') in the anchor index. The index is precedent data consulted while authoring; it is not the schema and does not constrain a rule. This path's meaning, type and mandatory status are unchanged, its frequency did not move, and its top-ranked synonym is the same one as in 2.4.0. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.target.port",
+          "note": "Received one curated synonym ('ct_port') in the anchor index. The index is precedent data consulted while authoring; it is not the schema and does not constrain a rule. This path's meaning, type and mandatory status are unchanged, its frequency did not move, and its top-ranked synonym is the same one as in 2.4.0. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.observer.version",
+          "note": "Named only as the target of a candidate seed that was REJECTED: the vendor column mapping to it identifies the product line by name, so it was excluded to keep the contributing source unnamed. No synonym was added to this path, nothing about the field moved, and it is comparable across this version."
+        },
+        {
+          "field": "xdm.source.host.image",
+          "note": "Named only as the target of a candidate seed that was REJECTED: it was the sole candidate requiring a new anchor key, and the general reading of a 'fingerprint' column (TLS/JA3, device fingerprint) differs from the code-fingerprint sense the source intended. No anchor key was created, so this path is still absent from the index exactly as it was in 2.4.0, and the field itself is unchanged."
+        }
+      ]
+    },
+    {
       "version": "2.4.0",
       "complete": true,
       "meaning_changed": [
@@ -1125,6 +1202,226 @@
           "note": "Named only to record that the FortiGate worked example mapped the appliance serial (devid) to BOTH xdm.source.host.device_id and, in its VPN branch, to this field -- the same value on both ends of one flow. The VPN branch now takes the observer path like the others. This field's meaning, type and required-ness are unchanged; values fall to the documented placeholder on FortiGate datasets that followed the old example."
         }
       ]
+    },
+    {
+      "version": "2.7.0",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [],
+      "note": "Documentation and packaging release. SKILL.md was reduced from 8409 words to under 5000 by deleting prose already carried by the references it cites, and the ERR-030 to ERR-034 family moved to references/install-blockers.md. No field meaning, mandatory set or banned entry changed, and no guidance was retired -- every deleted sentence was checked against the references first."
+    },
+    {
+      "version": "2.7.1",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [],
+      "note": "Fixture redaction under the maestro's phase 902. Two test fixtures and two illustrative samples carried a timezone abbreviation, city-named hosts and a +1000 UTC offset that together placed the source geographically; they now carry UTC, site-a / site-b and +0000. No field meaning, mandatory set or banned entry changed, and the suite is 646 passing before and after."
+    },
+    {
+      "version": "2.7.2",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [],
+      "note": "Bundle-standard conformance: an SPDX header on SKILL.md and the shared standard suite. No field meaning, mandatory set or banned entry changed."
+    },
+    {
+      "version": "2.7.3",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [],
+      "note": "Banners and the removal of two cross-bundle path citations. No field impact."
+    },
+    {
+      "version": "2.8.0",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.target.virtualization.vm.hostname",
+          "note": "Named as a slot of the new RECOMMENDED virtualization tier. No impact on any existing rule: the tier is opt-in, absence is never reported, and the value is MIRRORED from the entity a rule already derives for xdm.target.resource.name or xdm.target.host.hostname rather than extracted afresh. The mirrored field itself is untouched. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.target.virtualization.task.name",
+          "note": "Named as a slot of the new RECOMMENDED virtualization tier. Mirrored from the action a rule already derives for xdm.target.process.command_line, xdm.event.operation_sub_type or xdm.event.original_event_type; those fields are unchanged. Opt-in and never reported on absence, so no existing rule is affected."
+        },
+        {
+          "field": "xdm.target.virtualization.data_center.name",
+          "note": "Named as a slot of the new RECOMMENDED virtualization tier, and the one deliberately left UNSET where a source has no administrative container. Mirrored from xdm.target.cloud.project, xdm.target.cloud.project_id or xdm.target.resource.parent_id where one of those is already derived. No existing field changed and no population moved."
+        },
+        {
+          "field": "xdm.event.tags",
+          "note": "Gains one available member, XDM_CONST.EVENT_TAG_VIRTUALIZATION, taking the closed EVENT_TAG enum from six to seven. This is an ADDITION to the enum and not a change to the field: every previously valid tags value stays valid, no existing rule's tags assignment changes, and a consumer filtering on the six earlier members sees exactly the population it saw before. Only a rule that opts into the new tier emits the new member. RETRACTED AT 2.11.0: XDM_CONST.EVENT_TAG_VIRTUALIZATION does not exist on the platform and a MODEL rule naming it fails the pack install; the closed EVENT_TAG group never opened past six members, and the virtualization marker is the bare string \"VIRTUALIZATION\". This clause travels with the note so a range query that stops short of 2.11.0 cannot report the member as real."
+        },
+        {
+          "field": "xdm.target.resource.name",
+          "note": "It is a MIRROR SOURCE for the new RECOMMENDED virtualization tier: a rule that opts in assigns the virtualization slot from the SAME temp this field already takes. The field itself is unchanged -- same meaning, same type, same population -- and the tier is append-never-replace, so nothing that reads it today reads anything different. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.target.host.hostname",
+          "note": "It is a MIRROR SOURCE for the new RECOMMENDED virtualization tier: a rule that opts in assigns the virtualization slot from the SAME temp this field already takes. The field itself is unchanged -- same meaning, same type, same population -- and the tier is append-never-replace, so nothing that reads it today reads anything different. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.event.operation_sub_type",
+          "note": "It is a MIRROR SOURCE for the new RECOMMENDED virtualization tier: a rule that opts in assigns the virtualization slot from the SAME temp this field already takes. The field itself is unchanged -- same meaning, same type, same population -- and the tier is append-never-replace, so nothing that reads it today reads anything different. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.event.original_event_type",
+          "note": "It is a MIRROR SOURCE for the new RECOMMENDED virtualization tier: a rule that opts in assigns the virtualization slot from the SAME temp this field already takes. The field itself is unchanged -- same meaning, same type, same population -- and the tier is append-never-replace, so nothing that reads it today reads anything different. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.target.cloud.project",
+          "note": "It is a MIRROR SOURCE for the new RECOMMENDED virtualization tier: a rule that opts in assigns the virtualization slot from the SAME temp this field already takes. The field itself is unchanged -- same meaning, same type, same population -- and the tier is append-never-replace, so nothing that reads it today reads anything different. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.target.cloud.project_id",
+          "note": "It is a MIRROR SOURCE for the new RECOMMENDED virtualization tier: a rule that opts in assigns the virtualization slot from the SAME temp this field already takes. The field itself is unchanged -- same meaning, same type, same population -- and the tier is append-never-replace, so nothing that reads it today reads anything different. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.target.resource.parent_id",
+          "note": "It is a MIRROR SOURCE for the new RECOMMENDED virtualization tier: a rule that opts in assigns the virtualization slot from the SAME temp this field already takes. The field itself is unchanged -- same meaning, same type, same population -- and the tier is append-never-replace, so nothing that reads it today reads anything different. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.observer.name",
+          "note": "Named only to say what the container slot is NOT. The observer is the witness, not the administrative container the entity lives in, and the reference refuses it as a fallback for data_center.name. The field is unchanged and nothing was added to or removed from it."
+        },
+        {
+          "field": "xdm.target.process.name",
+          "note": "Named as part of the action detail the virtualization story carries. Mapping is owned by references/process-mapping.md and did not change in this release; the field is neither newly mandatory nor newly banned, and the virtualization tier is opt-in. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.target.process.command_line",
+          "note": "Named as part of the action detail the virtualization story carries. Mapping is owned by references/process-mapping.md and did not change in this release; the field is neither newly mandatory nor newly banned, and the virtualization tier is opt-in. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.target.process.pid",
+          "note": "Named as part of the action detail the virtualization story carries. Mapping is owned by references/process-mapping.md and did not change in this release; the field is neither newly mandatory nor newly banned, and the virtualization tier is opt-in. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.target.process.identifier",
+          "note": "Named as part of the action detail the virtualization story carries. Mapping is owned by references/process-mapping.md and did not change in this release; the field is neither newly mandatory nor newly banned, and the virtualization tier is opt-in. Values and populations are comparable across this version."
+        },
+        {
+          "field": "xdm.target.process.causality_id",
+          "note": "Named as part of the action detail the virtualization story carries. Mapping is owned by references/process-mapping.md and did not change in this release; the field is neither newly mandatory nor newly banned, and the virtualization tier is opt-in. Values and populations are comparable across this version."
+        }
+      ],
+      "note": "Adds the VIRTUALIZATION recommended tier and opens the EVENT_TAG enum from six to seven members with EVENT_TAG_VIRTUALIZATION. No existing field changed meaning and no mandatory set moved: the three slots are mirrored from values a rule already derives, and absence of the tier is never reported."
+    },
+    {
+      "version": "2.8.1",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.event.tags",
+          "note": "Named only in the historical account of a linter defect fixed at 1.8.10, where a duplicate-tags warning falsely advised merging separate assignments of this field. The field itself is untouched by this release: same meaning, same type, same population, and the false warning has not fired since 1.8.10."
+        }
+      ],
+      "note": "Documentation only: the multi-block linter behaviour gains a reference home. No field named, none changed."
+    },
+    {
+      "version": "2.9.0",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.target.virtualization.vm.hostname",
+          "note": "A slot of the RECOMMENDED virtualization tier, given a documented field table with its type at this version. Not newly mandatory, never reported on absence, and mirrored from a value a rule already derives rather than extracted afresh. The mirror SOURCES were classified at 2.8.0 and are not re-classified here."
+        },
+        {
+          "field": "xdm.target.virtualization.task.name",
+          "note": "A slot of the RECOMMENDED virtualization tier, given a documented field table with its type at this version. Not newly mandatory, never reported on absence, and mirrored from a value a rule already derives rather than extracted afresh. The mirror SOURCES were classified at 2.8.0 and are not re-classified here."
+        },
+        {
+          "field": "xdm.target.virtualization.data_center.name",
+          "note": "A slot of the RECOMMENDED virtualization tier, given a documented field table with its type at this version. Not newly mandatory, never reported on absence, and mirrored from a value a rule already derives rather than extracted afresh. The mirror SOURCES were classified at 2.8.0 and are not re-classified here."
+        },
+        {
+          "field": "xdm.target.virtualization.task.id",
+          "note": "A slot of the RECOMMENDED virtualization tier, given a documented field table with its type at this version. Not newly mandatory, never reported on absence, and mirrored from a value a rule already derives rather than extracted afresh. The mirror SOURCES were classified at 2.8.0 and are not re-classified here."
+        },
+        {
+          "field": "xdm.target.virtualization.data_store.name",
+          "note": "A slot of the RECOMMENDED virtualization tier, given a documented field table with its type at this version. Not newly mandatory, never reported on absence, and mirrored from a value a rule already derives rather than extracted afresh. The mirror SOURCES were classified at 2.8.0 and are not re-classified here."
+        }
+      ]
+    },
+    {
+      "version": "2.10.0",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.event.tags",
+          "note": "WARN-045 now ACCEPTS EVENT_TAG_VIRTUALIZATION, which references/xdm-const.md has documented since 2.8.0 and the linter's second copy of the member list had not. No change to the field, its type or its population: a tag that was always valid per the reference stops being warned about. Nothing that was accepted before is refused now. RETRACTED AT 2.11.0: XDM_CONST.EVENT_TAG_VIRTUALIZATION does not exist on the platform and a MODEL rule naming it fails the pack install; the closed EVENT_TAG group never opened past six members, and the virtualization marker is the bare string \"VIRTUALIZATION\". This clause travels with the note so a range query that stops short of 2.11.0 cannot report the member as real."
+        }
+      ]
+    },
+    {
+      "version": "2.11.0",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.event.tags",
+          "note": "Reverts 2.10.0. XDM_CONST.EVENT_TAG_VIRTUALIZATION does not exist on the platform, so the closed EVENT_TAG enum returns to six members and WARN-045 refuses that token again. The VIRTUALIZATION story marker is the bare string \"VIRTUALIZATION\". No change to the field, its type, its required-ness or its population: a rule naming the constant never compiled, so no value that reached a dataset changes and values remain safe to compare across this version. What changed is the guidance and what the linter refuses. Note that a bare-string tag is invisible to WARN-045, which matches tokens; this field's VALUES are not lint-checked for the virtualization story at all."
+        }
+      ]
+    },
+    {
+      "version": "2.12.0",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": [
+        {
+          "field": "xdm.event.tags",
+          "note": "Corrects how this field is DESCRIBED, not what it holds. The field is an ordinary array of strings; only the EVENT_TAG constant group is closed, and pages that called the FIELD a closed six-member enum are fixed. No change to meaning, type, required-ness or population, and values stay safe to compare across this version. Enforcement statement corrected: the non-existent constant is refused by ERR-031 at ERROR severity as well as advisory WARN-045, both gated on MODEL rules, and neither can see a bare-string tag. Retraction clauses were APPENDED to the 2.8.0 and 2.10.0 notes above so a range query stopping short of 2.11.0 no longer reports XDM_CONST.EVENT_TAG_VIRTUALIZATION as real."
+        }
+      ]
+    },
+    {
+      "version": "2.13.0",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "2.14.0",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
+    },
+    {
+      "version": "2.15.0",
+      "complete": true,
+      "meaning_changed": [],
+      "mandatory_changed": [],
+      "banned": [],
+      "mentioned_only": []
     }
   ]
 }

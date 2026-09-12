@@ -118,6 +118,12 @@ Dataflow checks (reach + array-typing over the rule's temps):
 
     ERR-019  tmp_ temp never reaches an xdm.* assignment (all datasets).
     ERR-025  Temp whose only consumer is inside a concat() / arraystring() body (_gc_raw).
+    WARN-058 Unreachable coalesce fallback: a temp given a literal
+             default by an earlier coalesce in the SAME block is
+             never null, so a later coalesce(temp, fallback) can
+             never take that fallback. Dead when the fallback is a
+             literal; silently LOSES A VALUE when it is another
+             column (advisory).
 
 ERR-019 is a hard block on EVERY dataset -- Cortex rejects an unused field
 ("Datamodel contains unused fields") regardless of the dataset suffix.
@@ -2746,16 +2752,39 @@ def _check_warn051(code_lines: List[str]) -> List[dict]:
 # Members proven ABSENT on a live tenant. Kept separate from the
 # family gate below because their family is one this bundle does not
 # document completely, so the gate alone would not catch them.
+# Each value is (REASON, FIX). A FIX of None takes the generic
+# recommendation below. The per-member fix exists because the generic one
+# ("band into the closed list") is WRONG for at least one member: the
+# virtualization marker is not a coarser member of a finer enumeration, it
+# is the same marker in a different FORM, and banding it would file the
+# record under a story it does not belong to.
 _ABSENT_CONST_MEMBERS = {
-    "LOG_LEVEL_EMERGENCY": "syslog severity 0; XDM_CONST.LOG_LEVEL has no "
-    "EMERGENCY member. Floor 0 and 1 to LOG_LEVEL_CRITICAL.",
-    "LOG_LEVEL_ALERT": "syslog severity 1; XDM_CONST.LOG_LEVEL has no ALERT "
-    "member. Floor 0 and 1 to LOG_LEVEL_CRITICAL.",
-    "LOG_LEVEL_DEBUG": "syslog severity 7; XDM_CONST.LOG_LEVEL has no DEBUG "
-    "member. Map 7 to LOG_LEVEL_INFORMATIONAL.",
-    "OPERATION_TYPE_AUTH_LOGOUT": "there is no logout verb. A logout is not "
-    "a login: leave xdm.event.operation unset and let xdm.event.type and "
-    "the vendor token carry it.",
+    "LOG_LEVEL_EMERGENCY": (
+        "syslog severity 0; XDM_CONST.LOG_LEVEL has no EMERGENCY member. "
+        "Floor 0 and 1 to LOG_LEVEL_CRITICAL.", None),
+    "LOG_LEVEL_ALERT": (
+        "syslog severity 1; XDM_CONST.LOG_LEVEL has no ALERT member. Floor 0 "
+        "and 1 to LOG_LEVEL_CRITICAL.", None),
+    "LOG_LEVEL_DEBUG": (
+        "syslog severity 7; XDM_CONST.LOG_LEVEL has no DEBUG member. Map 7 to "
+        "LOG_LEVEL_INFORMATIONAL.", None),
+    "OPERATION_TYPE_AUTH_LOGOUT": (
+        "there is no logout verb. A logout is not a login: leave "
+        "xdm.event.operation unset and let xdm.event.type and the vendor "
+        "token carry it.", None),
+    "EVENT_TAG_VIRTUALIZATION": (
+        "the VIRTUALIZATION story is real but its marker is NOT a constant. "
+        "Bisected on a live tenant in both directions: the symbol fails the "
+        "install, the bare string installs.",
+        'Write the marker as a bare quoted string: xdm.event.tags = '
+        'arraycreate("VIRTUALIZATION") -- upper case, singular, no '
+        "underscore -- merged into the ONE arraycreate(...) the record "
+        "already emits. Mixing forms in one call is correct and is the form "
+        "with tenant evidence behind it: "
+        'arraycreate(XDM_CONST.EVENT_TAG_AUTHENTICATION, "VIRTUALIZATION"). '
+        "Do NOT band into another EVENT_TAG member and do NOT drop the tag. "
+        "See references/virtualization-mapping.md and "
+        "references/house-conventions.md."),
 }
 
 # Families this bundle documents COMPLETELY, established by measuring the
@@ -2792,7 +2821,8 @@ def _check_err031(code_lines: List[str]) -> List[dict]:
             member = m.group(1)
             if member in seen:
                 continue
-            reason = _ABSENT_CONST_MEMBERS.get(member)
+            entry = _ABSENT_CONST_MEMBERS.get(member)
+            reason, fix = entry if entry else (None, None)
             if reason is None:
                 fam = next(
                     (f for f in _CLOSED_CONST_FAMILIES
@@ -2810,10 +2840,11 @@ def _check_err031(code_lines: List[str]) -> List[dict]:
                     "a non-existent member fails the pack install with an "
                     "opaque 101704 that names no field and no line, so it "
                     "cannot be diagnosed from the error.",
-                    "Use a member from the closed list in "
-                    "references/xdm-const.md. Where the source enumeration is "
-                    "larger than the XDM one, BAND into it rather than "
-                    "extending it by name.",
+                    fix or (
+                        "Use a member from the closed list in "
+                        "references/xdm-const.md. Where the source "
+                        "enumeration is larger than the XDM one, BAND into it "
+                        "rather than extending it by name."),
                 )
             )
     return out
@@ -4208,6 +4239,197 @@ def _join_with_offsets(lines: List[str]) -> Tuple[str, List[int]]:
 
 
 # --------------------------------------------------------------------
+# WARN-058  Unreachable coalesce fallback on an already-defaulted temp
+# --------------------------------------------------------------------
+#
+# Two alter stages, read separately, each look careful:
+#
+#     alter tmp_role = coalesce(role, "")          <- stage one defaults it
+#     ...
+#     alter ... concat(" at role ", coalesce(tmp_role, "none"))
+#
+# coalesce returns its first NON-NULL argument. The first stage already
+# guaranteed tmp_role is non-null -- "" is a value, not a null -- so the
+# second coalesce always returns "" and can never return "none". The
+# description renders "at role " with a gap where the author intended
+# "at role none".
+#
+# It survives review because it reads as defensive: two coalesces look
+# more careful than one, the output is a non-empty string either way, so
+# nothing is null, nothing is empty-checked, and no count reveals it. It
+# is visible only by reading both stages together, which is what a linter
+# is for.
+#
+# The worse shape is the same bug with a COLUMN as the fallback --
+# coalesce(tmp_type_name, tmp_type) -- where the rule discards a real
+# value it successfully read rather than a placeholder.
+#
+# Scoping matters and is easy to get wrong. The same temp name is
+# routinely defined in several [MODEL] blocks of one file, so a
+# whole-file scan keeps one definition per name and silently drops the
+# sites in every other block. This runs per block because _lint_block
+# does, which is the architecture doing the work.
+#
+# Deliberately narrow, so the discriminator stays clean:
+#   - only a LITERAL default counts. coalesce(a, null) leaves the temp
+#     nullable, and coalesce(a, other_col) may still yield null.
+#   - the temp's LAST assignment before the read decides. A temp
+#     re-assigned from a bare column after being defaulted is nullable
+#     again, and its later fallback is live.
+# A coalesce on a temp that was never defaulted -- coalesce(tmp_name,
+# "unknown") where tmp_name = name -- is correct and is never flagged.
+
+_W058_ANY_ASSIGN = re.compile(r"(?<![A-Za-z0-9_])(tmp_[A-Za-z0-9_]+)\s*=(?!=)")
+_W058_READ = re.compile(
+    r"(?<![A-Za-z0-9_])coalesce\s*\(\s*(tmp_[A-Za-z0-9_]+)\s*,", re.IGNORECASE
+)
+_W058_COALESCE_RHS = re.compile(r"\s*coalesce\s*\(", re.IGNORECASE)
+_W058_LITERAL = re.compile(r"""^(?:"[^"]*"|'[^']*'|-?\d+(?:\.\d+)?)$""")
+
+
+def _w058_mask_strings(text: str) -> str:
+    """Blank string-literal BODIES, preserving length and offsets, so a
+    quoted 'tmp_x = 1' inside a description cannot look like code."""
+    out = list(text)
+    i, n, quote = 0, len(text), ""
+    while i < n:
+        ch = text[i]
+        if quote:
+            if ch == "\\" and i + 1 < n:
+                out[i] = out[i + 1] = " "
+                i += 2
+                continue
+            if ch == quote:
+                quote = ""
+            else:
+                out[i] = " "
+        elif ch in ('"', "'"):
+            quote = ch
+        i += 1
+    return "".join(out)
+
+
+def _w058_close_paren(text: str, open_idx: int) -> int:
+    """Index just past the ')' matching the '(' at open_idx, or -1."""
+    depth = 0
+    for i in range(open_idx, len(text)):
+        if text[i] == "(":
+            depth += 1
+        elif text[i] == ")":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+    return -1
+
+
+def _w058_top_level_args(inner: str) -> List[str]:
+    args, depth, buf = [], 0, []
+    for ch in inner:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        if ch == "," and depth == 0:
+            args.append("".join(buf).strip())
+            buf = []
+            continue
+        buf.append(ch)
+    args.append("".join(buf).strip())
+    return args
+
+
+def _w058_depths(masked: str) -> List[int]:
+    """Paren depth BEFORE each character. String bodies are already
+    blanked, so a paren inside a literal cannot skew it."""
+    depths, depth = [], 0
+    for ch in masked:
+        depths.append(depth)
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth = max(0, depth - 1)
+    return depths
+
+
+def _check_warn058(
+    joined_text: str, line_starts: List[int], line_offset: int = 0
+) -> List[dict]:
+    masked = _w058_mask_strings(joined_text)
+    depths = _w058_depths(masked)
+
+    # Every assignment to a tmp_, in source order, flagged with whether it
+    # leaves the temp non-null. Masked text locates them; the ORIGINAL is
+    # read for the literal, because masking blanks the literal's body.
+    #
+    # XQL spells assignment and equality the SAME WAY, so `if(tmp_role =
+    # "", ...)` is a COMPARISON that reads exactly like a definition. Only
+    # depth 0 is a real assignment; without this the comparison is taken
+    # for a re-assignment that clears the default, and every genuine
+    # finding after it is suppressed. A depth-0 `filter tmp_x = "y"` is
+    # also a comparison and is still misread, which costs a finding rather
+    # than inventing one.
+    assigns: Dict[str, List[Tuple[int, bool]]] = {}
+    for m in _W058_ANY_ASSIGN.finditer(masked):
+        name, at = m.group(1), m.start()
+        if depths[at] != 0:
+            continue
+        defaults = False
+        rhs = _W058_COALESCE_RHS.match(masked, m.end())
+        if rhs:
+            open_idx = rhs.end() - 1
+            close = _w058_close_paren(masked, open_idx)
+            if close != -1:
+                args = _w058_top_level_args(joined_text[open_idx + 1:close - 1])
+                if len(args) >= 2 and _W058_LITERAL.match(args[-1]):
+                    defaults = True
+        assigns.setdefault(name, []).append((at, defaults))
+
+    out: List[dict] = []
+    for m in _W058_READ.finditer(masked):
+        name, at = m.group(1), m.start()
+        prior = [a for a in assigns.get(name, []) if a[0] < at]
+        if not prior or not prior[-1][1]:
+            continue                      # never defaulted, or nullable again
+        open_idx = masked.index("(", m.start())
+        close = _w058_close_paren(masked, open_idx)
+        if close == -1:
+            continue
+        args = _w058_top_level_args(joined_text[open_idx + 1:close - 1])
+        if len(args) < 2:
+            continue
+        fallback = args[1]
+        def_line = _line_at(line_starts, prior[-1][0]) + 1 + line_offset
+        if _W058_LITERAL.match(fallback):
+            detail = (
+                f"the fallback {fallback} is dead code and the expression "
+                f"always yields the default set on line {def_line}"
+            )
+        else:
+            detail = (
+                f"the fallback '{fallback}' is a COLUMN, so the rule "
+                f"silently discards a real value it read rather than a "
+                f"placeholder"
+            )
+        out.append(
+            _violation(
+                "WARN-058",
+                "warning",
+                _line_at(line_starts, at) + 1,
+                f"coalesce({name}, ...) can never take its fallback: "
+                f"{name} was given a literal default on line {def_line}, "
+                f"so it is never null. coalesce returns the "
+                f"first NON-NULL argument, and \"\" is a value -- "
+                f"{detail}.",
+                f"Test the default instead of coalescing again, e.g. "
+                f"if({name} = <the default>, <fallback>, {name}); or drop "
+                f"the default from line {def_line} so {name} stays null "
+                f"and the fallback becomes reachable.",
+            )
+        )
+    return out
+
+
+# --------------------------------------------------------------------
 # Public API
 # --------------------------------------------------------------------
 
@@ -4262,8 +4484,24 @@ def _check_warn044(code_lines: List[str]) -> List[dict]:
 
 # ----- WARN-045  event.tags conformance to the closed EVENT_TAG enum
 
-# xdm.event.tags is a CLOSED six-member enum. Any other EVENT_TAG_* token
-# is invented and mistypes the field. See references/xdm-const.md.
+# xdm.event.tags is a CLOSED enum. Any other EVENT_TAG_* token is invented
+# and mistypes the field.
+#
+# THIS IS A SECOND COPY OF THE LIST IN references/xdm-const.md.
+# `test_the_event_tag_enum_matches_the_reference` compares the two, on the
+# ERR-034 precedent -- a mirrored set is only safe while something refuses
+# drift. That test exists because the two DID disagree: 2.10.0 read a
+# consuming session's report of the disagreement as the linter lagging the
+# reference, and closed it by adding EVENT_TAG_VIRTUALIZATION here. It was
+# the reference that was wrong. There is no such constant on the platform,
+# and 2.11.0 removed it from both copies.
+#
+# The VIRTUALIZATION story marker is a bare string, `"VIRTUALIZATION"`, and
+# is therefore invisible to this check -- `_EVENT_TAG_TOKEN_RE` matches
+# tokens, and a quoted string carries none. That is a real gap, stated
+# rather than papered over: see references/virtualization-mapping.md. Do NOT
+# close it by re-adding the member, which would make the linter accept a
+# constant that does not compile.
 _VALID_EVENT_TAGS = {
     "EVENT_TAG_AUTHENTICATION",
     "EVENT_TAG_NETWORK",
@@ -4277,8 +4515,9 @@ _EVENT_TAG_TOKEN_RE = re.compile(r"EVENT_TAG_[A-Z0-9_]+")
 
 def _check_warn045(code_lines: List[str]) -> List[dict]:
     """Flag any EVENT_TAG_* token in an xdm.event.tags assignment that is
-    not a member of the closed six-member EVENT_TAG enum (AUTHENTICATION,
-    NETWORK, CLOUD, SAAS, ONPREM, VPN). An invented tag mistypes the
+    not a member of the closed EVENT_TAG enum. The members are
+    `_VALID_EVENT_TAGS` above and are not restated here, because the copy
+    that was restated fell behind the reference. An invented tag mistypes the
     field. Advisory only (warning severity), so the exit code stays 0. See
     references/xdm-const.md."""
     if not _is_model(code_lines):
@@ -4295,6 +4534,28 @@ def _check_warn045(code_lines: List[str]) -> List[dict]:
             }
         )
         if bad:
+            # The virtualization marker earns a message of its own. The
+            # derived advice below is CORRECT for an invented tag and WRONG
+            # for this one: it offers six alternatives, none of which is the
+            # answer, so an author following it bands a virtualization record
+            # into a story it does not belong to or drops the tag. A54 -- a
+            # check whose finding is wrong advice does not ship.
+            if bad == ["EVENT_TAG_VIRTUALIZATION"]:
+                out.append(
+                    _violation(
+                        "WARN-045",
+                        "warning",
+                        a["line"],
+                        "xdm.event.tags uses EVENT_TAG_VIRTUALIZATION, which "
+                        "the platform does not define. The VIRTUALIZATION "
+                        "story is real; this is its marker in the wrong FORM, "
+                        "and it is the one story marker written as a bare "
+                        "quoted string rather than a constant. See ERR-031 on "
+                        "the same line for the install consequence.",
+                        _ABSENT_CONST_MEMBERS["EVENT_TAG_VIRTUALIZATION"][1],
+                    )
+                )
+                continue
             out.append(
                 _violation(
                     "WARN-045",
@@ -4303,10 +4564,12 @@ def _check_warn045(code_lines: List[str]) -> List[dict]:
                     "xdm.event.tags uses "
                     + ", ".join(bad)
                     + ", which is not a member of the closed EVENT_TAG enum.",
-                    "Use only XDM_CONST.EVENT_TAG_AUTHENTICATION / "
-                    "EVENT_TAG_NETWORK / EVENT_TAG_CLOUD / EVENT_TAG_SAAS / "
-                    "EVENT_TAG_ONPREM / EVENT_TAG_VPN "
-                    "(see references/xdm-const.md).",
+                    # DERIVED from the set, never retyped: a message that restates a
+                    # list is a third copy of it, and the copy that was restated is the
+                    # one that falls behind.
+                    "Use only "
+                    + " / ".join("XDM_CONST." + m for m in sorted(_VALID_EVENT_TAGS))
+                    + " (see references/xdm-const.md).",
                 )
             )
     return out
@@ -4464,7 +4727,7 @@ def lint(source: str) -> List[dict]:
         return _lint_block(source)
     findings: List[dict] = []
     for blk in blocks:
-        for v in _lint_block(blk["text"]):
+        for v in _lint_block(blk["text"], blk["line_offset"]):
             v = dict(v)
             v["line"] += blk["line_offset"]
             if blk["dataset"]:
@@ -4473,8 +4736,12 @@ def lint(source: str) -> List[dict]:
     return sorted(findings, key=lambda v: (v["line"], v["rule_id"]))
 
 
-def _lint_block(source: str) -> List[dict]:
-    """Run every check over exactly ONE model block."""
+def _lint_block(source: str, line_offset: int = 0) -> List[dict]:
+    """Run every check over exactly ONE model block.
+
+    ``line_offset`` is the block's position in the file. Findings
+    are renumbered by ``lint``; this is for checks that name a
+    SECOND line inside their message, which no renumbering reaches."""
     code_lines = source.splitlines()
     stage_of, stage_start = _classify_stages(code_lines)
     joined, line_starts = _join_with_offsets(
@@ -4528,6 +4795,7 @@ def _lint_block(source: str) -> List[dict]:
     findings += _check_err034(code_lines)
     findings += _check_info013(code_lines)
     findings += _check_warn057(code_lines)
+    findings += _check_warn058(joined, line_starts, line_offset)
 
     findings.sort(key=lambda v: (v["line"], v["rule_id"]))
     findings += _cascade_hint(findings)

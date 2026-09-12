@@ -17,6 +17,8 @@ Portable skill bundles for doing cool stuff with the Palo Alto Networks Cortex P
 | --- | --- |
 | [cortex-platform-xdm-author](skills/cortex-platform-xdm-author/) | Author Cortex XSIAM Data Model Rules in Cortex Query Language (XQL). Produce a complete `[MODEL: dataset=..._raw]` rule from raw vendor log samples, with a MAPPED-header comment block. MODEL-only. |
 
+Each bundle is self-contained and installs on its own. The harness may point at an instrument, because dispatch is its job; an instrument never points back or sideways, so installing one does not oblige you to install the rest.
+
 ## Installing with Claude Code
 
 This repository is a Claude Code plugin marketplace. From any Claude Code session:
@@ -26,7 +28,7 @@ This repository is a Claude Code plugin marketplace. From any Claude Code sessio
 /plugin install gocortex-skills@gocortexio-skills
 ```
 
-The `gocortex-skills` plugin currently ships the `cortex-platform-xdm-author` bundle; bundles are added to the plugin as they reach a stable release. Pushed updates arrive with `/plugin marketplace update`.
+The `gocortex-skills` plugin ships every bundle listed above. Install it and all five are available; a bundle you do not use costs nothing but disk. Pushed updates arrive with `/plugin marketplace update`.
 
 ## Installing a bundle by hand
 
@@ -36,15 +38,15 @@ A bundle is just a directory. Copy or symlink it into the skills directory the h
 
 The source-of-truth lives here. Edit files under `skills/<bundle-name>/`, then re-copy to any installed location or rely on a symlink. Commit changes to this folder; installed copies are local artefacts and should not be committed.
 
-The `cortex-platform-xdm-author` bundle's `references/` are derived markdown snapshots of the upstream XDM schema, XQL functions, parser-conformance rules, and field-anchor index. When the corresponding upstream source changes (XDM schema, an `XDM_CONST` enum, a parser conformance rule, or the field-anchor table), re-derive the matching reference file so the bundle stays in sync.
+Several bundles carry derived reference material. `cortex-platform-xdm-author`'s `references/` are markdown snapshots of the upstream XDM schema, XQL functions, parser-conformance rules and field-anchor index; when the corresponding upstream source changes, re-derive the matching reference file so the bundle stays in sync. `cortex-platform-advisory-consultant` ships its corpus complete, and a newer corpus arrives as a newer version of the bundle rather than as a sync step.
 
 ## Scope
 
-Each bundle states its own scope in its `SKILL.md`. The `cortex-platform-xdm-author` bundle covers Data Model Rules only; Parsing Rules (`[INGEST: ...]`) and parser-stamped anchor columns are out of scope.
+Each bundle states its own scope in its `SKILL.md`, and that statement is authoritative. Two worth knowing up front: `cortex-platform-xdm-author` covers Data Model Rules only -- Parsing Rules (`[INGEST: ...]`) and parser-stamped anchor columns are out of scope -- and `cortex-platform-advisory-consultant` answers from the corpus it ships, so it tells you when it holds no record for a product rather than inferring one.
 
 ## Runtime dependencies
 
-The `cortex-platform-xdm-author` bundle ships a set of Python helpers under `scripts/` covering the profile -> scaffold -> lint -> verify loop:
+Every bundle ships its executable helpers under its own `scripts/`. The largest set is `cortex-platform-xdm-author`'s, covering the profile -> scaffold -> lint -> verify loop:
 
 - `profile_log.py` -- static profiler for raw log samples (fields, types, null rates, detection, recommended extraction pattern).
 - `scaffold_rule.py` -- turns a profiler worksheet into a lint-clean starter rule.
@@ -53,7 +55,7 @@ The `cortex-platform-xdm-author` bundle ships a set of Python helpers under `scr
 - `lint_rule.py` -- standalone syntactic / schema / dataflow linter for a single rule file.
 - `verify_rule.py` -- evaluate a rule against a sample offline, no tenant required.
 
-All are Python 3.9+ stdlib only: no `pip install`, no Node, no network. They run anywhere a Python interpreter is available. If no Python is available, the reference markdown remains usable as a manual checklist; see the bundle's own `SKILL.md` for the fallback workflow.
+The other bundles ship the same way -- `cortex-platform-correlation-author` a correlation linter, `cortex-platform-advisory-consultant` its consultation, query and validation scripts, and the harness its release gate and publication sweep. All are Python 3.9+ stdlib only: no `pip install`, no Node, no network. They run anywhere a Python interpreter is available. If no Python is available, the reference markdown remains usable as a manual checklist; see the bundle's own `SKILL.md` for the fallback workflow.
 
 ## Licence
 

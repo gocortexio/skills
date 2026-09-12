@@ -138,6 +138,7 @@ class TestSyntacticRules(unittest.TestCase):
         ("warn049_hardcoded_path.xql", "WARN-049"),
         ("warn055_auth_target_resource.xql", "WARN-055"),
         ("warn057_identity_without_user.xql", "WARN-057"),
+        ("warn058_dead_coalesce_fallback.xql", "WARN-058"),
         ("warn057_diverged_mirror.xql", "WARN-057"),
         ("info013_overmapping.xql", "INFO-013"),
     ]
@@ -1569,6 +1570,69 @@ class TestWarn045EventTagEnum(unittest.TestCase):
         )
         self.assertNotIn("WARN-045", _rule_ids_from(rule))
 
+    def test_the_virtualization_constant_is_refused(self):
+        """There is no XDM_CONST.EVENT_TAG_VIRTUALIZATION. 2.8.0 documented it, 2.10.0
+        taught this check to accept it, and 2.11.0 removed it from both copies. This is
+        the warning an author who tidies the bare string into the enum will hit, and the
+        fix for it is the string -- never a wider enum."""
+        rule = self._rule("arraycreate(XDM_CONST.EVENT_TAG_VIRTUALIZATION)")
+        found = lint(rule)
+        vios = [v for v in found if v["rule_id"] == "WARN-045"]
+        self.assertEqual(len(vios), 1, vios)
+        self.assertIn("EVENT_TAG_VIRTUALIZATION", vios[0]["message"])
+
+        # ERR-031 is the one that BLOCKS, and it fired only because 2.11.0 removed the
+        # member from xdm-const.md -- EVENT_TAG is in _CLOSED_CONST_FAMILIES, so the gate
+        # is derived from that reference. Asserting only the advisory let the blocking
+        # half stop firing unseen, and three pages described the refusal as a warning.
+        errs = [v for v in found if v["rule_id"] == "ERR-031"]
+        self.assertEqual(len(errs), 1, f"ERR-031 must block this: {found}")
+        self.assertEqual(errs[0]["severity"], "error")
+        self.assertTrue(
+            any(v["severity"] == "error" for v in found),
+            "the lint must exit non-zero on a rule that would fail the pack install",
+        )
+        # Both codes must send the author to the string. The generic advice names the six
+        # and none of them is the answer, which is a check whose finding is wrong advice.
+        for v in vios + errs:
+            self.assertIn('arraycreate("VIRTUALIZATION")', v["recommendation"], v["rule_id"])
+            self.assertNotIn("BAND into it", v["recommendation"], v["rule_id"])
+
+    def test_the_bare_virtualization_string_is_not_checked(self):
+        """The prescribed form runs clean -- and it runs clean because this check cannot
+        SEE it, not because it was approved. _EVENT_TAG_TOKEN_RE matches tokens and a
+        quoted string carries none, so a misspelling would pass here too. That gap is
+        recorded in references/virtualization-mapping.md and in house-conventions.md.
+
+        The first version of this docstring claimed that pinning the behaviour "means a
+        change that starts checking bare strings must come past this test and update both
+        pages with it" -- while the test never opened either page. That is a true
+        statement about the linter presented as a control over two documents, which is the
+        defect shape this bundle keeps finding in itself. It now reads them."""
+        self.assertNotIn("WARN-045", _rule_ids_from(self._rule('arraycreate("VIRTUALIZATION")')))
+        self.assertNotIn(
+            "WARN-045",
+            _rule_ids_from(
+                self._rule(
+                    'arraycreate(XDM_CONST.EVENT_TAG_AUTHENTICATION, "VIRTUALIZATION")'
+                )
+            ),
+            "mixing a constant and the string in one call is correct and must run clean",
+        )
+
+        # The pages this behaviour is recorded in must actually prescribe the string, and
+        # must still say that nothing checks it. If a future change starts checking bare
+        # strings, these assertions are what force both pages to be updated with it.
+        for name in ("virtualization-mapping.md", "house-conventions.md"):
+            page = (bundle_root() / "references" / name).read_text(encoding="utf-8")
+            self.assertIn('arraycreate("VIRTUALIZATION")', page, name)
+            self.assertIn(
+                "no check can see",
+                page.lower(),
+                f"{name} must still record that the prescribed form is unchecked -- if a "
+                "change starts checking bare strings, this page has to be updated with it",
+            )
+
 
 class TestWarn046CatchAll(unittest.TestCase):
     """A content filter beyond `_raw_log != null` drops records unless the
@@ -2710,3 +2774,286 @@ class TestWarn057SeverityMirrorsItsTwin(unittest.TestCase):
                     capture_output=True, text=True,
                 )
                 self.assertEqual(proc.returncode, 0, proc.stdout)
+
+
+class TestWarn058DeadCoalesceFallback(unittest.TestCase):
+    """A coalesce fallback behind an already-defaulted temp."""
+
+    def _codes(self, src):
+        return [v for v in lint(src) if v["rule_id"] == "WARN-058"]
+
+    _HEAD = "[MODEL: dataset=acme_demo_raw]\nfilter\n    _raw_log != null\n"
+
+    def test_defaulted_temp_makes_the_later_fallback_dead(self):
+        src = self._HEAD + (
+            "| alter\n    tmp_role = coalesce(role, \"\")\n"
+            "| alter\n    xdm.event.description = coalesce(tmp_role, \"none\")\n;"
+        )
+        self.assertEqual(len(self._codes(src)), 1)
+
+    def test_undefaulted_temp_keeps_its_fallback(self):
+        # The discriminator. tmp_name has no default, so it can be null
+        # and the fallback is genuinely reachable.
+        src = self._HEAD + (
+            "| alter\n    tmp_name = name\n"
+            "| alter\n    xdm.event.description = coalesce(tmp_name, \"unknown\")\n;"
+        )
+        self.assertEqual(self._codes(src), [])
+
+    def test_a_null_second_argument_is_not_a_default(self):
+        # coalesce(x, null) leaves the temp nullable, so nothing downstream
+        # is unreachable.
+        src = self._HEAD + (
+            "| alter\n    tmp_role = coalesce(role, null)\n"
+            "| alter\n    xdm.event.description = coalesce(tmp_role, \"none\")\n;"
+        )
+        self.assertEqual(self._codes(src), [])
+
+    def test_a_column_second_argument_is_not_a_default(self):
+        # coalesce(a, b) can still yield null when both are null.
+        src = self._HEAD + (
+            "| alter\n    tmp_role = coalesce(role, other_role)\n"
+            "| alter\n    xdm.event.description = coalesce(tmp_role, \"none\")\n;"
+        )
+        self.assertEqual(self._codes(src), [])
+
+    def test_reassignment_from_a_bare_column_makes_it_live_again(self):
+        src = self._HEAD + (
+            "| alter\n    tmp_role = coalesce(role, \"\")\n"
+            "| alter\n    tmp_role = other_role\n"
+            "| alter\n    xdm.event.description = coalesce(tmp_role, \"none\")\n;"
+        )
+        self.assertEqual(self._codes(src), [])
+
+    def test_an_equality_comparison_is_not_a_reassignment(self):
+        # XQL spells assignment and equality the same way. Reading
+        # `if(tmp_role = "", ...)` as a re-assignment clears the recorded
+        # default and silently drops every finding after it -- which is
+        # exactly what happened on the first cut of this check.
+        src = self._HEAD + (
+            "| alter\n    tmp_role = coalesce(role, \"\")\n"
+            "| alter\n    xdm.target.resource.sub_type = if(tmp_role = \"\", null, tmp_role),\n"
+            "    xdm.event.description = coalesce(tmp_role, \"none\")\n;"
+        )
+        self.assertEqual(len(self._codes(src)), 1)
+
+    def test_a_column_fallback_is_reported_as_a_lost_value(self):
+        src = self._HEAD + (
+            "| alter\n    tmp_type = type,\n    tmp_type_name = coalesce(typeName, \"\")\n"
+            "| alter\n    xdm.event.description = coalesce(tmp_type_name, tmp_type)\n;"
+        )
+        found = self._codes(src)
+        self.assertEqual(len(found), 1)
+        self.assertIn("discards a real value", found[0]["message"])
+
+    def test_each_model_block_is_scoped_separately(self):
+        # The same temp name is routinely defined in several blocks. A
+        # whole-file scan keeps one definition per name and drops the
+        # sites in every other block; both of these must be reported.
+        blk = (
+            "[MODEL: dataset=acme_{n}_raw]\nfilter\n    _raw_log != null\n"
+            "| alter\n    tmp_role = coalesce(role, \"\")\n"
+            "| alter\n    xdm.event.description = coalesce(tmp_role, \"none\")\n;\n"
+        )
+        src = blk.format(n="one") + blk.format(n="two")
+        found = self._codes(src)
+        self.assertEqual(len(found), 2, found)
+        self.assertNotEqual(found[0]["line"], found[1]["line"])
+
+    def test_the_named_default_line_is_absolute_not_block_relative(self):
+        # The message names a SECOND line, which no renumbering reaches.
+        blk = (
+            "[MODEL: dataset=acme_{n}_raw]\nfilter\n    _raw_log != null\n"
+            "| alter\n    tmp_role = coalesce(role, \"\")\n"
+            "| alter\n    xdm.event.description = coalesce(tmp_role, \"none\")\n;\n"
+        )
+        src = blk.format(n="one") + blk.format(n="two")
+        second = self._codes(src)[1]
+        # Second block starts at line 9, so its default sits on line 13
+        # and its dead fallback on line 15 -- both file-absolute.
+        self.assertEqual(second["line"], 15)
+        self.assertIn("line 13", second["message"], second["message"])
+
+
+def test_the_event_tag_enum_matches_the_reference():
+    """WARN-045's member set is a SECOND COPY of the list in references/xdm-const.md, and the two
+    have already disagreed once.
+
+    At 2.8.0 the reference documented a seventh member, EVENT_TAG_VIRTUALIZATION, and the linter's
+    set stayed at six -- so following the reference earned a warning while ignoring it ran clean.
+    A consuming session reported that, and 2.10.0 closed it by adding the member to the linter.
+    That was the wrong copy to change: the constant does not exist on the platform, so a rule
+    naming it does not compile, and 2.11.0 removed it from both. The marker is a bare string,
+    registered in references/house-conventions.md.
+
+    This is the ERR-034 precedent applied to a second mirrored set. A copy is only safe while
+    something refuses drift -- but note what this test alone cannot tell you: it proves the two
+    copies AGREE, never that they are right. Both were wrong together for one release.
+    """
+    import lint_rule
+    ref = (bundle_root() / "references" / "xdm-const.md").read_text(encoding="utf-8")
+    # Take the fence that IS a member list -- every non-empty line a bare
+    # XDM_CONST.EVENT_TAG_* entry -- not merely the first fence after the anchor.
+    # "First fence" was defeated: a usage example placed between the anchor sentence and
+    # the real list becomes what gets compared, the real list goes unconstrained, and a
+    # seventh member can be added to both the reference and nothing else. That decoy
+    # needs no bad faith -- it is what an author adds when asked to show the merged form.
+    section = ref.split("`EVENT_TAG` is a CLOSED", 1)[1]
+    fences = section.split("```")[1::2]
+    lists = [
+        f for f in fences
+        if f.strip() and all(
+            re.fullmatch(r"XDM_CONST\.EVENT_TAG_[A-Z0-9_]+", ln.strip())
+            for ln in f.strip().splitlines()
+        )
+    ]
+    assert len(lists) == 1, (
+        f"expected exactly one member-list fence after the anchor, found {len(lists)}. "
+        "Two would mean the reference states the enum twice, which is the drift this "
+        "test exists to refuse."
+    )
+    documented = set(re.findall(r"XDM_CONST\.(EVENT_TAG_[A-Z0-9_]+)", lists[0]))
+    assert documented, "parsed no EVENT_TAG members from the reference; this test would be vacuous"
+    assert lint_rule._VALID_EVENT_TAGS == documented, (
+        f"the linter accepts {sorted(lint_rule._VALID_EVENT_TAGS)} and the reference documents "
+        f"{sorted(documented)}. One of them is wrong, and the reference is authoritative."
+    )
+
+def test_no_page_prescribes_an_event_tag_outside_the_six():
+    """No page, script or template may SHOW an author writing an XDM_CONST.EVENT_TAG_* member
+    that does not exist. Assigning one fails the pack install with an opaque 101704 (ERR-031).
+
+    This replaces a narrower check that scanned reference CODE FENCES for one literal spelling,
+    EVENT_TAG_VIRTUALIZATION. An adversarial pass defeated that check six ways while the suite
+    stayed green, and every defeat is closed here:
+
+      - SKILL.md, the always-loaded card, was not scanned at all. The only thing standing between
+        it and a prescribed constant was 24 words of accidental SKILL.md word-ceiling headroom.
+      - scripts/scaffold_rule.py, the rule GENERATOR, was not scanned -- only profile_log.py was.
+        What it emits becomes a shipped rule rather than an example.
+      - assets/*.xql, the MAPPED-header skeleton every emitted rule inherits, was not scanned.
+      - A 4-space INDENTED block is not a fence, so it was invisible.
+      - A 4-backtick or nested fence flips the naive parity toggle and hides what it wraps, while
+        leaving the file balanced so nothing downstream notices.
+      - EVENT_TAG_VIRTUALISATION -- the British spelling this repo's own dialect invites -- is a
+        different literal, so a grep for one spelling missed it. Mirrored into both copies of the
+        enum it also passed the drift test, because that test only proves the copies AGREE.
+
+    So the check is on the PRESCRIBING FORM rather than on a spelling or a fence: a line that
+    carries an EVENT_TAG token AND an assignment or arraycreate() is showing an author what to
+    write. Prose stays free to name any member in order to refuse it, which several pages must do,
+    and no page warns anyone off anything by putting it in an assignment.
+
+    The six members come from lint_rule so this is not a fourth copy of the list. lint_rule.py is
+    excluded because the token belongs in its ERR-031 registry and its absence from
+    _VALID_EVENT_TAGS is already pinned by test_the_event_tag_enum_matches_the_reference.
+    CHANGELOG.md and assets/field_impact.json are excluded because both are historical records of
+    the releases that made this mistake; rewriting them would falsify the record.
+    """
+    import lint_rule
+    root = bundle_root()
+
+    # PINNED HERE, not read from the bundle. Deriving the valid set from
+    # _VALID_EVENT_TAGS made this check moveable by the same edit it was meant to refuse:
+    # an adversarial pass added EVENT_TAG_VIRTUALISATION -- the British spelling this
+    # repo's dialect invites -- to the reference, the linter AND a prescribing page, and
+    # every check stayed green, because the drift test only proves the two copies AGREE
+    # and this one asked the moved copy what was valid.
+    #
+    # These six are a PLATFORM fact, not a bundle preference, so a test is the right place
+    # to anchor them. The known failure mode of a hard-coded copy is silent drift, so this
+    # copy is not merely a list: it is asserted against both other copies below, which
+    # makes three-way disagreement impossible to add quietly. Changing it means the
+    # platform changed, and that takes a tenant install, not an edit.
+    valid = {
+        "EVENT_TAG_AUTHENTICATION",
+        "EVENT_TAG_NETWORK",
+        "EVENT_TAG_CLOUD",
+        "EVENT_TAG_SAAS",
+        "EVENT_TAG_ONPREM",
+        "EVENT_TAG_VPN",
+    }
+    assert lint_rule._VALID_EVENT_TAGS == valid, (
+        "the linter's EVENT_TAG set has moved away from the six members pinned here: "
+        f"{sorted(lint_rule._VALID_EVENT_TAGS)}. A member is only added on evidence that a "
+        "tenant install ACCEPTS it (see references/house-conventions.md), never because the "
+        "reference or a mapping page started prescribing it."
+    )
+
+    targets = [root / "SKILL.md"]
+    targets += sorted((root / "references").rglob("*.md"))
+    targets += [f for f in sorted((root / "scripts").glob("*.py")) if f.name != "lint_rule.py"]
+    targets += sorted((root / "assets").glob("*.xql"))
+    readme = root / "README.md"
+    if readme.exists():
+        targets.append(readme)
+    assert len(targets) > 20, f"target list suspiciously small ({len(targets)}); the scan would be vacuous"
+
+    offenders = []
+    for f in targets:
+        for i, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+            if "EVENT_TAG" not in line:
+                continue
+            if "arraycreate(" not in line and "xdm.event.tags" not in line:
+                continue  # prose naming a member, not showing one being written
+            for tok in re.findall(r"EVENT_TAG_[A-Z0-9_]+", line):
+                if tok not in valid:
+                    offenders.append(f"{f.relative_to(root)}:{i}: {tok} in {line.strip()[:90]}")
+    assert not offenders, (
+        "these show an author assigning an XDM_CONST.EVENT_TAG member that does not exist "
+        "(ERR-031, fails the pack install). The virtualization marker is the bare string "
+        '"VIRTUALIZATION":\n  ' + "\n  ".join(offenders)
+    )
+
+
+def test_the_register_entry_for_the_bare_string_tag_is_present():
+    """The house-conventions register entry is what stops the next author tidying the bare string
+    into the enum, and until now nothing read it.
+
+    Deleting all 75 lines of it left the suite green: three tests NAME the file in their
+    docstrings and test_doc_consistency.py's allowlist cites it as the justification for
+    permitting the token bundle-wide -- four claims that the register exists and zero assertions
+    that open it. That is the defect shape this project keeps finding: a claim about a control is
+    not a control (LAW A56).
+
+    Pins the load-bearing content, not the prose: the four-part structure, the tenant bisect, the
+    upstream citation that sources the spelling, and the retirement condition.
+    """
+    text = (bundle_root() / "references" / "house-conventions.md").read_text(encoding="utf-8")
+    assert '### "VIRTUALIZATION" as a bare-string event tag' in text, (
+        "the register entry for the bare-string tag is gone; it is the only thing telling the "
+        "next author not to tidy the string into the enum"
+    )
+    entry = text.split('### "VIRTUALIZATION" as a bare-string event tag', 1)[1].split("\n### ", 1)[0]
+    for part in ("WHAT WE REQUIRE", "WHAT THE SCHEMA SAYS", "WHY WE DIVERGE", "WHAT WOULD RETIRE IT"):
+        assert part in entry, f"the entry has lost its {part} section"
+    for claim, why in (
+        ("bisect", "the tenant measurement is what makes this more than an opinion"),
+        ("VMware", "the upstream citation is where the spelling comes from"),
+        ("ERR-031", "the entry must state the enforcement that actually blocks"),
+        ("101704", "the install symptom is what an author actually sees"),
+    ):
+        assert claim in entry, f"the entry no longer names {claim}: {why}"
+
+
+def test_every_register_entry_carries_its_four_parts():
+    """The register's own contract, stated in its preamble: an entry states what we require, what
+    the schema alone says, why we diverge, and what evidence would retire it. Nothing checked it,
+    so an entry could be added or trimmed into an unaccountable instruction."""
+    text = (bundle_root() / "references" / "house-conventions.md").read_text(encoding="utf-8")
+    entries = text.split("\n### ")[1:]
+    assert len(entries) >= 4, f"parsed {len(entries)} register entries; the check would be vacuous"
+    for e in entries:
+        title = e.split("\n", 1)[0]
+        for part in ("WHAT WE REQUIRE", "WHAT THE SCHEMA SAYS", "WHY WE DIVERGE", "WHAT WOULD RETIRE IT"):
+            assert part in e, f"register entry {title!r} is missing {part}"
+
+
+def test_the_warn045_message_is_derived_from_the_set():
+    """The message used to list the members by hand and went on naming six after the enum opened
+    to seven. A message that restates a list is a third copy of it."""
+    src = LINT_SCRIPT.read_text(encoding="utf-8")
+    body = src.split("def _check_warn045", 1)[1].split("\ndef ", 1)[0]
+    assert "_VALID_EVENT_TAGS" in body, "WARN-045 must build its advice from the set"
+    for member in ("EVENT_TAG_CLOUD", "EVENT_TAG_SAAS", "EVENT_TAG_ONPREM"):
+        assert member not in body, f"{member} is retyped in WARN-045 rather than derived"

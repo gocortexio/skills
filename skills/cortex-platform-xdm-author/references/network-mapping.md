@@ -272,7 +272,12 @@ filter
 
 ## Dual events -- authentication AND network
 
-`xdm.event.tags` is an array, so one event can belong to both stories.
+`xdm.event.tags` is an array, so one event can belong to more than one
+story. Everything in this section applies to VIRTUALIZATION too: a
+hypervisor login is authentication AND virtualization, and a command run
+over an SSH session can be all three. The rules below are about the tags
+array and the mandatory sets, not about which two stories are combined
+([virtualization-mapping.md](virtualization-mapping.md)).
 A VPN login is the canonical case: it is a credential validation (the
 authentication story) carried over a network session (the network
 story), so it also earns `XDM_CONST.EVENT_TAG_VPN`.

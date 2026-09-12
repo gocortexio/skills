@@ -1019,8 +1019,27 @@ def main(argv: List[str]) -> int:
     try:
         records = _load_records(sample_text)
     except json.JSONDecodeError as exc:
-        sys.stderr.write(f"error: sample is not valid JSON / JSONL: {exc}\n")
-        return 2
+        # A RAW-LINE corpus is the normal shape for a syslog source, and it is what the
+        # pack-building harness's `collect_samples.py` writes as `<dataset>.log`. Refusing it
+        # meant this bundle's verifier could not read the file that bundle's collector produces,
+        # for a source family this bundle documents at length.
+        #
+        # Wrapping is not a convenience: `_raw_log` is what the ingest path actually presents to
+        # a MODEL rule for an unparsed source (Pattern D), so a wrapped line is closer to what
+        # the rule will see than a hand-built JSON object would be. Reported, so nobody reads a
+        # field report and believes the sample was structured.
+        lines = [l for l in sample_text.splitlines() if l.strip()]
+        if lines and not lines[0].lstrip().startswith(("{", "[")):
+            records = [{"_raw_log": l} for l in lines]
+            sys.stderr.write(
+                f"note: sample is not JSON, so it was read as {len(records)} RAW LINE(S) and "
+                "each wrapped as {\"_raw_log\": <line>}, which is what the ingest path presents "
+                "for an unparsed source. Fields other than _raw_log will read as absent because "
+                "the sample carries none.\n"
+            )
+        else:
+            sys.stderr.write(f"error: sample is not valid JSON / JSONL: {exc}\n")
+            return 2
 
     try:
         blocks = split_model_blocks(rule_text)

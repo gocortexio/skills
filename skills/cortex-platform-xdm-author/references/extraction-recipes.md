@@ -774,7 +774,7 @@ canonical case; any application logging via syslog with its own
 formatter shares the shape.
 
 ```
-<182>Jul 30 13:41:12 host-a NFM-P-APP: <2026.07.30 13:41:02 728 +1000><I><host-a><DeployCleanWorker [1]><server.sysact.ActivityTask.ActivityTask> User Activity for User: 4008225 RequestId: 3436 Type: Deployment Deletion ObjectId: network:198.51.100.226:router-1:ip-interface-75:BFDConfiguration ObjectType: Bfd Config State: Success
+<182>Jul 30 13:41:12 host-a NFM-P-APP: <2026.07.30 13:41:02 728 +0000><I><host-a><DeployCleanWorker [1]><server.sysact.ActivityTask.ActivityTask> User Activity for User: 4008225 RequestId: 3436 Type: Deployment Deletion ObjectId: network:198.51.100.226:router-1:ip-interface-75:BFDConfiguration ObjectType: Bfd Config State: Success
 |_________ syslog envelope _________|_______ application header _______|_ message _
 ```
 
@@ -814,7 +814,7 @@ predict.
 Some records carry an empty class field, written `><>`:
 
 ```
-<2026.07.30 16:16:37 107 +1000><I><host-a><MemoryMonitorPrintTimer><> JVM MEMORY: ...
+<2026.07.30 16:16:37 107 +0000><I><host-a><MemoryMonitorPrintTimer><> JVM MEMORY: ...
 ```
 
 `([^>]+)` requires one character and so fails to match the WHOLE header,

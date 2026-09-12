@@ -731,6 +731,18 @@ target address and the placeholder is semantically empty.
 thing being logged into, so a placeholder there would assert that the
 event has a known target when it does not.
 
+## A hypervisor or management login is TWO stories
+
+An authentication record whose target is a thing an operator administers -- a hypervisor, a
+management system, a network device -- is an authentication event AND a member of the
+virtualization story, which baselines an (entity, action) pair and alerts on deviation from
+normal. The tags array carries both, merged into one `arraycreate(...)`, exactly as a dual
+authentication-plus-network event does.
+
+That story is a RECOMMENDED tier: nothing here becomes mandatory because of it, WARN-042 does not
+change, and its three slots are mirrored from values this mapping already derives. See
+[virtualization-mapping.md](virtualization-mapping.md).
+
 ## Recommended fields (the identity mirror)
 
 The XDM Identity data model reads `xdm.<side>.identity.*`, a

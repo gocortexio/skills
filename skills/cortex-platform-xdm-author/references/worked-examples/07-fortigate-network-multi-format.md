@@ -237,8 +237,8 @@ cannot read a sibling temp assigned beside it (ERR-024). The 17-field network bl
 
 A FortiGate SSL-VPN login is one event in THREE tags: a credential
 validation (authentication) carried over a VPN tunnel (VPN) on a network
-session (network). `xdm.event.tags` is an array over the closed six-member
-enum, so the rule emits the UNION of the markers in a single
+session (network). `xdm.event.tags` is an array of story markers, so the rule emits the
+UNION of the markers in a single
 `arraycreate(XDM_CONST.EVENT_TAG_AUTHENTICATION, XDM_CONST.EVENT_TAG_VPN, XDM_CONST.EVENT_TAG_NETWORK)`
 -- never two tags assignments -- and maps both mandatory sets. The overlapping transport
 fields (addresses, ports, protocol) are mapped once and satisfy both.
@@ -319,8 +319,9 @@ filter
 Dual-branch decisions worth copying:
 
 - ONE merged tags assignment carrying all three markers
-  (`EVENT_TAG_AUTHENTICATION`, `EVENT_TAG_VPN`, `EVENT_TAG_NETWORK`, from
-  the closed six-member enum). A second `xdm.event.tags` would overwrite
+  (`EVENT_TAG_AUTHENTICATION`, `EVENT_TAG_VPN`, `EVENT_TAG_NETWORK`, all
+  three from the closed `EVENT_TAG` constant group). A second
+  `xdm.event.tags` would overwrite
   the first and silently drop a story (WARN-043 flags the duplicate).
 - `xdm.event.outcome` uses SUCCESS / FAILED only -- the authentication
   story forbids the network padding value OUTCOME_UNKNOWN, and the

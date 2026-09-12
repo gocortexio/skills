@@ -90,3 +90,22 @@ If the dataset name ends in `_gc_raw` (a GoCortex-specific raw dataset), extra c
 ## MAPPED-header comment block (mandatory)
 
 Every model rule MUST be prefixed with a MAPPED-header comment block. See [../assets/modeling_header_template.xql](../assets/modeling_header_template.xql) for the template.
+
+## A multi-block file is the normal shape, and it lints natively
+
+A file carrying more than one `[MODEL:]` block is what a pack modelling several datasets looks
+like, not an edge case. This linter once analysed such a file as ONE unit and broke in both
+directions: ERR-019 was SUPPRESSED by a second block, so a block with an unused temp reported it
+while the same block duplicated to a second dataset reported nothing -- a multi-block pack could
+lint at zero errors while carrying a defect Cortex rejects. The duplicate-tags warning fired
+falsely in the other direction, advising a merge of `xdm.event.tags` assignments that must stay
+separate. `verify_rule.py` could not tokenise past the second block at all.
+
+Fixed at 1.8.10. Each block is checked independently, every finding carries the dataset it
+belongs to, line numbers stay relative to the whole file, and `verify_rule.py` takes
+`--dataset <name>` to select one. The false duplicate-tags case became WARN-053 so it can be
+filtered apart from the mandatory-set checks. Re-verified against the minimal repro: one block
+reports one ERR-019, the same block duplicated reports two, one per labelled dataset.
+
+So lint the SHIPPED file. Splitting blocks into temporary single-block files was a workaround for
+the old behaviour and is now obsolete; anyone still writing it is working from a stale note.

@@ -485,3 +485,41 @@ class TestBundleVersionReporting(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_a_raw_syslog_corpus_is_wrapped_rather_than_refused(tmp_path):
+    """The pack-building harness's collector writes `<dataset>.log` as raw lines, and this
+    verifier refused it -- so one bundle's tool could not read the file another bundle's tool
+    produces, for the source family this bundle documents at greatest length.
+
+    Wrapping is not a convenience. `_raw_log` is what the ingest path presents to a MODEL rule
+    for an unparsed source, so a wrapped line is closer to what the rule will actually see than
+    a hand-built JSON object is. Reported by a consuming session that had been wrapping the file
+    by hand to get an answer.
+    """
+    rule = tmp_path / "r.xif"
+    rule.write_text('[MODEL: dataset = t_raw]\n'
+                    'alter tmp_c = arrayindex(regextract(_raw_log, "cmd=(\\S+)"), 0)\n'
+                    '| alter xdm.target.process.command_line = tmp_c;\n', encoding="utf-8")
+    sample = tmp_path / "t.log"
+    sample.write_text("<14>Jun 19 09:51:59 h d[1]: cmd=show\n"
+                      "<14>Jun 19 09:52:00 h d[2]: cmd=write\n", encoding="utf-8")
+    r = subprocess.run([sys.executable, str(SCRIPTS / "verify_rule.py"),
+                        str(rule), str(sample)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    assert "RAW LINE" in r.stderr, "the wrap must be announced, never silent"
+    assert "show" in r.stdout and "write" in r.stdout, \
+        f"the rule did not run over the wrapped lines: {r.stdout[:300]}"
+
+
+def test_a_malformed_json_sample_is_still_refused(tmp_path):
+    """The raw-line fallback must not swallow a genuinely broken JSON file. A sample that OPENS
+    like JSON and then fails is a typo in a structured sample, not a syslog corpus."""
+    rule = tmp_path / "r.xif"
+    rule.write_text("[MODEL: dataset = t_raw]\nalter xdm.event.type = \"x\";\n", encoding="utf-8")
+    sample = tmp_path / "s.json"
+    sample.write_text('{"a": 1\n', encoding="utf-8")
+    r = subprocess.run([sys.executable, str(SCRIPTS / "verify_rule.py"),
+                        str(rule), str(sample)], capture_output=True, text=True)
+    assert r.returncode == 2
+    assert "not valid JSON" in r.stderr

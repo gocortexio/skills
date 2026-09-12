@@ -1,11 +1,11 @@
-<14>Jun 19 09:51:59 aaa03.mel.example.local tacacsd[629]: 00000000 type=AUTHENTICATION action=PERMIT user="svc_nms1" dvc_ip=10.0.9.10 src_ip=10.0.10.10
-<14>Jun 19 13:42:27 aaa02.mel.example.local tacacsd[2568]: 00000000 type=AUTHENTICATION action=DENY user="svc_nms3" dvc_ip=10.0.18.10 src_ip=10.0.19.10 port=rest_http rule="" client="10.0.12.10/16" reason="Bad Password"
-<14>Jun 19 09:51:59 aaa01.syd.example.local tacacsd[25395]: 00000000 type=ACCOUNTING action=Stop user="alice.admin" dvc_ip=10.0.34.10 src_ip=10.0.35.10 port=/dev/pts/7 timezone=AEST task_id=885618 service=shell priv_lvl=0 cmd="show bgp neighbors"
-<14>Jun 19 09:52:00 aaa05.syd.example.local tacacsd[13842]: 00000000 type=ACCOUNTING action=Start user="svc_nms1" dvc_ip=10.0.46.10 src_ip=10.0.10.10 port=/dev/pts/7 timezone=UTC task_id=419771 service=shell
-<14>Jun 19 09:52:01 aaa03.mel.example.local tacacsd[618]: 00000000 type=ACCOUNTING action=Stop user="svc_nms1" dvc_ip=10.0.56.10 src_ip=10.0.10.10 port=tty866 task_id=587338 timezone=AEST service=shell start_time=1781826601 disc_cause=1 elapsed_time=120 stop_time=1781826721
-<14>Jun 19 09:51:59 aaa05.syd.example.local tacacsd[13844]: 00000000 Authorization permitted for alice.admin at 10.0.64.10, group Net Admins A, args service=shell cmd=show cmd-arg=interfaces
-<14>Jun 19 13:42:14 legacy-aaa01.syd.example.local consumer_tacacs[2490]: Authorization denied for svc_vm at 10.0.72.10: No context found. Expired?
-<14>Jun 19 13:42:12 legacy-aaa01.syd.example.local consumer_tacacs[2490]: Fri Jun 19 13:42:12 2026 user=svc.automation from 10.0.35.10 to 203.0.113.2 Logged in Successfully
-<14>Jun 19 09:53:37 legacy-aaa01.syd.example.local consumer_tacacs[2490]: Fri Jun 19 09:53:37 2026 user=garbage_user_a from async to 203.0.113.1 Login Failure
-<11>Jun 19 09:51:59 aaa04.syd.example.local tacacsd[3687]: 00000000 Inconsistent lengths in Tacacs Authentication request from 10.0.76.10:40548. Bad Key?
-<14>Jun 19 09:52:00 aaa01.syd.example.local tacacsd[25395]: 00000000 PostSearchHook: Grepped for priv-lvl: 'priv-lvl=15'
+<14>Jun 19 09:51:59 aaa03.site-b.example.local tacacsd[629]: 00000000 type=AUTHENTICATION action=PERMIT user="svc_nms1" dvc_ip=10.0.9.10 src_ip=10.0.10.10
+<14>Jun 19 13:42:27 aaa02.site-b.example.local tacacsd[2568]: 00000000 type=AUTHENTICATION action=DENY user="svc_nms3" dvc_ip=10.0.18.10 src_ip=10.0.19.10 port=rest_http rule="" client="10.0.12.10/16" reason="Bad Password"
+<14>Jun 19 09:51:59 aaa01.site-a.example.local tacacsd[25395]: 00000000 type=ACCOUNTING action=Stop user="alice.admin" dvc_ip=10.0.34.10 src_ip=10.0.35.10 port=/dev/pts/7 timezone=UTC task_id=885618 service=shell priv_lvl=0 cmd="show bgp neighbors"
+<14>Jun 19 09:52:00 aaa05.site-a.example.local tacacsd[13842]: 00000000 type=ACCOUNTING action=Start user="svc_nms1" dvc_ip=10.0.46.10 src_ip=10.0.10.10 port=/dev/pts/7 timezone=UTC task_id=419771 service=shell
+<14>Jun 19 09:52:01 aaa03.site-b.example.local tacacsd[618]: 00000000 type=ACCOUNTING action=Stop user="svc_nms1" dvc_ip=10.0.56.10 src_ip=10.0.10.10 port=tty866 task_id=587338 timezone=UTC service=shell start_time=1781826601 disc_cause=1 elapsed_time=120 stop_time=1781826721
+<14>Jun 19 09:51:59 aaa05.site-a.example.local tacacsd[13844]: 00000000 Authorization permitted for alice.admin at 10.0.64.10, group Net Admins A, args service=shell cmd=show cmd-arg=interfaces
+<14>Jun 19 13:42:14 legacy-aaa01.site-a.example.local consumer_tacacs[2490]: Authorization denied for svc_vm at 10.0.72.10: No context found. Expired?
+<14>Jun 19 13:42:12 legacy-aaa01.site-a.example.local consumer_tacacs[2490]: Fri Jun 19 13:42:12 2026 user=svc.automation from 10.0.35.10 to 203.0.113.2 Logged in Successfully
+<14>Jun 19 09:53:37 legacy-aaa01.site-a.example.local consumer_tacacs[2490]: Fri Jun 19 09:53:37 2026 user=garbage_user_a from async to 203.0.113.1 Login Failure
+<11>Jun 19 09:51:59 aaa04.site-a.example.local tacacsd[3687]: 00000000 Inconsistent lengths in Tacacs Authentication request from 10.0.76.10:40548. Bad Key?
+<14>Jun 19 09:52:00 aaa01.site-a.example.local tacacsd[25395]: 00000000 PostSearchHook: Grepped for priv-lvl: 'priv-lvl=15'

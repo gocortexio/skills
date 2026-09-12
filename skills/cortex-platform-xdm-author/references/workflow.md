@@ -13,6 +13,10 @@ Without sample log data you will hallucinate field names. The hard rule: if the 
 
 Ask for the sample in whatever form the user has -- JSONL, JSON, syslog, CEF. Vendor / product / dataset name can be inferred from the log and confirmed.
 
+If the sample is being pulled from a live dataset rather than handed over as a file, it must be STRATIFIED. A `limit N` pull is not a sample: it returns whichever records the engine reaches first, which is routinely a tiny unrepresentative minority, and a rule authored from it can look perfect on row count while modelling the wrong shape entirely. Identify the discriminator, count by it (`comp count() by <discriminator>`), then take a few records per group so every shape is represented.
+
+If a previous version of this rule exists, list the `xdm.*` fields it assigns before starting -- see Step 12.
+
 ## Step 2 -- Analyse the raw log structure
 
 The bundled profiler does this step deterministically. Run:
@@ -24,6 +28,8 @@ python3 scripts/profile_log.py "<path/to/sample>"
 The script auto-detects the format (JSON, JSONL, CEF, LEEF, syslog 5424, syslog 3164, key=value, CSV, TSV), walks every record into leaf paths (with `[]` markers for arrays and named-key entries for `{name, value}` header-pair arrays), infers each field's type, computes a per-field null/absence rate across the sample, and lists each object-array's discriminator key (so a `transactions[]` with a `phase` of request vs response is flagged before mapping starts). Each discovered field carries the top ranked XDM candidate suggestions from the shipped anchor index.
 
 Output is JSON on stdout by default; pass `--format text` for a human-readable table. See the worksheet shape in the script's docstring.
+
+The worksheet also carries a `recommended_pattern` block, which maps the detected format and the object-array discriminators onto the extraction decision tree in Step 4. Treat it as the profiler's proposal: confirm it against [extraction-patterns.md](extraction-patterns.md) rather than accepting it unread.
 
 If `profile_log.py` cannot be run (no Python on the host, or the bundle has been installed into a sandbox without script execution), fall back to manual inspection. Examine the sample and identify:
 
@@ -41,7 +47,7 @@ know `detected_format`, ask the user once for the matching reference and
 proceed either way:
 
 - JSON / JSONL -> the OpenAPI / JSON Schema spec or API field docs. This is
-  the highest-value artifact: it gives field descriptions, authoritative
+  the highest-value artefact: it gives field descriptions, authoritative
   datatypes (array vs scalar), enum values (for `XDM_CONST` mapping) and
   which fields carry the identity / auth story. A cryptic JSON key is a
   guess without it.
@@ -120,6 +126,7 @@ Apply transformation patterns from [transformation-patterns.md](transformation-p
 - Banded scoring -- vendor field names containing `"score"` or numeric severity scales (0-100, 0-10, 1-5) MUST use banded thresholds.
 - Categorical enum routing -- vendor `categories[]` arrays MUST first attempt `xdm.alert.category` via THREAT_CATEGORY constants before falling back to `xdm.alert.subcategory`.
 - One-sided actor mirroring -- when the vendor delivers ONE actor and no counterparty, mirror into BOTH `xdm.source.` and `xdm.target.`.
+- Virtualization mapping -- when the record is an administrative action on a thing: a command run on a device, an operation on a VM, an API call against a resource. Recommended rather than mandatory, and mirrored from values the rule already derives, so it costs no new extraction. See [virtualization-mapping.md](virtualization-mapping.md).
 - Authentication mandatory mapping -- when `scripts/profile_log.py` flags the sample as an authentication event (or the rule sets the `EVENT_TAG_AUTHENTICATION` tag / an `OPERATION_TYPE_AUTH_*` operation), map the full mandatory 15-field set from [authentication-mapping.md](authentication-mapping.md). The story is only created when every mandatory field is mapped; the linter raises advisory WARN-042 (warning only, exit code stays 0) for each one left unmapped.
 - Network mandatory mapping -- when the profiler flags a network / traffic event (or the rule sets the `EVENT_TAG_NETWORK` tag / a `network` event type), map the full mandatory 17-field set from [network-mapping.md](network-mapping.md), padding absent values with the type-valid placeholders. Advisory WARN-043 flags each one left unmapped. The two detections are independent: a dual event (a VPN login) takes both sets, with the union of the story tags in ONE `xdm.event.tags = arraycreate(...)`.
 
@@ -163,7 +170,37 @@ INFO-012. When the linter reports multiple violations, the EARLIEST is almost al
 4. ERR-013 -- compound null-guard predicate inside `if()`
 5. ERR-014 -- bareword `true` / `false` on a string column
 
-## Step 10 -- Emit final output
+## Step 10 -- Re-lint until clean
+
+Re-run the linter after each fix. Exit 0 with no error-severity finding is the gate; warnings and info never change the exit code, but read them before accepting them.
+
+## Step 11 -- For a syslog source, prove both arrival forms
+
+Static lint cannot establish prepend-robustness, so run:
+
+```sh
+python3 scripts/verify_rule.py <rule.xql> <sample> --prepend-check
+```
+
+It evaluates every record twice -- as supplied and with a relay header prepended -- and exits 1 naming any field whose value differs. The findings sit under the `prepend_check` key of the JSON result, so a caller looking for `differences` or `mismatches` gets an empty list that reads as a false pass. A difference means an extraction is anchored on position rather than on the payload's own token; fix the anchor, do not special-case the second form.
+
+This step is mandatory, not optional: a rule that only models the arrival form the sample happened to show is incomplete even when it lints clean. See [syslog-envelope.md](syslog-envelope.md).
+
+## Step 12 -- If this rule REPLACES an existing one, diff the emitted field set
+
+Enumerate the `xdm.*` fields the previous version assigned and set-subtract the new version's. Anything dropped is a potential break in downstream content, because correlations and dashboards bind to FIELDS, not to datasets. A rewrite that stops emitting a field a correlation reads makes that correlation structurally incapable of firing -- not short of data, unable to match -- and nothing detects it: the rule lints clean, the dataset name is unchanged and row parity is perfect.
+
+Mechanical enough to run by hand:
+
+```sh
+grep -oE "xdm\.[a-z0-9_.]+" old.xql | sort -u > old.fields
+grep -oE "xdm\.[a-z0-9_.]+" new.xql | sort -u > new.fields
+comm -23 old.fields new.fields   # fields the new rule no longer emits
+```
+
+Either keep the dropped field or update the content that reads it; never drop one silently.
+
+## Step 13 -- Emit final output
 
 Every rule MUST be prefixed with a MAPPED-header comment block:
 

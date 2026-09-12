@@ -1002,7 +1002,9 @@ _NETWORK_VALUE_VOCAB_RE = re.compile(
 # positional formats, where every line collapses into a single _message
 # field and only values are visible.
 #
-# The ACTION family (allow / deny / drop / ...) is ambiguous on its own:
+# The ACTION family (allow / deny / drop / ...) counts ONLY under an
+# action-ish field name (_ACTION_FIELD_RE); see the scan for why.
+# Even then it is ambiguous:
 # an AAA gateway (TACACS+, RADIUS, ISE) logs PERMIT / DENY as an
 # AUTHENTICATION decision, with no transport flow behind it. So when the
 # sample is already detected as an authentication event and the ONLY
@@ -1038,8 +1040,8 @@ _NETWORK_PROTO_NUMBERS = {
 # (measured against tests/fixtures/nokia_nfmp.jsonl), and only its
 # appearance as the value of an `action` field means a flow disposition.
 _ACTION_FIELD_RE = re.compile(
-    r"(?:^|[._])(?:action|disposition|verdict|outcome|result|event_action|"
-    r"utmaction)(?:$|[._])"
+    r"(?:^|[._])(?:action|act|disposition|verdict|outcome|result|"
+    r"event_action|utmaction)(?:$|[._])"
 )
 _NETWORK_TEARDOWN_VALUE_RE = re.compile(
     r"^(?:close|closed|timeout|teardown|passthrough|server-rst|client-rst|"
@@ -1165,9 +1167,25 @@ def detect_network(
         if len(_NETWORK_ENDPOINT_RE.findall(value)) >= 2:
             _add(path, "ip:port pair", "value")
             non_action_evidence = True
-        am = _NETWORK_ACTION_VALUE_RE.search(value)
-        if am:
-            _add(path, am.group(1).lower(), "value")
+        # Action verbs count only where the field NAME licenses the
+        # reading, as every other value signal above already requires.
+        # The value alone cannot tell a disposition from a description:
+        # "blocked" in an HTTP body sample or a cloud status message is
+        # prose, and on one real source `android_id: "blocked"` reports
+        # that the identifier is UNAVAILABLE, not that traffic was
+        # stopped -- a named field whose name licenses nothing.
+        #
+        # "_message" is the exception, and it is not a loophole: it is
+        # the whole raw line, carried when the record has NO parsed
+        # fields at all. Positional formats (an AWS VPC Flow export is
+        # the standard case) have no field names by construction, so
+        # requiring one would mean never classifying them. Where names
+        # exist the name decides; where none exist the line is all there
+        # is.
+        if _ACTION_FIELD_RE.search(lower_path) or lower_path == "_message":
+            am = _NETWORK_ACTION_VALUE_RE.search(value)
+            if am:
+                _add(path, am.group(1).lower(), "value")
         # Session-teardown disposition, only under an action-ish name.
         if _ACTION_FIELD_RE.search(lower_path):
             stripped = value.strip()
@@ -1382,7 +1400,16 @@ def detect_process(
             "blank when a verb fits. A TACACS+ / AAA command-accounting (cmd=) "
             "record is a command execution, not authentication: map the "
             "command to xdm.target.process.command_line with operation "
-            "OPERATION_TYPE_AUDIT and no outcome."
+            "OPERATION_TYPE_AUDIT and no outcome. That record is also the "
+            "canonical VIRTUALIZATION story member -- an operator, an action, "
+            "and a thing the action was performed on is the (entity, action) "
+            "pair that story baselines, and it had no story of its own before. "
+            "Consider tagging it xdm.event.tags = arraycreate(\"VIRTUALIZATION\") "
+            "-- a bare string, not a constant -- and mirroring the "
+            "command to xdm.target.virtualization.task.name and the "
+            "administered device to .vm.hostname, both from temps the rule "
+            "already derives (see references/virtualization-mapping.md). "
+            "Recommended, never mandatory: no advisory fires on its absence."
         )
         if endpoint_shape:
             out["endpoint_shape"] = True
@@ -1425,8 +1452,12 @@ def classify(auth_block: dict, network_block: dict, process_block: dict) -> dict
         "Classify PER RECORD, not per sample. Detected kind(s): "
         f"{detected}. A dataset routinely mixes kinds, so decide "
         "xdm.event.type and xdm.event.tags on EACH record via if() over "
-        "its own discriminators. xdm.event.tags is the closed six-member "
-        "enum (AUTHENTICATION / NETWORK / CLOUD / SAAS / ONPREM / VPN); "
+        "its own discriminators. xdm.event.tags carries story markers: six "
+        "are closed XDM_CONST.EVENT_TAG_* constants (AUTHENTICATION / "
+        "NETWORK / CLOUD / SAAS / ONPREM / VPN) and the virtualization "
+        'marker is the BARE STRING "VIRTUALIZATION", which has no constant '
+        "behind it (references/house-conventions.md). What is closed is the "
+        "constant group, not the field; invent no EVENT_TAG_* member; "
         "end the if-chain with no default so an unrecognised record gets "
         "blank tags, never a guessed marker. Never drop a record: keep "
         "only filter _raw_log != null and give any record no branch "

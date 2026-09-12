@@ -4,7 +4,7 @@
   "source_corpus": "internal corpus of GoCortex modelling rules",
   "rule_count": 464,
   "anchor_count": 377,
-  "notes": "Synonyms are normalised: lowercased, dots/hyphens/spaces converted to underscores, leading underscores and a single 'tmp_' prefix stripped. Frequency = number of distinct rule blocks that map this xdm path. exampleVendors lists up to 12 vendors observed using this path.",
+  "notes": "Synonyms are normalised: lowercased, dots/hyphens/spaces converted to underscores, leading underscores and a single 'tmp_' prefix stripped. Frequency = number of distinct rule blocks that map this xdm path. exampleVendors lists up to 12 vendors observed using this path. A synonym carrying \"curated\": true was hand-added from a single authored rule rather than mined from the corpus, and its count is capped at 2 so curation cannot out-rank observed evidence. Where a curated seed comes from a source that is not named here, exampleVendors carries a CLASS label (e.g. \"mobile-app-integrity\") in place of a vendor token. That substitution is deliberate, not missing data: it records what kind of source contributed the seed without identifying it, and must not be \"corrected\" to a vendor name.",
   "schema": {
     "anchors": "Object keyed by canonical xdm.* path. Each value has { frequency: int, synonyms: Array<{synonym: string, count: int}>, exampleVendors: string[] }. The synonyms array is sorted by descending count then alphabetic; the original task brief described a bare string array, but this richer shape is kept because consumers (linter, IDE quick-fix, training-data ranker) all need the per-synonym frequency. To recover the brief's shape, map `synonyms` to `synonyms.map(s => s.synonym)`."
   },
@@ -828,6 +828,11 @@
           "count": 1
         },
         {
+          "synonym": "view",
+          "count": 1,
+          "curated": true
+        },
+        {
           "synonym": "virus",
           "count": 1
         }
@@ -881,6 +886,7 @@
         "triggername",
         "type",
         "value",
+        "view",
         "virus"
       ],
       "exampleVendors": [
@@ -895,7 +901,8 @@
         "cohesity",
         "commvault",
         "cybelangel",
-        "cyber"
+        "cyber",
+        "mobile-app-integrity"
       ]
     },
     "xdm.alert.original_alert_id": {
@@ -1348,6 +1355,11 @@
           "count": 1
         },
         {
+          "synonym": "env_reason",
+          "count": 1,
+          "curated": true
+        },
+        {
           "synonym": "ftntfgtattack",
           "count": 1
         },
@@ -1453,6 +1465,7 @@
         "detection",
         "detection_type",
         "determination",
+        "env_reason",
         "ftntfgtattack",
         "ftntfgtthreattype",
         "ftntfgtvirus",
@@ -1489,7 +1502,8 @@
         "forcepoint",
         "fortinet",
         "incapsula",
-        "infoblox"
+        "infoblox",
+        "mobile-app-integrity"
       ]
     },
     "xdm.alert.risks": {
@@ -2063,6 +2077,11 @@
           "count": 1
         },
         {
+          "synonym": "env_type",
+          "count": 1,
+          "curated": true
+        },
+        {
           "synonym": "errorcode",
           "count": 1
         },
@@ -2224,6 +2243,7 @@
         "detection",
         "detection_quad",
         "entities",
+        "env_type",
         "errorcode",
         "eventsubcategory",
         "eventsubtype",
@@ -2271,7 +2291,8 @@
         "forcepoint",
         "forescout",
         "fortinet",
-        "gitguardian"
+        "gitguardian",
+        "mobile-app-integrity"
       ]
     },
     "xdm.auth.auth_method": {
@@ -15839,6 +15860,11 @@
           "count": 1
         },
         {
+          "synonym": "install_id",
+          "count": 1,
+          "curated": true
+        },
+        {
           "synonym": "instance_id",
           "count": 1
         },
@@ -15937,6 +15963,7 @@
         "iau_hostid",
         "iau_resourcehost",
         "impactscope",
+        "install_id",
         "instance_id",
         "managed_instance_group",
         "message",
@@ -15966,7 +15993,8 @@
         "forcepoint",
         "fortinet",
         "gcp",
-        "google"
+        "google",
+        "mobile-app-integrity"
       ]
     },
     "xdm.source.host.device_model": {
@@ -15975,6 +16003,11 @@
         {
           "synonym": "component",
           "count": 1
+        },
+        {
+          "synonym": "dev_model",
+          "count": 1,
+          "curated": true
         },
         {
           "synonym": "device_name",
@@ -16011,6 +16044,7 @@
       ],
       "synonyms_simple": [
         "component",
+        "dev_model",
         "device_name",
         "devicetype",
         "instancedetails",
@@ -16026,7 +16060,8 @@
         "cisco",
         "jamf",
         "keeper",
-        "vmware"
+        "vmware",
+        "mobile-app-integrity"
       ]
     },
     "xdm.source.host.fqdn": {
@@ -17781,6 +17816,11 @@
           "count": 1
         },
         {
+          "synonym": "dev_brand",
+          "count": 1,
+          "curated": true
+        },
+        {
           "synonym": "device",
           "count": 1
         },
@@ -17803,6 +17843,7 @@
       ],
       "synonyms_simple": [
         "cs15",
+        "dev_brand",
         "device",
         "ftntfgtmanuf",
         "ftntfgtsrchwvendor",
@@ -17813,7 +17854,8 @@
         "armis",
         "claroty",
         "darktrace",
-        "fortinet"
+        "fortinet",
+        "mobile-app-integrity"
       ]
     },
     "xdm.source.host.memory": {
@@ -25418,6 +25460,11 @@
           "count": 1
         },
         {
+          "synonym": "proj_name",
+          "count": 1,
+          "curated": true
+        },
+        {
           "synonym": "properties",
           "count": 1
         },
@@ -25477,6 +25524,7 @@
         "package_name",
         "prevpage_app_name",
         "profilename",
+        "proj_name",
         "properties",
         "resource_cloudservicename",
         "s_siteid",
@@ -25499,7 +25547,8 @@
         "imperva",
         "kiteworks",
         "lookout",
-        "vmware"
+        "vmware",
+        "mobile-app-integrity"
       ]
     },
     "xdm.target.application.publisher": {
@@ -25546,6 +25595,11 @@
           "count": 1
         },
         {
+          "synonym": "proj_version",
+          "count": 1,
+          "curated": true
+        },
+        {
           "synonym": "sw_version",
           "count": 1
         }
@@ -25553,6 +25607,7 @@
       "synonyms_simple": [
         "version",
         "app_version",
+        "proj_version",
         "sw_version"
       ],
       "exampleVendors": [
@@ -25560,7 +25615,8 @@
         "cyfirma",
         "kiteworks",
         "msft",
-        "vectra"
+        "vectra",
+        "mobile-app-integrity"
       ]
     },
     "xdm.target.asn.as_name": {
@@ -25769,6 +25825,11 @@
           "count": 1
         },
         {
+          "synonym": "proj_id",
+          "count": 1,
+          "curated": true
+        },
+        {
           "synonym": "project",
           "count": 1
         },
@@ -25798,6 +25859,7 @@
         "accountid",
         "instance_details",
         "labels",
+        "proj_id",
         "project",
         "recipientaccountid",
         "resource_container",
@@ -25811,7 +25873,8 @@
         "gcp",
         "google",
         "msft",
-        "okta"
+        "okta",
+        "mobile-app-integrity"
       ]
     },
     "xdm.target.cloud.provider": {
@@ -28115,6 +28178,11 @@
         {
           "synonym": "server_name",
           "count": 1
+        },
+        {
+          "synonym": "ct_host",
+          "count": 1,
+          "curated": true
         }
       ],
       "synonyms_simple": [
@@ -28192,7 +28260,8 @@
         "target_host",
         "temp_dhost",
         "dst_host",
-        "server_name"
+        "server_name",
+        "ct_host"
       ],
       "exampleVendors": [
         "admin",
@@ -28208,7 +28277,8 @@
         "claroty",
         "code42",
         "infoblox",
-        "haproxy"
+        "haproxy",
+        "mobile-app-integrity"
       ]
     },
     "xdm.target.host.image": {
@@ -30767,6 +30837,11 @@
         {
           "synonym": "tgt_port",
           "count": 1
+        },
+        {
+          "synonym": "ct_port",
+          "count": 1,
+          "curated": true
         }
       ],
       "synonyms_simple": [
@@ -30826,7 +30901,8 @@
         "labels_net_peer_port",
         "dport",
         "local_port",
-        "tgt_port"
+        "tgt_port",
+        "ct_port"
       ],
       "exampleVendors": [
         "akamai",
@@ -30846,7 +30922,8 @@
         "citrix",
         "vmware",
         "dell",
-        "bluecat"
+        "bluecat",
+        "mobile-app-integrity"
       ]
     },
     "xdm.target.process.command_line": {

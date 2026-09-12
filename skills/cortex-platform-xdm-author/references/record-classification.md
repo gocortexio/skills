@@ -23,8 +23,23 @@ INDIVIDUAL record, not the feed as a whole.
 
 ## Classify per record with a no-default if()-chain
 
-`xdm.event.tags` is an Array over the closed six-member `EVENT_TAG`
-enum (see [xdm-const.md](xdm-const.md)). Assign it ONCE, with an
+`xdm.event.tags` is an Array of story markers. SIX of them are members of
+the closed `EVENT_TAG` constant group and are written
+`XDM_CONST.EVENT_TAG_*`; the VIRTUALIZATION marker is written as the BARE
+STRING `"VIRTUALIZATION"` and there is no constant for it
+(see [xdm-const.md](xdm-const.md) and
+[house-conventions.md](house-conventions.md)).
+
+WHAT IS CLOSED IS THE CONSTANT GROUP, NOT THE FIELD. You cannot invent an
+`XDM_CONST.EVENT_TAG_*` member -- that is a compile-time namespace and a
+name outside it does not resolve. The FIELD is an ordinary array of
+strings, and upstream packs assign runtime values to it (vendor tag
+lists, policy labels, CVE lists). Reading the closed group as a closed
+FIELD is what produced an invented seventh member at 2.8.0, so the
+distinction is worth keeping straight: invent no CONSTANT, and take a
+bare string only where one is prescribed.
+
+Assign it ONCE, with an
 `if()` whose branches test each record's discriminators and which ENDS
 WITH NO DEFAULT -- so a record matching no known kind falls through to
 blank tags rather than a guessed marker:
@@ -203,13 +218,22 @@ is a rule that types a large share of a feed as `authentication` while
 only a small fraction of those records carry an account. Nothing reads
 as 0-of-n, because padding fills the mandatory set.
 
-Before tagging a record into authentication or network, confirm the
-source can supply that story's DEFINING ENTITY for that record kind:
+Before tagging a record into authentication, network or virtualization,
+confirm the source can supply that story's DEFINING ENTITY for that
+record kind:
 
 | Story | Defining entity the record must be able to supply |
 | --- | --- |
 | authentication | an actor -- `xdm.source.user.username` or `upn` |
 | network | a peer -- `xdm.source.ipv4` (or the target address) |
+| virtualization | a THING ACTED UPON, and an ACTION performed on it -- `xdm.target.virtualization.vm.hostname` and `.task.name` ([virtualization-mapping.md](virtualization-mapping.md)) |
+
+Virtualization needs TWO because it is the only story whose subject is a
+PAIR: the analytic baselines an (entity, action) tuple, so a record with
+an action and no entity has nothing to baseline against. A cloud audit
+record naming only a service label and an account id is the worked case
+-- it has an action and a container and no entity, and does not claim the
+story.
 
 Two records from the same subsystem can differ here. An interface
 transition and an SSH socket close both arrive on a router's system log
@@ -434,7 +458,7 @@ branch for.
 [ ] only filter is _raw_log != null (no discriminator filter that drops rows)
 [ ] xdm.event.type and xdm.event.tags assigned per record via if()
 [ ] tag if-chain ends with no default -> blank tags on unrecognised records
-[ ] only closed EVENT_TAG members used (AUTHENTICATION/NETWORK/CLOUD/SAAS/ONPREM/VPN)
+[ ] no invented XDM_CONST.EVENT_TAG_* member (the six are AUTHENTICATION/NETWORK/CLOUD/SAAS/ONPREM/VPN; the virtualization marker is the bare string "VIRTUALIZATION")
 [ ] one xdm.event.tags assignment (never two -- the second overwrites)
 [ ] unclassified records carry xdm.event.original_event_type = "GOCORTEX_UNMODELLED"
 [ ] the commented REVIEW UNMODELLED query is present with the real dataset
