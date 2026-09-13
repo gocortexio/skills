@@ -1,0 +1,129 @@
+{
+ "version": "2026-08-08",
+ "attribution": "Distilled from public government advisories. Each entry cites the advisory it came from; the text is this corpus's summary, not the advisory's wording.",
+ "note": "Response doctrine: the sequencing and scoping rules that decide whether a response works, as distinct from the per-technique controls in d3fend-countermeasures.json. D3FEND answers what control to apply; this answers in what order, how widely, and what not to do first. Every entry was already in the corpus, encoded as a prose assertion inside a computed marker where it could not be queried; this file is its proper home. applies_to is matched against a finding's product_class and impact, with class_prefix matching on the part before the dot.",
+ "stage_order_note": "The incident lifecycle runs prepare, collect, contain, eradicate, recover. stage_order below is deliberately NOT that: it is the order to READ them in once something has been found, so preparation comes last. Preparation doctrine is not less important, it is just the part that cannot be actioned during the incident, and putting it first buried the appliance-rebuild rule under four items nobody can act on today.",
+ "stage_order": ["collect", "contain", "eradicate", "recover", "prepare"],
+ "doctrine": {
+  "doc-collect-before-mitigate": {
+   "stage": "collect",
+   "rule": "Collect artefacts first, then mitigate in a way that does not tip off the adversary, then verify eradication.",
+   "detail": "The middle step is the one usually missed. Remediating first destroys the evidence needed to scope the incident and warns the adversary to change tradecraft, accelerate, or trigger destruction. Who authorises containment, what is preserved first, and how the response is coordinated out of band all have to be settled beforehand.",
+   "applies_to": {"always": true},
+   "sources": [{
+    "publisher": "Cyber security authorities of Australia, Canada, New Zealand, the United Kingdom and the United States",
+    "title": "Technical Approaches to Uncovering and Remediating Malicious Activity",
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-245a"}]
+  },
+  "doc-out-of-band-coordination": {
+   "stage": "prepare",
+   "rule": "Arrange out-of-band response coordination before it is needed.",
+   "detail": "Response coordination conducted on the compromised estate is readable by the adversary. There is a record in this corpus of an actor reading the responders' mail. The channel, the authorisation path and the contact list have to exist before the incident, because they cannot be built on a network you no longer trust.",
+   "applies_to": {"always": true},
+   "sources": [{
+    "publisher": "Cyber security authorities of Australia, Canada, New Zealand, the United Kingdom and the United States",
+    "title": "Technical Approaches to Uncovering and Remediating Malicious Activity",
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-245a"}]
+  },
+  "doc-containment-assumes-adversary-watching": {
+   "stage": "contain",
+   "rule": "Plan containment on the assumption the adversary is watching, and execute the actions close to simultaneously rather than gradually.",
+   "detail": "In the Albania intrusion the encryptor ran, defenders identified it and began responding, and the actors then deployed disk wiping malware. The response itself was the trigger for escalation. A partial or gradual containment can therefore be worse than none: it announces the response without removing the adversary's ability to act.",
+   "applies_to": {"always": true},
+   "sources": [{
+    "publisher": "FBI and CISA",
+    "title": "Iranian State Actors Conduct Cyber Operations Against the Government of Albania",
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-264a"}]
+  },
+  "doc-verify-offline-backup-before-containment": {
+   "stage": "contain",
+   "rule": "Verify an offline, isolated backup before visible containment begins.",
+   "detail": "Where escalation to destruction is a live possibility, the backup is the thing that decides whether the escalation matters. Verifying it after containment has started is verifying it after the adversary has been given a reason to destroy it. Backup reachability from production credentials is the control that decides whether this is possible at all.",
+   "applies_to": {"impact": ["ransomware_deployment", "dos", "loss_of_control"]},
+   "sources": [{
+    "publisher": "FBI and CISA",
+    "title": "Iranian State Actors Conduct Cyber Operations Against the Government of Albania",
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-264a"}]
+  },
+  "doc-communications-plan-for-attacker-publication": {
+   "stage": "prepare",
+   "rule": "Have an incident communications plan that covers the attacker publishing, claiming credit, or operating a persona.",
+   "detail": "Where the persona creates a website, posts video of the attack and claims credit, the information effect is part of the objective rather than a by-product. The organisation is responding to a public event as well as a technical one, on the attacker's timetable, which makes this a communications exercise that has to exist before the incident.",
+   "applies_to": {"impact": ["ransomware_deployment", "data_exfiltration", "ip_theft"]},
+   "sources": [{
+    "publisher": "FBI and CISA",
+    "title": "Iranian State Actors Conduct Cyber Operations Against the Government of Albania",
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-264a"}]
+  },
+  "doc-communications-plan-for-direct-third-party-contact": {
+   "stage": "prepare",
+   "rule": "Assume the attacker may contact your staff, partners and customers directly, and decide in advance who is authorised to respond.",
+   "detail": "The Karakurt group contacted employees, business partners and clients with harassing emails and phone calls to pressure the victim into paying. The recipients are people who cannot be briefed after the fact unless the plan already says how, and deadlines expiring within a week of first contact compress the decision window further. This is the hardest element to prepare for and the one most often absent.",
+   "applies_to": {"impact": ["data_exfiltration", "ip_theft"]},
+   "sources": [{
+    "publisher": "FBI, CISA, Department of the Treasury and Financial Crimes Enforcement Network",
+    "title": "Karakurt Data Extortion Group",
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-152a"}]
+  },
+  "doc-remediation-scope-all-exposed-access": {
+   "stage": "eradicate",
+   "rule": "Scope remediation to every credential and access path the intrusion could have exposed, not to the observed activity of the group identified.",
+   "detail": "One group transferred its victims to another group's infrastructure after announcing a shutdown, and another sold access to victim networks, enabling follow-on attacks by unrelated actors. A group announcing a shutdown does not mean its victims are safe; it may mean they have been handed on. This is also the agencies' stated reason attribution is unreliable in this ecosystem.",
+   "applies_to": {"always": true},
+   "sources": [{
+    "publisher": "CISA, FBI, NSA, Australian Cyber Security Centre and NCSC-UK",
+    "title": "2021 Trends Show Increased Globalized Threat of Ransomware",
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-040a"}]
+  },
+  "doc-appliance-rebuild-not-factory-reset": {
+   "stage": "eradicate",
+   "rule": "On a compromised network appliance, plan for replacement or rebuild from known-good media rather than a factory reset.",
+   "detail": "Implants have been observed surviving factory reset and firmware upgrade on edge appliances. Where that applies, patching is not a fix and neither is the vendor's own reset path: the device has to be replaced or rebuilt from media that never touched the compromised device. This changes what remediation means rather than what detection means.",
+   "applies_to": {"class_prefix": ["network"], "product_class": ["security.email_gateway", "ot.protocol_gateway"]},
+   "sources": [{
+    "publisher": "CISA, NSA, FBI and international partners",
+    "title": "Countering Chinese State-Sponsored Actors Compromise of Networks to Feed Global Espionage System",
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa25-239a"}]
+  },
+  "doc-check-published-recovery-tooling": {
+   "stage": "recover",
+   "rule": "Check whether recovery tooling has been published for the identified family before treating encrypted data as lost.",
+   "detail": "Some families encrypt partially, leaving recovery possible, and agencies have published recovery guidance and scripts for specific families. Determining the scope of encryption before any payment decision is the same question asked earlier, and the answer changes what the incident costs.",
+   "applies_to": {"impact": ["ransomware_deployment"]},
+   "sources": [{
+    "publisher": "CISA and FBI",
+    "title": "ESXiArgs Ransomware Virtual Machine Recovery Guidance",
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-039a"}]
+  },
+  "doc-emergency-plan-names-degraded-states": {
+   "stage": "prepare",
+   "rule": "The emergency response plan must include cyber scenarios with named degraded operating states.",
+   "detail": "Where an intrusion in the business network leads to operations being suspended because the operator cannot tell what the process is doing, the decision to suspend is an emergency-planning decision rather than a security one. A plan that names the degraded states in advance turns that into a procedure instead of a judgement made under pressure.",
+   "applies_to": {"class_prefix": ["ot"]},
+   "sources": [{
+    "publisher": "CISA",
+    "title": "Ransomware Impacting Pipeline Operations",
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-049a"}]
+  },
+  "doc-investigation-capability-portfolio": {
+   "stage": "prepare",
+   "rule": "Indicator search is one of four approaches; the other three are what find activity nobody has published an indicator for.",
+   "detail": "Frequency analysis requires a calculated baseline across timing, source and destination, port, protocol adherence, file location, hash, size and naming convention. Pattern analysis requires enough history to distinguish automation from routine human activity. Anomaly review requires analysts who know what a correctly administered system looks like. Most programmes can do indicator search and struggle with the rest, which is why they are structurally dependent on somebody else publishing first.",
+   "applies_to": {"always": true},
+   "sources": [{
+    "publisher": "Cyber security authorities of Australia, Canada, New Zealand, the United Kingdom and the United States",
+    "title": "Technical Approaches to Uncovering and Remediating Malicious Activity",
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-245a"}]
+  },
+  "doc-retention-must-outlast-dwell-time": {
+   "stage": "prepare",
+   "rule": "Test retention against an intrusion that began a year ago, not against yesterday.",
+   "detail": "Every investigative approach is a function of the data held, and frequency and pattern analysis need history rather than feeds. Several records in this corpus report dwell times of three months to years. Retention shorter than the dwell time makes the assume-compromise instruction that appears in many of those advisories unanswerable.",
+   "applies_to": {"always": true},
+   "sources": [{
+    "publisher": "Cyber security authorities of Australia, Canada, New Zealand, the United Kingdom and the United States",
+    "title": "Technical Approaches to Uncovering and Remediating Malicious Activity",
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-245a"}]
+  }
+ }
+}

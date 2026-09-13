@@ -1,0 +1,1462 @@
+{
+ "https://arxiv.org/abs/2601.14455": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "[2601.14455] Unpacking Security Scanners for GitHub Actions Workflows"
+ },
+ "https://arxiv.org/abs/2605.07135": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "[2605.07135] Demystifying and Detecting Agentic Workflow Injection Vulnerabilities in GitHub Actions"
+ },
+ "https://atlas.mitre.org/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "MITRE ATLAS\u2122"
+ },
+ "https://attack.mitre.org/techniques/T0813/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Denial of Control, Technique T0813 - ICS | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T0819/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Exploit Public-Facing Application, Technique T0819 - ICS | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T0883/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Internet Accessible Device, Technique T0883 - ICS | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T0885/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Commonly Used Port, Technique T0885 - ICS | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T0892/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Change Credential, Technique T0892 - ICS | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1001/003/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Data Obfuscation: Protocol or Service Impersonation, Sub-technique T1001.003 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1020/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Automated Exfiltration, Technique T1020 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1021/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Remote Services, Technique T1021 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1021/004/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Remote Services: SSH, Sub-technique T1021.004 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1025/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Data from Removable Media, Technique T1025 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1027/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Obfuscated Files or Information, Technique T1027 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1027/003/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Obfuscated Files or Information: Steganography, Sub-technique T1027.003 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1029/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Scheduled Transfer, Technique T1029 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1030/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Data Transfer Size Limits, Technique T1030 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1041/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Exfiltration Over C2 Channel, Technique T1041 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1048/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Exfiltration Over Alternative Protocol, Technique T1048 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1052/001/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Exfiltration Over Physical Medium: Exfiltration over USB, Sub-technique T1052.001 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1053/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Scheduled Task/Job, Technique T1053 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1055/009/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Process Injection: Proc Memory, Sub-technique T1055.009 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1059/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Command and Scripting Interpreter, Technique T1059 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1059/004/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Command and Scripting Interpreter: Unix Shell, Sub-technique T1059.004 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1059/006/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Command and Scripting Interpreter: Python, Sub-technique T1059.006 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1059/012/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Command and Scripting Interpreter: Hypervisor CLI, Sub-technique T1059.012 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1068/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Exploitation for Privilege Escalation, Technique T1068 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1069/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Permission Groups Discovery, Technique T1069 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1070/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Indicator Removal, Technique T1070 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1071/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Application Layer Protocol, Technique T1071 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1071/001/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Application Layer Protocol: Web Protocols, Sub-technique T1071.001 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1072/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Software Deployment Tools, Technique T1072 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1078/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Valid Accounts, Technique T1078 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1078/001/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Valid Accounts: Default Accounts, Sub-technique T1078.001 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1078/002/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Valid Accounts: Domain Accounts, Sub-technique T1078.002 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1078/003/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Valid Accounts: Local Accounts, Sub-technique T1078.003 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1078/004/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Valid Accounts: Cloud Accounts, Sub-technique T1078.004 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1087/004/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Account Discovery: Cloud Account, Sub-technique T1087.004 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1090/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Proxy, Technique T1090 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1090/004/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Proxy: Domain Fronting, Sub-technique T1090.004 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1098/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Account Manipulation, Technique T1098 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1098/001/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Account Manipulation: Additional Cloud Credentials, Sub-technique T1098.001 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1098/003/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Account Manipulation: Additional Cloud Roles, Sub-technique T1098.003 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1098/004/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Account Manipulation: SSH Authorized Keys, Sub-technique T1098.004 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1098/005/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Account Manipulation: Device Registration, Sub-technique T1098.005 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1102/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Web Service, Technique T1102 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1105/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Ingress Tool Transfer, Technique T1105 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1110/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Brute Force, Technique T1110 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1110/001/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Brute Force: Password Guessing, Sub-technique T1110.001 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1110/003/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Brute Force: Password Spraying, Sub-technique T1110.003 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1111/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Multi-Factor Authentication Interception, Technique T1111 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1114/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Email Collection, Technique T1114 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1114/002/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Email Collection: Remote Email Collection, Sub-technique T1114.002 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1119/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Automated Collection, Technique T1119 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1132/001/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Data Encoding: Standard Encoding, Sub-technique T1132.001 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1133/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "External Remote Services, Technique T1133 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1134/005/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Access Token Manipulation: SID-History Injection, Sub-technique T1134.005 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1136/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Create Account, Technique T1136 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1136/001/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Create Account: Local Account, Sub-technique T1136.001 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1136/002/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Create Account: Domain Account, Sub-technique T1136.002 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1136/003/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Create Account: Cloud Account, Sub-technique T1136.003 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1187/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Forced Authentication, Technique T1187 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1190/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Exploit Public-Facing Application, Technique T1190 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1195/001/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Supply Chain Compromise: Compromise Software Dependencies and Development Tools, Sub-technique T1195.001 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1195/002/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Supply Chain Compromise: Compromise Software Supply Chain, Sub-technique T1195.002 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1199/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Trusted Relationship, Technique T1199 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1203/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Exploitation for Client Execution, Technique T1203 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1204/003/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "User Execution: Malicious Image, Sub-technique T1204.003 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1205/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Traffic Signaling, Technique T1205 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1207/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Rogue Domain Controller, Technique T1207 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1210/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Exploitation of Remote Services, Technique T1210 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1212/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Exploitation for Credential Access, Technique T1212 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1213/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Data from Information Repositories, Technique T1213 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1213/003/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Data from Information Repositories: Code Repositories, Sub-technique T1213.003 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1219/002/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Remote Access Tools: Remote Desktop Software, Sub-technique T1219.002 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1221/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Template Injection, Technique T1221 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1222/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "File and Directory Permissions Modification, Technique T1222 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1222/001/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "File and Directory Permissions Modification: Windows Permissions, Sub-technique T1222.001 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1484/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Domain or Tenant Policy Modification, Technique T1484 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1484/002/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Domain or Tenant Policy Modification: Trust Modification, Sub-technique T1484.002 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1486/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Data Encrypted for Impact, Technique T1486 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1496/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Resource Hijacking, Technique T1496 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1497/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Virtualization/Sandbox Evasion, Technique T1497 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1499/004/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Endpoint Denial of Service: Application or System Exploitation, Sub-technique T1499.004 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1505/003/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Server Software Component: Web Shell, Sub-technique T1505.003 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1528/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Steal Application Access Token, Technique T1528 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1529/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "System Shutdown/Reboot, Technique T1529 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1530/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Data from Cloud Storage, Technique T1530 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1531/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Account Access Removal, Technique T1531 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1538/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Cloud Service Dashboard, Technique T1538 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1539/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Steal Web Session Cookie, Technique T1539 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1542/004/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Pre-OS Boot: ROMMONkit, Sub-technique T1542.004 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1543/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Create or Modify System Process, Technique T1543 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1543/003/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Create or Modify System Process: Windows Service, Sub-technique T1543.003 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1546/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Event Triggered Execution, Technique T1546 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1548/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Abuse Elevation Control Mechanism, Technique T1548 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1550/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Use Alternate Authentication Material, Technique T1550 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1550/001/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Use Alternate Authentication Material: Application Access Token, Sub-technique T1550.001 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1550/003/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Use Alternate Authentication Material: Pass the Ticket, Sub-technique T1550.003 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1550/004/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Use Alternate Authentication Material: Web Session Cookie, Sub-technique T1550.004 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1552/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Unsecured Credentials, Technique T1552 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1552/001/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Unsecured Credentials: Credentials In Files, Sub-technique T1552.001 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1552/004/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Unsecured Credentials: Private Keys, Sub-technique T1552.004 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1552/005/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Unsecured Credentials: Cloud Instance Metadata API, Sub-technique T1552.005 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1552/007/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Unsecured Credentials: Container API, Sub-technique T1552.007 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1553/004/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Subvert Trust Controls: Install Root Certificate, Sub-technique T1553.004 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1554/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Compromise Host Software Binary, Technique T1554 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1555/003/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Credentials from Password Stores: Credentials from Web Browsers, Sub-technique T1555.003 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1556/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Modify Authentication Process, Technique T1556 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1556/006/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Modify Authentication Process: Multi-Factor Authentication, Sub-technique T1556.006 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1556/007/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Modify Authentication Process: Hybrid Identity, Sub-technique T1556.007 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1557/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Adversary-in-the-Middle, Technique T1557 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1564/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Hide Artifacts, Technique T1564 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1565/001/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Data Manipulation: Stored Data Manipulation, Sub-technique T1565.001 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1566/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Phishing, Technique T1566 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1566/002/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Phishing: Spearphishing Link, Sub-technique T1566.002 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1567/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Exfiltration Over Web Service, Technique T1567 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1571/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Non-Standard Port, Technique T1571 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1572/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Protocol Tunneling, Technique T1572 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1573/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Encrypted Channel, Technique T1573 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1573/002/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Encrypted Channel: Asymmetric Cryptography, Sub-technique T1573.002 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1574/007/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Hijack Execution Flow: Path Interception by PATH Environment Variable, Sub-technique T1574.007 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1580/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Cloud Infrastructure Discovery, Technique T1580 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1583/001/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Acquire Infrastructure: Domains, Sub-technique T1583.001 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1584/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Compromise Infrastructure, Technique T1584 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1584/002/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Compromise Infrastructure: DNS Server, Sub-technique T1584.002 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1584/006/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Compromise Infrastructure: Web Services, Sub-technique T1584.006 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1585/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Establish Accounts, Technique T1585 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1585/002/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Establish Accounts: Email Accounts, Sub-technique T1585.002 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1586/003/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Compromise Accounts: Cloud Accounts, Sub-technique T1586.003 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1587/004/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Develop Capabilities: Exploits, Sub-technique T1587.004 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1588/002/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Obtain Capabilities: Tool, Sub-technique T1588.002 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1588/005/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Obtain Capabilities: Exploits, Sub-technique T1588.005 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1588/006/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Obtain Capabilities: Vulnerabilities, Sub-technique T1588.006 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1592/002/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Gather Victim Host Information: Software, Sub-technique T1592.002 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1595/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Active Scanning, Technique T1595 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1595/003/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Active Scanning: Wordlist Scanning, Sub-technique T1595.003 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1602/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Data from Configuration Repository, Technique T1602 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1602/001/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Data from Configuration Repository: SNMP (MIB Dump), Sub-technique T1602.001 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1606/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Forge Web Credentials, Technique T1606 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1608/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Stage Capabilities, Technique T1608 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1609/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Container Administration Command, Technique T1609 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1610/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Deploy Container, Technique T1610 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1611/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Escape to Host, Technique T1611 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1621/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Multi-Factor Authentication Request Generation, Technique T1621 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1648/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Serverless Execution, Technique T1648 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1650/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Acquire Access, Technique T1650 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1657/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Financial Theft, Technique T1657 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1684/001/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Social Engineering: Impersonation, Sub-technique T1684.001 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1685/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Disable or Modify Tools, Technique T1685 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1685/002/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Disable or Modify Tools: Disable or Modify Cloud Log, Sub-technique T1685.002 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1685/006/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Disable or Modify Tools: Clear Linux or Mac System Logs, Sub-technique T1685.006 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1686/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Disable or Modify System Firewall, Technique T1686 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1686/001/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Disable or Modify System Firewall: Cloud Firewall, Sub-technique T1686.001 - Enterprise | MITRE ATT&CK&reg;"
+ },
+ "https://attack.mitre.org/techniques/T1693/002/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Modify Firmware: Module Firmware, Sub-technique T1693.002 - ICS | MITRE ATT&CK&reg;"
+ },
+ "https://blog.talosintelligence.com/ir-trends-q2-2026/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "IR Trends Q2 2026: Phishing and weaponized remote management tools drive attack chains"
+ },
+ "https://blog.talosintelligence.com/static-tundra/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Russian state-sponsored espionage group Static Tundra compromises unpatched end-of-life network devices"
+ },
+ "https://blog.talosintelligence.com/uat-10147-chinese-speaking-adversary-integrates-agentic-ai-into-post-compromise-operations/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "UAT-10147: Chinese-speaking adversary integrates agentic AI into post-compromise operations"
+ },
+ "https://cloud.google.com/blog/topics/threat-intelligence/china-nexus-espionage-targets-juniper-routers": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Ghost in the Router: China-Nexus Espionage Actor UNC3886 Targets Juniper Routers | Google Cloud Blog"
+ },
+ "https://cloud.google.com/blog/topics/threat-intelligence/chinese-actors-exploit-fortios-flaw": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Suspected Chinese Threat Actors Exploiting FortiOS Vulnerability (CVE-2022-42475) | Mandiant | Google Cloud Blog"
+ },
+ "https://cloud.google.com/blog/topics/threat-intelligence/fortimanager-zero-day-exploitation-cve-2024-47575": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Investigating FortiManager Zero-Day Exploitation (CVE-2024-47575) | Google Cloud Blog"
+ },
+ "https://cloud.google.com/blog/topics/threat-intelligence/unc6671-targets-financial-services-and-enterprise-cloud-environments/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "UNC6671 Rebrands: Multi-Brand Vishing Extortion Targets Financial Services and Enterprise Cloud Environments | Google Cloud Blog"
+ },
+ "https://fight.mitre.org/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "MITRE | FiGHT\u2122"
+ },
+ "https://horizon3.ai/attack-research/attack-blogs/n-able-n-central-from-n-days-to-0-days/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "N-able N-central: From N-days to 0-days | Horizon3"
+ },
+ "https://horizon3.ai/attack-research/disclosures/cve-2026-48558-simplehelp-authentication-bypass-iocs/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "CVE-2026-48558: SimpleHelp Auth Bypass IOCs | Horizon3"
+ },
+ "https://horizon3.ai/attack-research/disclosures/cve-2026-9586-sangoma-switchvox-rce/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "CVE-2026-9586: Sangoma Switchvox RCE | Horizon3"
+ },
+ "https://horizon3.ai/attack-research/n0-attack-paths/aws-misconfiguration-leads-to-buckets-of-data/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "AWS Misconfiguration Leads to Buckets of Data | Horizon3"
+ },
+ "https://horizon3.ai/attack-research/n0-attack-paths/on-prem-misconfigurations-lead-to-entra-tenant-compromise/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "On-Prem Misconfigurations Lead to Entra Tenant Compromise | Horizon3"
+ },
+ "https://horizon3.ai/attack-research/vulnerabilities/cve-2026-20316/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "CVE-2026-20316 | Cisco FMC Vulnerability | Horizon3"
+ },
+ "https://horizon3.ai/attack-research/when-read-only-isnt-k8s-nodes-proxy-get-to-rce/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "When \u201cRead-Only\u201d Isn\u2019t: K8s nodes/proxy GET to RCE | Horizon3"
+ },
+ "https://labs.watchtowr.com/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "watchTowr Labs"
+ },
+ "https://labs.watchtowr.com/cve-2023-36844-and-friends-rce-in-juniper-firewalls/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "CVE-2023-36844 And Friends: RCE In Juniper Devices"
+ },
+ "https://labs.watchtowr.com/get-fortirekt-i-am-the-super_admin-now-fortios-authentication-bypass-cve-2024-55591/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Get FortiRekt, I Am The Super_Admin Now - Fortinet FortiOS Authentication Bypass CVE-2024-55591"
+ },
+ "https://labs.watchtowr.com/how-much-more-must-we-bleed-citrix-netscaler-memory-disclosure-citrixbleed-2-cve-2025-5777/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "How Much More Must We Bleed? - Citrix NetScaler Memory Disclosure (CitrixBleed 2 CVE-2025-5777)"
+ },
+ "https://labs.watchtowr.com/ibm-qradar-when-the-attacker-controls-your-security-stack/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "IBM QRadar - When The Attacker Controls Your Security Stack (CVE-2022-26377)"
+ },
+ "https://labs.watchtowr.com/is-the-sofistication-in-the-room-with-us-x-forwarded-for-and-ivanti-connect-secure-cve-2025-22457/": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Is The Sofistication In The Room With Us? - X-Forwarded-For and Ivanti Connect Secure (CVE-2025-22457)"
+ },
+ "https://labs.watchtowr.com/is-this-bad-this-feels-bad-goanywhere-cve-2025-10035/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Is This Bad? This Feels Bad. (Fortra GoAnywhere CVE-2025-10035)"
+ },
+ "https://labs.watchtowr.com/we-spent-20-to-achieve-rce-and-accidentally-became-the-admins-of-mobi/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "We Spent $20 To Achieve RCE And Accidentally Became The Admins Of .MOBI"
+ },
+ "https://sec.okta.com/articles/scatterswine/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Detecting Scatter Swine: Insights into a Relentless Phishing Campaign | Okta Security"
+ },
+ "https://sec.okta.com/articles/uncloakingvoidproxy/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Uncloaking VoidProxy: a Novel and Evasive Phishing-as-a-Service Framework | Okta Security"
+ },
+ "https://securitylabs.datadoghq.com/articles/abusing-entra-id-administrative-units/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Hidden in Plain Sight: Abusing Entra ID Administrative Units for Sticky Persistence | Datadog Security Labs"
+ },
+ "https://securitylabs.datadoghq.com/articles/behind-the-console-aws-aitm-phishing-kit-and-beyond/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Behind the console: An AiTM phishing kit harvesting AWS console credentials and beyond | Datadog Security Labs"
+ },
+ "https://securitylabs.datadoghq.com/articles/case-for-github-actions-security/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "The case for GitHub Actions security after recent supply chain attacks | Datadog Security Labs"
+ },
+ "https://securitylabs.datadoghq.com/articles/coding-agent-project-trust-code-execution-before-first-prompt/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Before the first prompt: Code execution paths in trusted coding-agent projects | Datadog Security Labs"
+ },
+ "https://securitylabs.datadoghq.com/articles/investigating-an-aitm-phishing-campaign-m365-okta/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Investigating an adversary-in-the-middle phishing campaign targeting Microsoft 365 and Okta users | Datadog Security Labs"
+ },
+ "https://unit42.paloaltonetworks.com/ai-token-jacking/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Token Jacking: Cybercriminals Could Be Stealing Your AI Resources"
+ },
+ "https://unit42.paloaltonetworks.com/malware-bypass-dns-direct-to-ip/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Almost Half of Malware Samples Communicate Direct to IP"
+ },
+ "https://unit42.paloaltonetworks.com/model-context-protocol-attack-vectors/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "New Prompt Injection Attack Vectors Through MCP Sampling"
+ },
+ "https://unit42.paloaltonetworks.com/model-namespace-reuse/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Model Namespace Reuse: An AI Supply-Chain Attack Exploiting Model Name Trust"
+ },
+ "https://unit42.paloaltonetworks.com/passwordless-authentication-security-risks/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Pass the Passkey: A Novel Attack Surface in Passwordless Authentication"
+ },
+ "https://www.assetnote.io/resources/research/cloudflare-pages-part-1-the-fellowship-of-the-secret": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Cloudflare Pages, part 1: The fellowship of the secret"
+ },
+ "https://www.assetnote.io/resources/research/eliminating-dangling-elastic-ip-takeovers-with-ghostbuster": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Eliminating Dangling Elastic IP Takeovers with Ghostbuster"
+ },
+ "https://www.cisa.gov/news-events/alerts/2026/07/30/cisa-urges-water-and-wastewater-systems-sector-protect-ot-against-activity-targeting-plcs": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "CISA Urges Water and Wastewater Systems Sector to Protect OT Against Activity Targeting PLCs | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa19-024a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "DNS Infrastructure Hijacking Campaign | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa19-339a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Dridex Malware | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-120a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Microsoft Office 365 Security Recommendations | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-205a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "NSA and CISA Recommend Immediate Actions to Reduce Exposure Across Operational Technologies and Control Systems | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-258a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Chinese Ministry of State Security-Affiliated Cyber Threat Actor Activity | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-259a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Iran-Based Threat Actor Exploits VPN Vulnerabilities | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-275a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Potential for China Cyber Response to Heightened U.S.\u2013China Tensions | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-280a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Emotet Malware | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-283a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "APT Actors Chaining Vulnerabilities Against SLTT, Critical Infrastructure, and Elections Organizations | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-302a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Ransomware Activity Targeting the Healthcare and Public Health Sector | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-345a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Cyber Actors Target K-12 Distance Learning Education to Cause Disruptions and Steal Data | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-352a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Advanced Persistent Threat Compromise of Government Agencies, Critical Infrastructure, and Private Sector Organizations | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-008a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Detecting Post-Compromise Threat Activity in Microsoft Cloud Environments | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-042a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Compromise of U.S. Water Treatment Facility | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-148a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Sophisticated Spearphishing Campaign Targets Government Organizations, IGOs, and NGOs | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-200b": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Chinese State-Sponsored Cyber Operations: Observed TTPs | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-209a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Top Routinely Exploited Vulnerabilities | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-229a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "BadAlloc Vulnerability Affecting BlackBerry QNX RTOS | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-287a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Ongoing Cyber Threats to U.S. Water and Wastewater Systems | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-011a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Understanding and Mitigating Russian State-Sponsored Cyber Threats to U.S. Critical Infrastructure | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-047a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Russian State-Sponsored Cyber Actors Target Cleared Defense Contractor Networks to Obtain Sensitive U.S. Defense Information and Technology | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-074a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Russian State-Sponsored Cyber Actors Gain Network Access by Exploiting Default Multifactor Authentication Protocols and \u201cPrintNightmare\u201d Vulnerability | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-103a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "APT Cyber Tools Targeting ICS/SCADA Devices | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-110a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Russian State-Sponsored and Criminal Cyber Threats to Critical Infrastructure | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-131a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Protecting Against Cyber Threats to Managed Service Providers and their Customers | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-137a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Weak Security Controls and Practices Routinely Exploited for Initial Access | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-138b": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Threat Actors Chaining Unpatched VMware Vulnerabilities for Full System Control | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-152a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Karakurt Data Extortion Group | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-174a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Malicious Cyber Actors Continue to Exploit Log4Shell in VMware Horizon Systems | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-223a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "#StopRansomware: Zeppelin Ransomware | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-257a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Iranian Islamic Revolutionary Guard Corps-Affiliated Cyber Actors Exploiting Vulnerabilities for Data Extortion and Disk Encryption for Ransom Operations | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-277a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Impacket and Exfiltration Tool Used to Steal Sensitive Information from Defense Industrial Base Organization | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-279a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Top CVEs Actively Exploited By People\u2019s Republic of China State-Sponsored Cyber Actors | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-294a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "#StopRansomware: Daixin Team | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-320a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Iranian Government-Sponsored APT Actors Compromise Federal Network, Deploy Crypto Miner, Credential Harvester | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-321a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "#StopRansomware: Hive Ransomware | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-039a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "ESXiArgs Ransomware Virtual Machine Recovery Guidance | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-040a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "#StopRansomware: Ransomware Attacks on Critical Infrastructure Fund DPRK Malicious Cyber Activities | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-061a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "#StopRansomware: Blacksuit (Royal) Ransomware | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-074a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Threat Actors Exploit Progress Telerik Vulnerabilities in Multiple U.S. Government IIS Servers | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-108": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "APT28 Exploits Known Vulnerability to Carry Out Reconnaissance and Deploy Malware on Cisco Routers | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-136a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "#StopRansomware: BianLian Ransomware Group | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-158a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "#StopRansomware: CL0P Ransomware Gang Exploits CVE-2023-34362 MOVEit Vulnerability | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-165a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Understanding Ransomware Threat Actors: LockBit | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-187a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Increased Truebot Activity Infects U.S. and Canada Based Networks | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-201a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Threat Actors Exploiting Citrix CVE-2023-3519 to Implant Webshells | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-208a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Preventing Web Application Access Control Abuse | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-213a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Threat Actors Exploiting Ivanti EPMM Vulnerabilities | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-250a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Multiple Nation-State Threat Actors Exploit CVE-2022-47966 and CVE-2022-42475 | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Scattered Spider | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-325a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "#StopRansomware: LockBit 3.0 Ransomware Affiliates Exploit CVE 2023-4966 Citrix Bleed Vulnerability | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-335a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "IRGC-Affiliated Cyber Actors Exploit PLCs in Multiple Sectors, Including US Water and Wastewater Systems Facilities | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-339a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Threat Actors Exploit Adobe ColdFusion CVE-2023-26360 for Initial Access to Government Servers | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-341a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Russian FSB Cyber Actor Star Blizzard Continues Worldwide Spearphishing Campaigns | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-347a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Russian Foreign Intelligence Service (SVR) Exploiting JetBrains TeamCity CVE Globally | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-352a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "#StopRansomware: Play Ransomware | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-353a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "#StopRansomware: ALPHV Blackcat | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-016a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Known Indicators of Compromise Associated with Androxgh0st Malware | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-038a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "PRC State-Sponsored Actors Compromise and Maintain Persistent Access to U.S. Critical Infrastructure | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-046a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Threat Actor Leverages Compromised Account of Former Employee to Access State Government Organization | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-057a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "SVR Cyber Actors Adapt Tactics for Initial Cloud Access | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-109a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "#StopRansomware: Akira Ransomware | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-190a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "People\u2019s Republic of China (PRC) Ministry of State Security APT40 Tradecraft in Action | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-207a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "North Korea Cyber Group Conducts Global Espionage Campaign to Advance Regime\u2019s Military and Nuclear Programs | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-241a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Iran-based Cyber Actors Enabling Ransomware Attacks on US Organizations | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-242a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "#StopRansomware: RansomHub Ransomware | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-290a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Iranian Cyber Actors\u2019 Brute Force and Credential Access Activity Compromises Critical Infrastructure Organizations | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-317a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "2023 Top Routinely Exploited Vulnerabilities | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-326a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Enhancing Cyber Resilience: Insights from CISA Red Team Assessment of a US Critical Infrastructure Sector Organization | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa25-022a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Threat Actors Chained Vulnerabilities in Ivanti Cloud Service Applications | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa25-050a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "#StopRansomware: Ghost (Cring) Ransomware | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa25-071a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "#StopRansomware: Medusa Ransomware | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa25-141a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Russian GRU Targeting Western Logistics Entities and Technology Companies | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa25-212a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "CISA and USCG Identify Areas for Cyber Hygiene Improvement After Conducting Proactive Threat Hunt at US Critical Infrastructure Organization | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa25-239a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Countering Chinese State-Sponsored Actors Compromise of Networks Worldwide to Feed Global Espionage System | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa25-266a": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "CISA Shares Lessons Learned from an Incident Response Engagement | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa26-097a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Iranian-Affiliated Cyber Actors Exploit Programmable Logic Controllers Across US Critical Infrastructure | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa26-194a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Improve Router Hygiene to Protect Against Russian State-Sponsored Targeting | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa26-204a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Russian State-Supported Cyber Actors Conduct Phishing Campaign Targeting Users of Zimbra Collaboration Suite | CISA"
+ },
+ "https://www.cisa.gov/news-events/cybersecurity-advisories/aa26-222a": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "#StopRansomware: Gunra Ransomware | CISA"
+ },
+ "https://www.cyber.gov.au/about-us/view-all-content/alerts-and-advisories/active-exploitation-of-cpanel-whm-critical-vulnerability": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Active exploitation of cPanel/WHM critical vulnerability | Cyber.gov.au"
+ },
+ "https://www.elastic.co/security-labs/shai-hulud-chaindrop-npm-supply-chain": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Temporary outage - We're on it!"
+ },
+ "https://www.forescout.com/blog/analyzing-active-exploitation-of-lantronix-and-openwrt-luci/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "403 Forbidden"
+ },
+ "https://www.proofpoint.com/us/blog/threat-insight/once-bluemoon-multiple-state-aligned-threat-actors-rapidly-adopt-novel-exploit": {
+  "checked": "2026-09-13",
+  "state": "live",
+  "title": "Once in a BlueMoon: Multiple State-Aligned Threat Actors Rapidly Adopt Novel Exploit Chain Using Chrome and Windows Zero-Days | Proofpoint US"
+ },
+ "https://www.stepsecurity.io/blog/10-layers-deep-how-stepsecurity-stops-teampcps-trivy-supply-chain-attack-on-github-actions": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "10 Layers Deep: How StepSecurity Stops TeamPCP&#x27;s Trivy Supply Chain Attack on GitHub Actions - StepSecurity"
+ },
+ "https://www.sysdig.com/blog/cloud-breach-terraform-data-theft": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "SCARLETEEL: Operation leveraging Terraform, Kubernetes, and AWS for data theft | Sysdig"
+ },
+ "https://www.sysdig.com/blog/detecting-and-mitigating-the-tj-actions-changed-files-supply-chain-attack-cve-2025-30066": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Detecting and Mitigating the \u201ctj-actions/changed-files\u201d Supply Chain Attack (CVE-2025-30066) | Sysdig"
+ },
+ "https://www.sysdig.com/blog/emeraldwhale": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "EMERALDWHALE: 15k Cloud credentials stolen in operation targeting exposed Git config files | Sysdig"
+ },
+ "https://www.sysdig.com/blog/how-threat-actors-are-using-self-hosted-github-actions-runners-as-backdoors": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "How threat actors are using self-hosted GitHub Actions runners as backdoors | Sysdig"
+ },
+ "https://www.sysdig.com/blog/insecure-github-actions-found-in-mitre-splunk-and-other-open-source-repositories": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Dangerous by default: Insecure GitHub Actions found in MITRE, Splunk, and other open source repositories | Sysdig"
+ },
+ "https://www.sysdig.com/blog/jadepuffer-agentic-ransomware-for-automated-database-extortion": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "JADEPUFFER: Agentic ransomware for automated database extortion | Sysdig"
+ },
+ "https://www.sysdig.com/blog/jadepuffer-evolves-the-agentic-threat-actor-deploys-ransomware-built-to-destroy-ai-models": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "JADEPUFFER evolves: The agentic threat actor deploys ransomware built to destroy AI models | Sysdig"
+ },
+ "https://www.sysdig.com/blog/no-single-pane-of-glass-anatomy-of-an-azure-permission-takeover": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "No single pane of glass: Anatomy of an Azure permission takeover | Sysdig"
+ },
+ "https://www.sysdig.com/blog/shai-hulud-the-novel-self-replicating-worm-infecting-hundreds-of-npm-packages": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Shai-Hulud: The novel self-replicating worm infecting hundreds of NPM packages | Sysdig"
+ },
+ "https://www.volexity.com/blog/2026/06/04/verdantbamboo-just-another-brickstorm-in-the-firewall/": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "VerdantBamboo: Just Another BRICKSTORM in the Firewall | Volexity"
+ },
+ "https://www.wiz.io/blog/jinx-2401-llm-hijacking-aws": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Inside a New Wave of LLM Hijacking on AWS | Wiz Blog"
+ },
+ "https://www.wiz.io/blog/miasma-supply-chain-attack-targeting-redhat-npm-packages": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "Miasma: Supply Chain Attack Targeting RedHat npm Packages | Wiz Blog"
+ },
+ "https://www.wiz.io/blog/six-accounts-one-actor-inside-the-prt-scan-supply-chain-campaign": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "prt-scan: AI-Powered GitHub Actions Supply Chain Attack | Wiz Blog"
+ },
+ "https://www.wiz.io/blog/wiz-research-codebreach-vulnerability-aws-codebuild": {
+  "checked": "2026-09-12",
+  "state": "live",
+  "title": "CodeBreach: Supply Chain Vuln &amp; AWS CodeBuild Misconfig | Wiz Blog"
+ }
+}

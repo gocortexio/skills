@@ -1,16 +1,14 @@
 {
   "name": "gocortexio-skills",
+  "description": "GoCortexIO skill bundles for the Palo Alto Networks Cortex Platform",
   "owner": {
     "name": "GoCortexIO"
-  },
-  "metadata": {
-    "description": "GoCortexIO skill bundles for the Palo Alto Networks Cortex Platform",
-    "version": "1.0.0"
   },
   "plugins": [
     {
       "name": "gocortex-skills",
-      "description": "Author Cortex XSIAM Data Model Rules in Cortex Query Language (XQL) from raw vendor log samples. Produces a complete MODEL rule with a MAPPED-header comment block, backed by an offline profiler, linter and verifier.",
+      "version": "3.0.0",
+      "description": "GoCortexIO skill bundles for the Palo Alto Networks Cortex Platform: a phased content-pack harness plus instrument bundles for XDM modelling rules, correlation rules, playbooks, and threat-advisory consultation.",
       "source": "./",
       "strict": false,
       "license": "AGPL-3.0-or-later",
@@ -23,10 +21,15 @@
         "palo-alto-networks",
         "datamodel",
         "security",
-        "siem"
+        "siem",
+        "correlation",
+        "playbook",
+        "detection-engineering",
+        "threat-intelligence"
       ],
       "skills": [
-        "./skills/cortex-platform-xdm-author"
+        "./skills/cortex-platform-xdm-author",
+        "./skills/cortex-platform-advisory-consultant"
       ]
     }
   ]

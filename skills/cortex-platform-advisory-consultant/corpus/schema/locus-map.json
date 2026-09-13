@@ -1,0 +1,139 @@
+{
+ "_comment": "How LOCUS is computed. Every product_class, attack_surface and evidence_type in vocab.json must appear here or in the matching defer_ list; validate.py fails the corpus otherwise. A vocabulary value with no locus does not fail anything on its own, it lands silently in the default, and a label that is quietly wrong is worse than one that is missing.",
+ "_tiers": "Evaluated in order, first hit wins. declared: how[].locus is set. surface_supply: the surface names the locus outright and outranks the class, because a cross-sector advisory about a vendor update channel is a supply finding. class_nonproduct: the record is about an organisation type or a process, not a technology. surface: what.attack_surface commits to a locus. class_first: the first-listed product_class, which is the primary subject the author named. evidence: plurality of evidence_type, which only reaches records whose class carries no locus. shape: an inventory-shaped block with nothing else to go on. default: CONTROL.",
+ "_why_not_markers": "Marker types were tried and rejected. 787 of 1222 markers are type=computed, whose expr is free prose and would need pattern-matching over English to classify, which is the same tautology coverage() already documents. The typed remainder is too thin to move any label.",
+ "_why_shape_is_last": "313 of 872 how-blocks are inventory-shaped. The shape is a mode, not a locus: find where a component is embedded inside larger products is SUPPLY, and affects two versions past end of life is posture. Promoting it above class makes ORGANISATION 36 per cent and swallows genuine SUPPLY and MANAGEMENT findings.",
+
+ "tier_order": ["declared", "surface_supply", "class_nonproduct", "surface", "class_first", "evidence", "shape", "default"],
+ "default": "CONTROL",
+
+ "nonproduct_class": ["cross_sector", "process.service_desk"],
+ "surface_supply": ["supply_chain_update", "third_party_access"],
+
+ "defer_surface": [
+  "internet_facing_service",
+  "api_endpoint",
+  "local_network",
+  "credentialed_user",
+  "it_ot_boundary",
+  "watering_hole"
+ ],
+ "_why_defer_surface": "These six say reachability or precondition rather than plane, and mean different things per class. A firewall's internet-facing service is forwarding; a web server's is content. A cloud API is administration; an application API is data. Committing internet_facing_service alone would put 28 per cent of blocks under one label chosen for the wrong reason.",
+
+ "defer_evidence": ["syslog"],
+ "_why_defer_evidence": "Device syslog carries administrative, forwarding and payload events indifferently and commits to no locus.",
+
+ "by_surface": {
+  "supply_chain_update": "SUPPLY",
+  "third_party_access": "SUPPLY",
+  "internet_facing_management": "MANAGEMENT",
+  "physical_or_console": "MANAGEMENT",
+  "remote_access_service": "MANAGEMENT",
+  "insider": "ORGANISATION",
+  "email_flow": "DATA",
+  "removable_media": "DATA",
+  "vpn_portal": "CONTROL"
+ },
+ "_note_removable_media": "Mapped but never fires: zero of 1201 records carry it. Kept so the vocabulary stays fully covered.",
+
+ "by_class": {
+  "network.firewall": "CONTROL",
+  "network.vpn_gateway": "CONTROL",
+  "network.router": "CONTROL",
+  "network.switch": "CONTROL",
+  "network.load_balancer": "CONTROL",
+  "network.proxy": "CONTROL",
+  "network.wan_edge": "CONTROL",
+  "network.remote_access": "CONTROL",
+  "identity.directory": "CONTROL",
+  "identity.sso": "CONTROL",
+  "security.mfa": "CONTROL",
+  "server.hypervisor": "CONTROL",
+  "cloud.container": "CONTROL",
+  "app.ai_platform": "CONTROL",
+  "ot.ics": "CONTROL",
+  "ot.plc": "CONTROL",
+  "ot.safety_system": "CONTROL",
+  "ot.hmi": "CONTROL",
+  "ot.scada_server": "CONTROL",
+  "ot.protection_relay": "CONTROL",
+  "ot.field_device": "CONTROL",
+  "ot.protocol_gateway": "CONTROL",
+  "facility.physical_access": "CONTROL",
+  "telecom.ran": "CONTROL",
+  "telecom.core": "CONTROL",
+  "telecom.signalling": "CONTROL",
+  "telecom.subscriber": "CONTROL",
+
+  "cloud.iaas": "MANAGEMENT",
+  "cloud.identity": "MANAGEMENT",
+  "app.rmm": "MANAGEMENT",
+  "app.mdm": "MANAGEMENT",
+  "security.siem": "MANAGEMENT",
+  "security.pam": "MANAGEMENT",
+  "security.vuln_mgmt": "MANAGEMENT",
+  "ot.engineering_workstation": "MANAGEMENT",
+
+  "server.web": "DATA",
+  "server.database": "DATA",
+  "server.file_transfer": "DATA",
+  "server.mail": "DATA",
+  "security.email_gateway": "DATA",
+  "security.backup": "DATA",
+  "cloud.saas": "DATA",
+  "app.collaboration": "DATA",
+  "app.itsm": "DATA",
+  "app.office_suite": "DATA",
+  "app.erp": "DATA",
+  "app.middleware": "DATA",
+  "ot.historian": "DATA",
+  "facility.surveillance": "DATA",
+
+  "endpoint.os": "ENDPOINT",
+  "endpoint.browser": "ENDPOINT",
+  "security.edr": "ENDPOINT",
+  "security.offensive_tool": "ENDPOINT",
+  "app.archiver": "ENDPOINT",
+
+  "app.cicd": "SUPPLY",
+  "dev.library": "SUPPLY",
+  "app.msp": "SUPPLY",
+  "app.licensing": "SUPPLY",
+  "app.version_control": "SUPPLY",
+
+  "cross_sector": "ORGANISATION",
+  "process.service_desk": "ORGANISATION"
+ },
+ "_arguable_classes": "cloud.identity to MANAGEMENT splits it from identity.sso to CONTROL, and they are close to the same thing to a defender. It follows the ruling that a cloud provider's control plane is administration; tenant-admin cases reach MANAGEMENT through the surface tier anyway. ot.hmi to CONTROL reads the function rather than the host, which is a Windows box. app.version_control to SUPPLY runs against a vocabulary description that emphasises egress. security.edr to ENDPOINT places the agent, not the console -- which is exactly how two EPMM records came to derive ENDPOINT, and is why app.mdm exists as its own class. app.mdm to MANAGEMENT reads the console and the enrolment channel, never the enrolled handset: it is fleet administration holding an administrative credential for every device, which is the same reading that places app.rmm and cloud.identity. Deliberately not ENDPOINT, because the handsets are out of scope: this corpus advises on the handset OS and consumer device not at all, and on the console that enrols, configures and observes them always and aiming a management-plane finding at the endpoint plane points it at the one place this corpus declines to advise. Deliberately not CONTROL, because it makes no forwarding, session-establishment or trust-evaluation decision for traffic; where a product genuinely is a gateway, as MobileIron Sentry is, the record lists the gateway class first and app.mdm second.",
+
+ "by_evidence": {
+  "edr_process": "ENDPOINT",
+  "edr_file": "ENDPOINT",
+  "registry": "ENDPOINT",
+  "memory": "ENDPOINT",
+  "file_artefact": "ENDPOINT",
+
+  "cloud_audit": "MANAGEMENT",
+  "config_diff": "MANAGEMENT",
+
+  "ics_protocol": "CONTROL",
+  "process_telemetry": "CONTROL",
+  "auth_log": "CONTROL",
+
+  "email_gateway": "DATA",
+  "http_proxy": "DATA",
+  "web_server": "DATA",
+  "dns": "DATA",
+  "netflow": "DATA",
+  "tls_metadata": "DATA",
+  "network_ids": "DATA",
+
+  "integrity_check": "SUPPLY",
+
+  "vuln_scan": "ORGANISATION",
+  "asset_inventory": "ORGANISATION"
+ },
+ "_note_process_telemetry": "Mapped to CONTROL on the vocabulary reading, which is process values, alarms and operator actions from the control system itself. The CONNECTOR entry at consult.py:85 describes the same evidence type as host process telemetry, which is a different thing, and the 71 blocks using it split across endpoint.os, app.cicd, ot.hmi and ot.scada_server, so the corpus genuinely uses it both ways. The vocabulary is the corpus contract and wins here. The contradiction is real, is not resolved by this file, and correcting the connector text either way would make it wrong for the other half of those blocks. This mapping is close to inert in any case: the evidence tier never fires in consult.py, because every product_class carries a locus.",
+
+ "locus_order": ["CONTROL", "MANAGEMENT", "DATA", "ENDPOINT", "SUPPLY", "ORGANISATION"]
+}

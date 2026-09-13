@@ -16,6 +16,7 @@ Portable skill bundles for doing cool stuff with the Palo Alto Networks Cortex P
 | Bundle | Purpose |
 | --- | --- |
 | [cortex-platform-xdm-author](skills/cortex-platform-xdm-author/) | Author Cortex XSIAM Data Model Rules in Cortex Query Language (XQL). Produce a complete `[MODEL: dataset=..._raw]` rule from raw vendor log samples, with a MAPPED-header comment block. MODEL-only. |
+| [cortex-platform-advisory-consultant](skills/cortex-platform-advisory-consultant/) | Consult on what a vendor technology has historically been caught up in, what to detect as a result, and what to build that is missing. Answers from a corpus of threat advisory records joined to MITRE ATT&CK and D3FEND. |
 
 Each bundle is self-contained and installs on its own. The harness may point at an instrument, because dispatch is its job; an instrument never points back or sideways, so installing one does not oblige you to install the rest.
 

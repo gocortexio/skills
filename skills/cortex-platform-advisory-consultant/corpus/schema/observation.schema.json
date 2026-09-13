@@ -1,0 +1,489 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://gocortex.io/schema/advisory-observation-1.json",
+ "title": "Advisory observation",
+ "description": "One vendor technology, one observed behaviour or one published exposure, one source. The six top-level keys map to the six questions the corpus answers: who, what, how, where, who2, when. record_type decides which of the two shapes a record takes.",
+ "type": "object",
+ "required": [
+  "id",
+  "record_type",
+  "status",
+  "who",
+  "what",
+  "where",
+  "when"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "id": {
+   "type": "string",
+   "description": "Stable slug. obs- prefix for observations, exp- prefix for exposures.",
+   "pattern": "^(obs|exp)-[a-z0-9]+(-[a-z0-9]+)*$"
+  },
+  "record_type": {
+   "type": "string",
+   "enum": [
+    "observation",
+    "exposure"
+   ],
+   "description": "observation = something was seen happening; carries detection logic in how[]; written by hand from a source. exposure = a product is affected by a named vulnerability; carries no detection logic; generated in bulk from a vulnerability advisory. Observations answer 'what should I watch for'. Exposures answer 'what has been published about my kit'. The lookup ranks observations first and returns exposures as a separate block, so that a few thousand exposures cannot bury the observations."
+  },
+  "status": {
+   "type": "string",
+   "description": "seed = written from general knowledge, source URL not yet re-read. verified = a human or a fetch confirmed the source says this.",
+   "enum": [
+    "seed",
+    "verified"
+   ]
+  },
+  "who": {
+   "type": "object",
+   "description": "The vendor technology the scenario is about.",
+   "required": [
+    "vendor",
+    "products",
+    "product_class"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "vendor": {
+     "type": "string",
+     "description": "Canonical vendor name, e.g. Cisco."
+    },
+    "products": {
+     "type": "array",
+     "description": "Canonical product names. Aliases live in aliases.json, not here.",
+     "items": {
+      "type": "string"
+     },
+     "minItems": 1
+    },
+    "product_class": {
+     "type": "array",
+     "description": "One or more vocab product_class values. This is what answers 'I have a firewall' when the vendor is not the one in the record.",
+     "items": {
+      "type": "string"
+     },
+     "minItems": 1
+    },
+    "versions_affected": {
+     "type": "string",
+     "description": "Free text as the source stated it."
+    },
+    "cpe": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "what": {
+   "type": "object",
+   "description": "What was observed happening to or through this technology.",
+   "required": [
+    "role",
+    "summary"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "role": {
+     "type": "string",
+     "description": "Vocab role. What part the technology played in the scenario."
+    },
+    "summary": {
+     "type": "string",
+     "description": "Plain prose, as short as the scenario allows and rarely more than a few sentences. No marketing language, no hedging. The one-sentence form this field once demanded is met by 209 of 1,151 records and was never enforced, so the contract is brevity and plainness rather than a sentence count."
+    },
+    "vulnerabilities": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern": "^(CVE-[0-9]{4}-[0-9]{4,}|[A-Z]+-[0-9-]+)$"
+     }
+    },
+    "impact": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "Vocab impact values."
+    },
+    "attack_surface": {
+     "type": "string",
+     "description": "Vocab attack_surface value. Where the exposure sat."
+    }
+   }
+  },
+  "how": {
+   "type": "array",
+   "description": "How the activity was or can be observed. Each entry is one detection idea, shaped so it can be converted to Cortex XQL later. Mandatory for record_type observation, where at least one entry is required; validate.py enforces that. Normally absent on record_type exposure, which asserts that a product is affected rather than describing anything observed. An exposure may carry a how block only where the advisory itself published detection guidance.",
+   "items": {
+    "type": "object",
+    "required": [
+     "evidence_type",
+     "logic",
+     "fidelity",
+     "confidence"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "pattern_id": {
+      "type": "string",
+      "description": "Optional link into patterns.jsonl. Two records sharing a pattern_id are the same detection scenario across different technologies. This is the grouping mechanism.",
+      "pattern": "^pat-[a-z0-9]+(-[a-z0-9]+)*$"
+     },
+     "evidence_type": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "minItems": 1,
+      "description": "Vocab evidence_type values. What telemetry is needed."
+     },
+     "technique": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^T[0-9]{4}(\\.[0-9]{3})?$"
+      },
+      "description": "ATT&CK technique IDs."
+     },
+     "dataset_hint": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "description": "Likely Cortex dataset names, e.g. cisco_asa_raw. A hint, not a guarantee it is onboarded."
+     },
+     "logic": {
+      "type": "string",
+      "description": "The detection stated in plain words, precisely enough that an engineer could write the query from it alone."
+     },
+     "fields": {
+      "type": "array",
+      "description": "The concrete field tests. Each becomes a filter clause.",
+      "items": {
+       "type": "object",
+       "required": [
+        "op",
+        "value"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "xdm": {
+         "type": "string",
+         "description": "XDM field path where one is known."
+        },
+        "raw": {
+         "type": "string",
+         "description": "Raw vendor field or log token."
+        },
+        "op": {
+         "type": "string",
+         "enum": [
+          "equals",
+          "contains",
+          "starts_with",
+          "ends_with",
+          "regex",
+          "in",
+          "gt",
+          "lt",
+          "exists",
+          "absent"
+         ]
+        },
+        "value": {
+         "description": "Scalar or array, matching op."
+        },
+        "note": {
+         "type": "string"
+        }
+       }
+      }
+     },
+     "iocs": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "required": [
+        "type",
+        "value"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "type": {
+         "type": "string",
+         "enum": [
+          "sha256",
+          "md5",
+          "sha1",
+          "ipv4",
+          "ipv6",
+          "domain",
+          "url",
+          "uri_path",
+          "user_agent",
+          "filename",
+          "filepath",
+          "jarm",
+          "ja3",
+          "mutex",
+          "certificate"
+         ]
+        },
+        "value": {
+         "type": "string"
+        },
+        "note": {
+         "type": "string"
+        }
+       }
+      },
+      "description": "Atomic indicators. Low shelf life. Kept because they are cheap to query, not because they are durable."
+     },
+     "fidelity": {
+      "type": "string",
+      "enum": [
+       "alert",
+       "hunt",
+       "enrich"
+      ],
+      "description": "alert = specific enough to page someone. hunt = needs an analyst. enrich = context only."
+     },
+     "confidence": {
+      "type": "string",
+      "enum": [
+       "high",
+       "medium",
+       "low"
+      ],
+      "description": "Confidence that this logic reflects what the source actually described."
+     },
+     "caveat": {
+      "type": "string",
+      "description": "Known false positive source or coverage gap. Say it here rather than leaving it implied."
+     },
+     "rule_shape": {
+      "type": "string",
+      "description": "Vocab rule_shape value. Tells a rule generator what query structure the markers need."
+     },
+     "locus": {
+      "type": "string",
+      "enum": [
+       "CONTROL",
+       "MANAGEMENT",
+       "DATA",
+       "ENDPOINT",
+       "SUPPLY",
+       "ORGANISATION"
+      ],
+      "description": "Optional declared override for the computed LOCUS. Omit it. The label is derived from attack_surface, product_class and evidence_type, and a hand-set value that agrees with the derivation is a value that will silently stop agreeing when the derivation changes. Set it only where the derivation is provably wrong for this block, and say why in notes."
+     },
+     "markers": {
+      "type": "array",
+      "description": "Clean, literal, rule-generatable observables drawn from the source. Unlike 'fields' these carry a controlled type and must be concrete enough to compile into a query.",
+      "items": {
+       "type": "object",
+       "required": [
+        "type",
+        "value"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "type": {
+         "type": "string",
+         "description": "Vocab marker_type value."
+        },
+        "match": {
+         "type": "string",
+         "enum": [
+          "equals",
+          "contains",
+          "prefix",
+          "suffix",
+          "regex",
+          "in",
+          "gt",
+          "lt"
+         ],
+         "description": "Defaults to equals."
+        },
+        "value": {
+         "description": "Literal observable, or array for match=in."
+        },
+        "xdm": {
+         "type": "string",
+         "description": "XDM field this marker binds to, where one exists."
+        },
+        "expr": {
+         "type": "string",
+         "description": "Mandatory when type is computed: the computation to perform."
+        },
+        "note": {
+         "type": "string"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "where": {
+   "type": "object",
+   "description": "Where the knowledge came from. Public sources carry a url. Licensed sources carry disclosure=restricted and an abstract citation instead; see corpus/README.md for the abstraction rule.",
+   "required": [
+    "publisher",
+    "title",
+    "disclosure"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "source_id": {
+     "type": "string",
+     "description": "Stable slug for the source, so several observations can cite the same article. For restricted sources this must not encode the publisher's report identifier."
+    },
+    "publisher": {
+     "type": "string"
+    },
+    "title": {
+     "type": "string",
+     "description": "For restricted sources: an abstract citation of the form '<Publisher> commentary on <subject>'. Never the publisher's own report title or report number."
+    },
+    "url": {
+     "type": "string",
+     "description": "Public sources only. Omit for restricted sources; there is nothing a reader could open."
+    },
+    "disclosure": {
+     "type": "string",
+     "enum": [
+      "public",
+      "restricted"
+     ],
+     "description": "public = anyone can read the source at the url. restricted = licensed or subscriber intelligence. Restricted records must carry no report identifier, no verbatim wording, and no url."
+    },
+    "source_type": {
+     "type": "string",
+     "enum": [
+      "vendor_advisory",
+      "government_advisory",
+      "vendor_research",
+      "independent_research",
+      "academic_research",
+      "incident_report",
+      "news",
+      "database",
+      "licensed_intel"
+     ]
+    },
+    "retrieved": {
+     "type": "string",
+     "description": "ISO date the source was last read."
+    },
+    "verified": {
+     "type": "boolean",
+     "description": "False means the source has not been re-read since the record was written."
+    },
+    "corroborations": {
+     "type": "array",
+     "description": "Independent public accounts of the same thing, beyond the primary source. Originally added so a record whose primary source is restricted could still be verified by a reader without access to it, and now also the place a second or third publisher on one mechanism goes -- a further account is an entry here, never a near-duplicate record. Was two flat strings until 0.19.0; a third publisher had nowhere to go, and two parallel lists would have had to stay index-aligned by hand.",
+     "minItems": 1,
+     "items": {
+      "type": "object",
+      "required": [
+       "publisher",
+       "url"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "publisher": {
+        "type": "string",
+        "description": "Who published this corroborating account."
+       },
+       "url": {
+        "type": "string",
+        "description": "Public URL for it. Public by definition -- a corroboration that cannot be read corroborates nothing."
+       }
+      }
+     }
+    }
+   }
+  },
+  "who2": {
+   "type": "object",
+   "description": "Who was behind it and who was on the receiving end.",
+   "additionalProperties": false,
+   "properties": {
+    "actors": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "Every name the source used, including aliases from other vendors."
+    },
+    "actor_type": {
+     "type": "string",
+     "description": "Vocab actor_type value."
+    },
+    "target_sectors": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "target_regions": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "attribution_confidence": {
+     "type": "string",
+     "enum": [
+      "high",
+      "medium",
+      "low",
+      "none"
+     ]
+    }
+   }
+  },
+  "when": {
+   "type": "object",
+   "description": "Dates. Absolute only, never relative.",
+   "additionalProperties": false,
+   "properties": {
+    "observed_start": {
+     "type": "string",
+     "description": "ISO date or partial date (YYYY, YYYY-MM, YYYY-MM-DD)."
+    },
+    "observed_end": {
+     "type": "string"
+    },
+    "published": {
+     "type": "string"
+    },
+    "precision": {
+     "type": "string",
+     "enum": [
+      "day",
+      "month",
+      "year",
+      "unknown"
+     ]
+    }
+   }
+  },
+  "tags": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
+  },
+  "notes": {
+   "type": "string",
+   "description": "Anything an analyst should know that no other field carries."
+  }
+ }
+}

@@ -1,0 +1,121 @@
+{
+  "_comment": "Two worked records. 'public' is a real observation written from general knowledge and marked seed, so the source still needs re-reading. 'restricted_shape' is synthetic, published by a made-up house, and exists only to show how a licensed source is cited. Neither is loaded by the scripts; observations live in corpus/observations/.",
+
+  "public": {
+    "id": "obs-cisco-asa-vpn-webvpn-implant",
+    "status": "seed",
+    "who": {
+      "vendor": "Cisco",
+      "products": ["Adaptive Security Appliance", "Firepower Threat Defense"],
+      "product_class": ["network.firewall", "network.vpn_gateway"],
+      "versions_affected": "ASA and FTD releases prior to the April 2024 fixed builds"
+    },
+    "what": {
+      "role": "victim",
+      "summary": "An actor chained a denial of service flaw with a persistent code execution flaw in the WebVPN service to load memory-resident and disk-resident implants on perimeter appliances.",
+      "vulnerabilities": ["CVE-2024-20353", "CVE-2024-20359"],
+      "impact": ["rce", "persistence", "config_exfiltration", "defence_evasion"],
+      "attack_surface": "vpn_portal"
+    },
+    "how": [
+      {
+        "pattern_id": "pat-edge-appliance-unexplained-reboot",
+        "evidence_type": ["syslog", "config_diff"],
+        "technique": ["T1542", "T1499"],
+        "dataset_hint": ["cisco_asa_raw"],
+        "logic": "A perimeter appliance reboots or produces a crash dump with no matching change record, then a configuration write or client profile change lands within a short window. Either event alone is routine; the pairing is not.",
+        "fields": [
+          {"raw": "syslog_message_id", "op": "in", "value": ["199005", "199001"], "note": "reload and start-up messages"},
+          {"xdm": "xdm.event.type", "op": "equals", "value": "configuration_change"}
+        ],
+        "fidelity": "hunt",
+        "confidence": "medium",
+        "caveat": "Planned maintenance produces the same pair. Correlate against the change window before treating it as an issue."
+      },
+      {
+        "pattern_id": "pat-edge-appliance-integrity-mismatch",
+        "evidence_type": ["integrity_check", "file_artefact"],
+        "technique": ["T1601"],
+        "logic": "The vendor integrity check reports a mismatch, or a file appears in the appliance filesystem that is not part of a shipped image.",
+        "fidelity": "alert",
+        "confidence": "high"
+      }
+    ],
+    "where": {
+      "source_id": "src-arcanedoor-2024",
+      "publisher": "Cisco Talos",
+      "title": "ArcaneDoor campaign reporting",
+      "url": "https://blog.talosintelligence.com/arcanedoor-new-espionage-focused-campaign-found-targeting-perimeter-network-devices/",
+      "source_type": "vendor_research",
+      "disclosure": "public",
+      "verified": false
+    },
+    "who2": {
+      "actors": ["UAT4356", "Storm-1849"],
+      "actor_type": "state_nexus",
+      "target_sectors": ["government"],
+      "target_regions": ["global"],
+      "attribution_confidence": "medium"
+    },
+    "when": {
+      "observed_start": "2023-11",
+      "observed_end": "2024-04",
+      "published": "2024-04-24",
+      "precision": "month"
+    },
+    "tags": ["edge-device", "zero-day", "espionage"],
+    "notes": "Written from general knowledge. Re-read the source and set status to verified before relying on the CVE pairing or the dates."
+  },
+
+  "restricted_shape": {
+    "id": "obs-generic-ics-historian-outbound-poll",
+    "status": "seed",
+    "who": {
+      "vendor": "Example Vendor",
+      "products": ["Example Historian"],
+      "product_class": ["ot.ics"],
+      "versions_affected": "not stated"
+    },
+    "what": {
+      "role": "lateral_path",
+      "summary": "A process historian bridging the plant network and the business network was used to reach control-system data from an enterprise foothold.",
+      "impact": ["lateral_movement", "data_exfiltration"],
+      "attack_surface": "local_network"
+    },
+    "how": [
+      {
+        "evidence_type": ["netflow", "auth_log"],
+        "technique": ["T0842"],
+        "logic": "The historian authenticates an interactive session sourced from the enterprise network rather than from its usual engineering workstations, then opens an outbound connection to a destination it has no history of contacting.",
+        "fields": [
+          {"xdm": "xdm.source.zone", "op": "equals", "value": "enterprise"},
+          {"xdm": "xdm.target.zone", "op": "equals", "value": "plant"},
+          {"xdm": "xdm.event.type", "op": "equals", "value": "authentication"}
+        ],
+        "fidelity": "hunt",
+        "confidence": "medium",
+        "caveat": "Vendor remote support uses the same path. Maintain an allow list of support source addresses."
+      }
+    ],
+    "where": {
+      "source_id": "src-example-intel-historian-bridging",
+      "publisher": "Example Intel",
+      "title": "Example Intel commentary on historian network bridging",
+      "source_type": "licensed_intel",
+      "disclosure": "restricted",
+      "retrieved": "2026-07-29",
+      "verified": true
+    },
+    "who2": {
+      "actor_type": "unattributed",
+      "target_sectors": ["manufacturing"],
+      "attribution_confidence": "none"
+    },
+    "when": {
+      "observed_start": "2024",
+      "precision": "year"
+    },
+    "tags": ["ot", "it-ot-boundary"],
+    "notes": "Synthetic. Shows the restricted citation shape: no url, no report number, abstract title, wording written fresh."
+  }
+}
