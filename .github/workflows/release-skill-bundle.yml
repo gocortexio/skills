@@ -1,0 +1,205 @@
+# SPDX-FileCopyrightText: GoCortexIO
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# One GitHub Release per skill bundle per version, cut from a hand-pushed tag.
+#
+# This never fires on a merge. It fires only when a person pushes a tag shaped
+# <skill-name>-v<major>.<minor>.<patch>, which is the same per-artefact tag discipline
+# skills/cortex-content-pack-go-again/scripts/preflight_release.py already enforces for
+# content packs. Five bundles version independently, so a repository-wide tag can only
+# ever be a statement about one of them wearing everyone else's name.
+#
+# The archive is built with `git archive` from the TAGGED TREE, never from the working
+# tree. An untracked .pytest_cache or __pycache__ is not in that tree and therefore
+# cannot enter the archive. That holds for a bundle carrying no .gitignore of its own
+# exactly as it does for one that has one.
+#
+# Nothing here names a repository. The workflow is portable to any checkout that has
+# skills/<name>/ directories.
+
+name: Release skill bundle
+
+on:
+  push:
+    tags:
+      - '*-v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to rebuild a Release from, e.g. cortex-platform-correlation-author-v0.7.0'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+# Two runs must never both pass the "a Release already exists" check.
+concurrency:
+  group: release-${{ inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the tagged tree
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up the Python floor the bundles declare
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Derive the bundle and the version from the tag
+        id: tag
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          # Anchored, because ${TAG%-v*} breaks the day a bundle is named
+          # cortex-platform-vendor-something. Greedy .+ backtracks to the last -v that is
+          # followed by a whole semver to end of string, which is the correct split.
+          if [[ ! "$TAG" =~ ^(.+)-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "::error::tag '$TAG' is not <skill-name>-v<major>.<minor>.<patch>"
+            exit 1
+          fi
+          name="${BASH_REMATCH[1]}"
+          version="${BASH_REMATCH[2]}"
+          # Second confirmation, and this one does not trust the tag.
+          if [[ ! -d "skills/$name" ]]; then
+            echo "::error::tag '$TAG' names bundle '$name', but skills/$name does not exist at this commit"
+            exit 1
+          fi
+          {
+            echo "tag=$TAG"
+            echo "name=$name"
+            echo "version=$version"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Verify the tag against SKILL.md and cut the release notes
+        id: notes
+        env:
+          BUNDLE: ${{ steps.tag.outputs.name }}
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          python3 "$GITHUB_WORKSPACE/.github/scripts/release_notes.py"
+
+      - name: Build the bundle archive
+        id: zip
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          BUNDLE: ${{ steps.tag.outputs.name }}
+        run: |
+          set -euo pipefail
+          zip="${RUNNER_TEMP}/${TAG}.zip"
+
+          # HEAD:skills/<bundle> re-roots every path at the bundle, and --prefix supplies the
+          # top-level directory, so the archive expands to <bundle>/ and drops straight into a
+          # skills directory. The VERSION lives in the FILE name, never the directory name: a
+          # directory called <bundle>-v<version> is one no host loads.
+          #
+          # --mtime stamps the commit date. Without it git archive stamps a TREE with the
+          # current time and the archive stops being byte-reproducible. Needs git >= 2.46.
+          git archive \
+            --format=zip \
+            --prefix="${BUNDLE}/" \
+            --mtime="$(git log -1 --format=%cI HEAD)" \
+            --output="$zip" \
+            "HEAD:skills/${BUNDLE}"
+
+          unzip -l "$zip"
+
+          # Belt and braces on a property git archive already guarantees. It cannot catch an
+          # untracked file, because there is no such thing in a tree. It does catch litter that
+          # was COMMITTED, which is the failure a .gitignore actually prevents and the one the
+          # object database cannot.
+          if unzip -Z1 "$zip" | grep -E '(^|/)(\.pytest_cache|__pycache__|\.DS_Store)(/|$)|\.pyc$'; then
+            echo "::error::build litter is COMMITTED under skills/${BUNDLE} and reached the archive"
+            exit 1
+          fi
+
+          {
+            echo "path=$zip"
+            echo "sha256=$(sha256sum "$zip" | cut -d' ' -f1)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run the bundle's own suite against the extracted archive
+        env:
+          BUNDLE: ${{ steps.tag.outputs.name }}
+          ZIP: ${{ steps.zip.outputs.path }}
+        run: |
+          set -euo pipefail
+          install="${RUNNER_TEMP}/install"
+          mkdir -p "$install"
+          unzip -q "$ZIP" -d "$install"
+
+          # Against the EXTRACTED archive, not the checkout. This is the install a consumer
+          # gets: one bundle, no siblings. It is the only run that proves
+          # test_no_instrument_cites_a_path_inside_another_bundle for real, and it is what keeps
+          # each bundle's own fourth version site honest -- the prose sentence, xdm-author's
+          # provenance template, advisory-consultant's README line. There is no general rule
+          # covering those, so the suite is what checks them.
+          #
+          # Only two bundles declare a third-party dependency. The other three say "Python 3.9+,
+          # standard library only" in their READMEs. If one of them quietly starts needing a
+          # package, its suite fails here. That is the point, not an oversight.
+          extra=""
+          case "$BUNDLE" in
+            cortex-content-pack-go-again|cortex-platform-correlation-author) extra="pyyaml" ;;
+          esac
+          python3 -m pip install --quiet --disable-pip-version-check pytest $extra
+
+          PYTHONDONTWRITEBYTECODE=1 python3 -m pytest \
+            "$install/$BUNDLE/tests" -q -p no:cacheprovider
+
+      - name: Create the Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          BUNDLE: ${{ steps.tag.outputs.name }}
+          VERSION: ${{ steps.tag.outputs.version }}
+          NOTES: ${{ steps.notes.outputs.path }}
+          ZIP: ${{ steps.zip.outputs.path }}
+          SHA256: ${{ steps.zip.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::a Release already exists for $TAG. Nothing has been overwritten."
+            echo "::error::Delete it first (gh release delete $TAG) or leave it as it stands."
+            exit 1
+          fi
+
+          {
+            printf '\n---\n\n'
+            printf 'Bundle: `%s`  \n' "$BUNDLE"
+            printf 'Version: `%s`  \n' "$VERSION"
+            printf 'Commit: `%s`  \n' "$GITHUB_SHA"
+            printf 'Archive: `%s.zip`, sha256 `%s`  \n' "$TAG" "$SHA256"
+            printf '\nThe archive expands to `%s/`. Unzip it into the skills directory your host expects.\n' "$BUNDLE"
+          } >> "$NOTES"
+
+          # --latest=false on EVERY release. "Latest" is one repository-wide badge and five
+          # bundles release independently, so it could only ever mean "whichever bundle moved
+          # most recently", which is not a fact anybody wants.
+          gh release create "$TAG" "$ZIP" \
+            --title "$BUNDLE $VERSION" \
+            --notes-file "$NOTES" \
+            --verify-tag \
+            --latest=false
+
+          {
+            echo "### Released \`$BUNDLE\` $VERSION"
+            echo
+            echo "- tag \`$TAG\` at \`$GITHUB_SHA\`"
+            echo "- \`$TAG.zip\`, sha256 \`$SHA256\`"
+          } >> "$GITHUB_STEP_SUMMARY"
