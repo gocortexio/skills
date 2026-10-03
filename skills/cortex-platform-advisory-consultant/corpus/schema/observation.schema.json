@@ -30,7 +30,7 @@
   },
   "status": {
    "type": "string",
-   "description": "seed = written from general knowledge, source URL not yet re-read. verified = a human or a fetch confirmed the source says this.",
+   "description": "seed = unconfirmed: written from general knowledge and not yet fully re-read against the source URL, or re-read and found to support only part of what the record says, in which case each how-block's unconfirmed says whether the source supports it and notes names the rest. verified = a human or a fetch confirmed the source says this.",
    "enum": [
     "seed",
     "verified"
@@ -100,6 +100,48 @@
      "items": {
       "type": "string",
       "pattern": "^(CVE-[0-9]{4}-[0-9]{4,}|[A-Z]+-[0-9-]+)$"
+     }
+    },
+    "identifier_signals": {
+     "type": "array",
+     "description": "Generated exposures only, written by the generator and never by hand. One entry per identifier whose own catalogue description or name, advisory title or database description names an administrative component of the product (a locus entry) or a remote-access VPN feature (a class entry), read with the rule in locus-map.json identifier_reading. rule is the table's rule name, phrase the exact words matched and field the field they came from. validate.py holds every entry to the table and re-reads every catalogue description the summary quotes.",
+     "items": {
+      "type": "object",
+      "required": [
+       "id",
+       "rule",
+       "phrase",
+       "field"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "id": {
+        "type": "string"
+       },
+       "rule": {
+        "type": "string"
+       },
+       "locus": {
+        "type": "string",
+        "enum": [
+         "CONTROL",
+         "MANAGEMENT",
+         "DATA",
+         "ENDPOINT",
+         "SUPPLY",
+         "ORGANISATION"
+        ]
+       },
+       "class": {
+        "type": "string"
+       },
+       "phrase": {
+        "type": "string"
+       },
+       "field": {
+        "type": "string"
+       }
+      }
      }
     },
     "impact": {
@@ -281,6 +323,14 @@
       ],
       "description": "Optional declared override for the computed LOCUS. Omit it. The label is derived from attack_surface, product_class and evidence_type, and a hand-set value that agrees with the derivation is a value that will silently stop agreeing when the derivation changes. Set it only where the derivation is provably wrong for this block, and say why in notes."
      },
+     "combine": {
+      "type": "string",
+      "enum": [
+       "all",
+       "any"
+      ],
+      "description": "How this block's own markers combine. all: every event-bound marker holds, in one event, or in one event per event label. any: each marker, or each event label's group, is an alternative way the detection fires. Omit it and the emitter conjoins only markers that can be one event. Computed markers are requirements of the whole block either way. See corpus/README.md, How markers combine."
+     },
      "markers": {
       "type": "array",
       "description": "Clean, literal, rule-generatable observables drawn from the source. Unlike 'fields' these carry a controlled type and must be concrete enough to compile into a query.",
@@ -311,7 +361,7 @@
          "description": "Defaults to equals."
         },
         "value": {
-         "description": "Literal observable, or array for match=in."
+         "description": "Literal observable, or array for match=in. An array on equals or contains means any of its values; regex, gt and lt take one value."
         },
         "xdm": {
          "type": "string",
@@ -321,11 +371,27 @@
          "type": "string",
          "description": "Mandatory when type is computed: the computation to perform."
         },
+        "event": {
+         "type": "string",
+         "pattern": "^[a-z][a-z0-9_]*$",
+         "description": "A label naming the event this marker is tested on. Markers sharing a label are conditions on one event. When one event-bound marker in a list carries a label, every one must, and the block or pattern must set combine."
+        },
         "note": {
          "type": "string"
+        },
+        "normalised": {
+         "type": "boolean",
+         "enum": [
+          true
+         ],
+         "description": "The value is this corpus's own word for the event or zone, not a literal any source writes: integrity_check, group_create, dmz. Allowed only on a type vocab.json lists in normalised_marker_types. emit_xql.py prints such a marker as a REQUIRES comment naming its field, never as a live clause, so no filter holding one is complete. See corpus/README.md, Markers."
         }
        }
       }
+     },
+     "unconfirmed": {
+      "type": "boolean",
+      "description": "On a seed record whose source was re-read (where.verified true), and required on every block of one: true where the re-read source does not support this block, false where it does. Refused on a verified record, and on a seed not fully re-read against its source, where nothing reads it. consult.py and emit_xql.py print which seed meaning applies from it, and validate.py refuses confidence high on a block it marks true, or on any block of a seed not fully re-read against its source."
      }
     }
    }
@@ -383,7 +449,7 @@
     },
     "verified": {
      "type": "boolean",
-     "description": "False means the source has not been re-read since the record was written."
+     "description": "False means the record has not been fully re-read against its source since it was written. A read of one block is recorded in notes, not here."
     },
     "corroborations": {
      "type": "array",

@@ -111,3 +111,72 @@ def test_nothing_selected_exits_one_and_says_which_path_failed(argv, expect):
     assert "NO_MATCH:" in out
     assert expect in out
     assert header_int(out, "FINDINGS") == 0
+
+
+def test_locus_observed_is_consult_placement():
+    """LOCUS is the library placement from applies_to_classes; LOCUS_OBSERVED is where the
+    citing blocks sit, as a consultation places them, and it is on every pattern.
+
+    pat-forge-token-clones-private-repositories-en-masse is SUPPLY by its first-listed class,
+    and its only citing block sits on DATA: nothing on its block used to say so.
+    """
+    code, out = run("--patterns", "pat-forge-token-clones-private-repositories-en-masse,"
+                                  "pat-shadow-copy-deletion")
+    assert code == 0, out
+    blocks = re.split(r"^--- PATTERN_ID: ", out, flags=re.M)[1:]
+    assert len(blocks) == 2
+    observed = [re.search(r"^LOCUS_OBSERVED: (.*)$", b, re.M) for b in blocks]
+    assert all(observed), "every pattern carries LOCUS_OBSERVED, so the key set stays fixed"
+    assert "DATA=1" in observed[0].group(1)
+    for block, line in zip(blocks, observed):
+        counts = [int(n) for n in re.findall(r"[A-Z]+=(\d+)", line.group(1).split(" (")[0])]
+        blocks_cited = int(re.search(r"^OBSERVED: yes, \d+ record\(s\), (\d+) how-block\(s\)",
+                                     block, re.M).group(1))
+        assert sum(counts) == blocks_cited
+        assert "input=applies_to_classes" in re.search(r"^LOCUS_BASIS: (.*)$", block, re.M).group(1)
+
+
+def test_url_liveness_counts_what_it_printed_unchecked():
+    """Under --no-verify the header said "0 re-checked this run, 0 unreachable" while 4 of 13
+    printed URLs had no verdict in the cache at all and printed exactly as a live one does."""
+    import datetime
+    import json
+    sys.path.insert(0, str(BUNDLE / "scripts"))
+    import advise as A  # noqa: E402
+    code, out = run("--patterns", "pat-edge-appliance-integrity-mismatch,"
+                                  "pat-credential-dump-lsass-access")
+    assert code == 0
+    cache = json.loads((BUNDLE / "corpus" / "reference" / "url-liveness.json").read_text())
+    body = out.split("=== END HEADER ===")[1]
+    # The URLs the header counts: each record line's and each ATTACK line's.
+    urls = set(re.findall(r"^   \[[A-Z?]+\] obs-.* \| (https?://\S+)", body, re.M))
+    urls |= set(re.findall(r"^   T[0-9.]+ +(https?://\S+)", body, re.M))
+    today = datetime.date.today()
+
+    def fresh(url):
+        entry = cache.get(url)
+        return bool(entry) and (today - datetime.date.fromisoformat(
+            entry.get("checked", "1970-01-01"))).days <= A.STALE_DAYS
+    line = re.search(r"^URL_LIVENESS: (\d+) distinct URLs, 0 re-checked this run, 0 unreachable "
+                     r"this run \(network, not a verdict\), (\d+) with no fresh verdict in the "
+                     r"cache and printed unchecked, with no marker", out, re.M)
+    assert line, out[:2500]
+    assert int(line.group(1)) == len(urls)
+    assert int(line.group(2)) == sum(1 for u in urls if not fresh(u))
+    # advise.py prints no STATUS key: its CONTRACT named one, where the [SEED] bracket is what
+    # a record line carries.
+    contract = re.search(r"^CONTRACT: (.*)$", out, re.M).group(1)
+    assert ("[SEED] marks a record that is unconfirmed: it was not fully re-read against its "
+            "source, or its source supports only part of it") in contract
+    assert "STATUS: SEED means" not in contract
+
+
+def test_contract_names_what_is_printed():
+    """The CONTRACT said LOCUS_OBSERVED counts citing records, when it counts how-blocks, and
+    named a SOURCE_DISCLOSURE key no advise.py block prints."""
+    code, out = run("--attack", "T1003")
+    assert code == 0, out
+    contract = re.search(r"^CONTRACT: (.*)$", out, re.M).group(1)
+    assert "citing how-blocks sit" in contract and "citing records sit" not in contract
+    assert "SOURCE_DISCLOSURE" not in contract
+    assert not re.search(r"^SOURCE_DISCLOSURE: ", out, re.M)

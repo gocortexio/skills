@@ -27,35 +27,35 @@ and on this bundle's prose. Cite a restricted source as its title states it and 
 
 | | count |
 |---|---|
-| records | 1151 |
+| records | 1142 |
 | distinct publishers | 106 |
-| -- source_type `database` | 748 |
-| -- source_type `government_advisory` | 180 |
-| -- source_type `vendor_advisory` | 120 |
-| -- source_type `vendor_research` | 81 |
+| -- source_type `database` | 743 |
+| -- source_type `government_advisory` | 181 |
+| -- source_type `vendor_research` | 148 |
+| -- source_type `vendor_advisory` | 48 |
 | -- source_type `independent_research` | 15 |
 | -- source_type `academic_research` | 3 |
 | -- source_type `licensed_intel` | 3 |
 | -- source_type `incident_report` | 1 |
-| -- disclosure `public` | 1148 |
+| -- disclosure `public` | 1139 |
 | -- disclosure `restricted` | 3 |
 
 ## Publishers
 
 | publisher | source type | citation | records |
 |---|---|---|---|
-| CISA | database, government_advisory | public | 725 |
-| Zero Day Initiative | vendor_advisory | public | 65 |
+| CISA | database, government_advisory | public | 720 |
+| Zero Day Initiative | vendor_research | public | 67 |
 | NIST National Vulnerability Database | database | public | 44 |
-| Fortinet PSIRT | vendor_advisory | public | 25 |
 | CISA and FBI | government_advisory | public | 22 |
+| Fortinet PSIRT | vendor_advisory | public | 21 |
 | Nokia PSIRT | vendor_advisory | public | 17 |
-| Palo Alto Networks PSIRT | vendor_advisory | public | 13 |
 | FBI and CISA | government_advisory | public | 12 |
 | Sysdig | vendor_research | public | 12 |
+| NSA, CISA and FBI | government_advisory | public | 11 |
 | CISA, NSA, FBI and international partners | government_advisory | public | 10 |
-| NSA, CISA and FBI | government_advisory | public | 10 |
-| CISA, FBI and NSA | government_advisory | public | 9 |
+| Palo Alto Networks PSIRT | vendor_advisory | public | 10 |
+| CISA, FBI and NSA | government_advisory | public | 8 |
 | Cisco Talos | vendor_research | public | 8 |
 | Datadog Security Labs | vendor_research | public | 8 |
 | watchTowr Labs | independent_research | public | 8 |
@@ -85,6 +85,7 @@ and on this bundle's prose. Cite a restricted source as its title states it and 
 | CISA, FBI and Department of Health and Human Services | government_advisory | public | 2 |
 | CISA, FBI and Multi-State Information Sharing and Analysis Center | government_advisory | public | 2 |
 | Cyber security authorities of Australia, Canada, New Zealand, the United Kingdom and the United States | government_advisory | public | 2 |
+| FBI, CISA and HHS | government_advisory | public | 2 |
 | FBI, CISA and Multi-State Information Sharing and Analysis Center | government_advisory | public | 2 |
 | FBI, CISA, NSA and international partners | government_advisory | public | 2 |
 | MITRE | independent_research | public | 2 |
@@ -122,7 +123,6 @@ and on this bundle's prose. Cite a restricted source as its title states it and 
 | FBI, CISA and Australian Cyber Security Centre | government_advisory | public | 1 |
 | FBI, CISA and Department of Health and Human Services | government_advisory | public | 1 |
 | FBI, CISA and Department of the Treasury | government_advisory | public | 1 |
-| FBI, CISA and HHS | government_advisory | public | 1 |
 | FBI, CISA and US Department of Defense Cyber Crime Center | government_advisory | public | 1 |
 | FBI, CISA and US Department of the Treasury | government_advisory | public | 1 |
 | FBI, CISA, Department of the Treasury and Financial Crimes Enforcement Network | government_advisory | public | 1 |

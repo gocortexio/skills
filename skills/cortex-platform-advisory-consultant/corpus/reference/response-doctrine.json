@@ -1,7 +1,8 @@
 {
- "version": "2026-08-08",
- "attribution": "Distilled from public government advisories. Each entry cites the advisory it came from; the text is this corpus's summary, not the advisory's wording.",
- "note": "Response doctrine: the sequencing and scoping rules that decide whether a response works, as distinct from the per-technique controls in d3fend-countermeasures.json. D3FEND answers what control to apply; this answers in what order, how widely, and what not to do first. Every entry was already in the corpus, encoded as a prose assertion inside a computed marker where it could not be queried; this file is its proper home. applies_to is matched against a finding's product_class and impact, with class_prefix matching on the part before the dot.",
+ "version": "2026-09-30",
+ "attribution": "Distilled from public government advisories. Each entry cites the advisories that say it; the rule and detail are this corpus's summary, not the advisory's wording, and each source's `supports` is the advisory's own words.",
+ "note": "Response doctrine: the sequencing and scoping rules that decide whether a response works, as distinct from the per-technique controls in d3fend-countermeasures.json. D3FEND answers what control to apply; this answers in what order, how widely, and what not to do first. Every entry was already in the corpus, encoded as a prose assertion inside a computed marker where it could not be queried; this file is its proper home. applies_to is matched against a finding's product class and impact, with class_prefix matching on the part before the dot.",
+ "supports_note": "Each source carries `supports`: the words of that advisory, one passage or a list of them, read from it on 2026-09-30 and with typographic quotes made ASCII, that carry the claim the entry cites it for. An entry whose claim no source's words carry is citing an advisory that does not say it, which is how the appliance-rebuild rule came to cite an espionage advisory with no word about a factory reset in it. Where a rule's ordering is this corpus's own reading of what the advisories report, its detail says so.",
  "stage_order_note": "The incident lifecycle runs prepare, collect, contain, eradicate, recover. stage_order below is deliberately NOT that: it is the order to READ them in once something has been found, so preparation comes last. Preparation doctrine is not less important, it is just the part that cannot be actioned during the incident, and putting it first buried the appliance-rebuild rule under four items nobody can act on today.",
  "stage_order": ["collect", "contain", "eradicate", "recover", "prepare"],
  "doctrine": {
@@ -13,7 +14,9 @@
    "sources": [{
     "publisher": "Cyber security authorities of Australia, Canada, New Zealand, the United Kingdom and the United States",
     "title": "Technical Approaches to Uncovering and Remediating Malicious Activity",
-    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-245a"}]
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-245a",
+    "supports": ["Next, implement mitigation steps that avoid tipping off the adversary that their presence in the network has been discovered.",
+                 "ensure all communications are held out-of-band"]}]
   },
   "doc-out-of-band-coordination": {
    "stage": "prepare",
@@ -23,27 +26,38 @@
    "sources": [{
     "publisher": "Cyber security authorities of Australia, Canada, New Zealand, the United Kingdom and the United States",
     "title": "Technical Approaches to Uncovering and Remediating Malicious Activity",
-    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-245a"}]
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-245a",
+    "supports": "Communicating over the same network as the incident response is being conducted (ensure all communications are held out-of-band)"}]
   },
   "doc-containment-assumes-adversary-watching": {
    "stage": "contain",
    "rule": "Plan containment on the assumption the adversary is watching, and execute the actions close to simultaneously rather than gradually.",
-   "detail": "In the Albania intrusion the encryptor ran, defenders identified it and began responding, and the actors then deployed disk wiping malware. The response itself was the trigger for escalation. A partial or gradual containment can therefore be worse than none: it announces the response without removing the adversary's ability to act.",
+   "detail": "In the Albania intrusion the encryptor ran, defenders identified it and began responding, and the actors then deployed disk wiping malware. The response itself was the trigger for escalation. The agencies' advice against a state actor holding long-term access is the same lesson from the other side: learn the full extent of the access, then remove it with simultaneous measures, because partial response actions may alert the actors and jeopardise eviction. A partial or gradual containment can therefore be worse than none: it announces the response without removing the adversary's ability to act.",
    "applies_to": {"always": true},
    "sources": [{
     "publisher": "FBI and CISA",
     "title": "Iranian State Actors Conduct Cyber Operations Against the Government of Albania",
-    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-264a"}]
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-264a",
+    "supports": "When network defenders identified and began to respond to the ransomware activity, the cyber actors deployed a version of ZeroCleare destructive malware."}, {
+    "publisher": "CISA, NSA, FBI and international partners",
+    "title": "Countering Chinese State-Sponsored Actors Compromise of Networks Worldwide to Feed Global Espionage System",
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa25-239a",
+    "supports": "simultaneous measures to remove them may be necessary to achieve a complete and lasting eviction. Partial response actions may alert the actors to an ongoing investigation and jeopardize the ability to conduct full eviction."}]
   },
   "doc-verify-offline-backup-before-containment": {
    "stage": "contain",
    "rule": "Verify an offline, isolated backup before visible containment begins.",
-   "detail": "Where escalation to destruction is a live possibility, the backup is the thing that decides whether the escalation matters. Verifying it after containment has started is verifying it after the adversary has been given a reason to destroy it. Backup reachability from production credentials is the control that decides whether this is possible at all.",
+   "detail": "Where escalation to destruction is a live possibility, the backup is the thing that decides whether the escalation matters. The agencies' ransomware guidance is to keep offline, physically disconnected backups, to test restoration regularly, and to separate the account that manages backups so that a compromised one cannot degrade them. The ordering is this corpus's reading of the Albania escalation: verifying the backup after containment has started is verifying it after the adversary has been given a reason to destroy it.",
    "applies_to": {"impact": ["ransomware_deployment", "dos", "loss_of_control"]},
    "sources": [{
     "publisher": "FBI and CISA",
     "title": "Iranian State Actors Conduct Cyber Operations Against the Government of Albania",
-    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-264a"}]
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-264a",
+    "supports": "When network defenders identified and began to respond to the ransomware activity, the cyber actors deployed a version of ZeroCleare destructive malware."}, {
+    "publisher": "CISA, FBI, NSA, Australian Cyber Security Centre and NCSC-UK",
+    "title": "2021 Trends Show Increased Globalized Threat of Ransomware",
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-040a",
+    "supports": "Maintain offline (i.e., physically disconnected) backups of data, and regularly test backup and restoration."}]
   },
   "doc-communications-plan-for-attacker-publication": {
    "stage": "prepare",
@@ -53,7 +67,8 @@
    "sources": [{
     "publisher": "FBI and CISA",
     "title": "Iranian State Actors Conduct Cyber Operations Against the Government of Albania",
-    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-264a"}]
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-264a",
+    "supports": "HomeLand Justice claimed credit for the cyber attack on Albanian government infrastructure. On July 23, 2022, Homeland Justice posted videos of the cyber attack on their website."}]
   },
   "doc-communications-plan-for-direct-third-party-contact": {
    "stage": "prepare",
@@ -63,27 +78,35 @@
    "sources": [{
     "publisher": "FBI, CISA, Department of the Treasury and Financial Crimes Enforcement Network",
     "title": "Karakurt Data Extortion Group",
-    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-152a"}]
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-152a",
+    "supports": ["Karakurt victims have reported extensive harassment campaigns by Karakurt actors in which employees, business partners, and clients receive numerous emails and phone calls",
+                 "payment deadlines typically set to expire within a week of first contact with the victim"]}]
   },
   "doc-remediation-scope-all-exposed-access": {
    "stage": "eradicate",
    "rule": "Scope remediation to every credential and access path the intrusion could have exposed, not to the observed activity of the group identified.",
-   "detail": "One group transferred its victims to another group's infrastructure after announcing a shutdown, and another sold access to victim networks, enabling follow-on attacks by unrelated actors. A group announcing a shutdown does not mean its victims are safe; it may mean they have been handed on. This is also the agencies' stated reason attribution is unreliable in this ecosystem.",
+   "detail": "One group transferred its victims to another group's infrastructure after announcing a shutdown, and another sold access to victim networks, enabling follow-on attacks by unrelated actors. A group announcing a shutdown does not mean its victims are safe; it may mean they have been handed on. The agencies also note that the ecosystem's networks of developers, affiliates and freelancers complicate attribution.",
    "applies_to": {"always": true},
    "sources": [{
     "publisher": "CISA, FBI, NSA, Australian Cyber Security Centre and NCSC-UK",
     "title": "2021 Trends Show Increased Globalized Threat of Ransomware",
-    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-040a"}]
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-040a",
+    "supports": "after announcing its shutdown, the BlackMatter ransomware group transferred its existing victims to infrastructure owned by another group"}]
   },
   "doc-appliance-rebuild-not-factory-reset": {
    "stage": "eradicate",
    "rule": "On a compromised network appliance, plan for replacement or rebuild from known-good media rather than a factory reset.",
-   "detail": "Implants have been observed surviving factory reset and firmware upgrade on edge appliances. Where that applies, patching is not a fix and neither is the vendor's own reset path: the device has to be replaced or rebuilt from media that never touched the compromised device. This changes what remediation means rather than what detection means.",
+   "detail": "CISA showed in lab research on one vendor's gateway that an actor holding root on the appliance could keep persistence through a factory reset and an appliance upgrade while deceiving the vendor's integrity checker, and the agencies advised assuming that a reset device may still carry rootkit-level persistence. Where that applies, patching is not a fix and neither is the vendor's own reset path: the device has to be replaced or rebuilt from media that never touched the compromised device, which is what three victims of a later appliance intrusion did. This changes what remediation means rather than what detection means.",
    "applies_to": {"class_prefix": ["network"], "product_class": ["security.email_gateway", "ot.protocol_gateway"]},
    "sources": [{
-    "publisher": "CISA, NSA, FBI and international partners",
-    "title": "Countering Chinese State-Sponsored Actors Compromise of Networks to Feed Global Espionage System",
-    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa25-239a"}]
+    "publisher": "CISA, FBI, MS-ISAC, ACSC, NCSC-UK, Canadian Centre for Cyber Security, NCSC-NZ and CERT NZ",
+    "title": "Threat Actors Exploit Multiple Vulnerabilities in Ivanti Connect Secure and Policy Secure Gateways",
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-060b",
+    "supports": "a cyber threat actor may be able to maintain root level persistence despite issuing factory resets and appliance upgrades"}, {
+    "publisher": "CISA and FBI",
+    "title": "Threat Actors Chained Vulnerabilities in Ivanti Cloud Service Applications",
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa25-022a",
+    "supports": "To remediate exploitation, all three organizations replaced the virtual machines with clean and upgraded versions."}]
   },
   "doc-check-published-recovery-tooling": {
    "stage": "recover",
@@ -93,7 +116,8 @@
    "sources": [{
     "publisher": "CISA and FBI",
     "title": "ESXiArgs Ransomware Virtual Machine Recovery Guidance",
-    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-039a"}]
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-039a",
+    "supports": "the ransomware encrypts configuration files associated with the VMs; it does not encrypt flat files"}]
   },
   "doc-emergency-plan-names-degraded-states": {
    "stage": "prepare",
@@ -103,7 +127,8 @@
    "sources": [{
     "publisher": "CISA",
     "title": "Ransomware Impacting Pipeline Operations",
-    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-049a"}]
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-049a",
+    "supports": "the full range of potential impacts that cyberattacks pose to operations, including loss or manipulation of view, loss or manipulation of control, and loss of safety"}]
   },
   "doc-investigation-capability-portfolio": {
    "stage": "prepare",
@@ -113,7 +138,8 @@
    "sources": [{
     "publisher": "Cyber security authorities of Australia, Canada, New Zealand, the United Kingdom and the United States",
     "title": "Technical Approaches to Uncovering and Remediating Malicious Activity",
-    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-245a"}]
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-245a",
+    "supports": "Leverage large datasets to calculate normal traffic patterns in both network and host systems."}]
   },
   "doc-retention-must-outlast-dwell-time": {
    "stage": "prepare",
@@ -123,7 +149,8 @@
    "sources": [{
     "publisher": "Cyber security authorities of Australia, Canada, New Zealand, the United Kingdom and the United States",
     "title": "Technical Approaches to Uncovering and Remediating Malicious Activity",
-    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-245a"}]
+    "url": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-245a",
+    "supports": "Retain log data for at least one year."}]
   }
  }
 }

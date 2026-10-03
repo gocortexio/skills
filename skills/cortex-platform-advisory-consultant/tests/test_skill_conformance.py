@@ -22,14 +22,13 @@ because every check in this bundle read the file as text. The description was al
 characters against a 1024 limit nothing measured. Both were found by running the validator
 for the first time, not by review.
 """
+import json
 import os
 import re
 import subprocess
 import sys
 
 import pytest
-
-yaml = pytest.importorskip("yaml")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -44,6 +43,9 @@ VALIDATOR_CANDIDATES = [
 
 
 def frontmatter():
+    # Skipped here rather than at import, so the tests below that read SKILL.md as text still
+    # run on a machine with no YAML parser.
+    yaml = pytest.importorskip("yaml")
     with open(os.path.join(ROOT, "SKILL.md"), encoding="utf-8") as handle:
         text = handle.read()
     assert text.startswith("---"), "SKILL.md must open with YAML frontmatter on line 1"
@@ -123,3 +125,57 @@ def test_against_the_real_validator_when_it_is_on_this_machine():
              if l.strip() and "Unexpected key(s) in SKILL.md frontmatter: version" not in l]
     assert not noise, "the published validator reports more than the declared divergence:\n" \
         + "\n".join(noise)
+
+
+def _rule(number):
+    """One numbered rule under "Rules that are not negotiable", with its line breaks folded."""
+    with open(os.path.join(ROOT, "SKILL.md"), encoding="utf-8") as handle:
+        text = handle.read()
+    start = text.index("\n{}. **".format(number))
+    end = text.index("\n{}. **".format(number + 1), start)
+    return " ".join(text[start:end].split())
+
+
+def _vocab():
+    with open(os.path.join(ROOT, "corpus", "schema", "vocab.json"), encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def test_rule_nine_heads_the_answer_by_the_locus_vocabulary():
+    """Rule 9 once defined three planes by a technology's relationship to the attack.
+
+    CONTROL was "the appliance as a reachable service", DATA "the thing that SEES", its
+    telemetry. No telemetry-source block derives DATA and every finding prints one of six
+    loci, so a model following the rule either re-bucketed findings against their printed
+    LOCUS or dropped the ENDPOINT, SUPPLY and ORGANISATION findings with no heading to go
+    under. The rule now heads by the vocabulary and quotes it; the relationship is a
+    `what.role`, asked for with `--role`.
+    """
+    rule = _rule(9)
+    vocab = _vocab()
+    missing = [locus for locus in vocab["locus"] if locus not in rule]
+    assert not missing, "rule 9 does not name the loci {}".format(missing)
+    for phrase in ("thing that SEES", "thing that sees", "reachable service"):
+        assert phrase not in rule, "rule 9 defines a plane by relationship again: " + phrase
+    glosses = dict(re.findall(r"\b(CONTROL|MANAGEMENT|DATA) is \"([^\"]+)\"", rule))
+    assert set(glosses) == {"CONTROL", "MANAGEMENT", "DATA"}, (
+        "rule 9 must gloss CONTROL, MANAGEMENT and DATA in the vocabulary's words: " + str(glosses))
+    for locus, gloss in glosses.items():
+        assert gloss in vocab["locus"][locus], (
+            "rule 9's {} gloss {!r} is not the vocabulary's wording".format(locus, gloss))
+    # LOCUS_ANALOGUE_ONLY since the 2026-09-30 validation: a plane held only by other
+    # products' analogues was headed as though the subject's evidence sat there.
+    for line in ("LOCUS_ELIGIBLE", "LOCUS_ABSENT", "LOCUS_ANALOGUE_ONLY", "--per-locus"):
+        assert line in rule, "rule 9 no longer cites " + line
+    roles = re.search(r"--role ([a-z_,]+)", rule)
+    assert roles, "rule 9 no longer says how to ask for the non-victim relationships"
+    unknown = set(roles.group(1).split(",")) - set(vocab["role"])
+    assert not unknown, "rule 9 passes --role values the vocabulary lacks: {}".format(unknown)
+
+
+def test_the_locus_table_quotes_the_vocabulary():
+    """A paraphrased table is how a second definition of the planes starts."""
+    with open(os.path.join(ROOT, "references", "locus-and-coverage.md"), encoding="utf-8") as handle:
+        rows = dict(re.findall(r"^\| `([A-Z]+)` \| (.+?) \|$", handle.read(), re.M))
+    assert rows == _vocab()["locus"]
+

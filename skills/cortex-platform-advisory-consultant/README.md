@@ -26,7 +26,7 @@ Never feed data into a third-party AI system that has not been internally approv
 
 - `SKILL.md` -- entry point for a host that supports the on-disk skill convention.
 - `corpus/` -- the knowledge store. `corpus/README.md` is the contract for adding to it.
-- `scripts/consult.py` -- the consultation. Emits a fixed, machine-readable block per finding, ranked by criticality or by gap against what the caller already covers.
+- `scripts/consult.py` -- the consultation. Emits a fixed, machine-readable block per finding, ranked by criticality or by gap against what the caller already covers, then the exposure records naming the technology and the library patterns of its class, each in blocks of their own.
 - `scripts/advise.py` -- answers another session's rule-design consult in one call: corroboration, observation, logic, caveat, telemetry and gaps per pattern.
 - `scripts/query.py` -- free-text lookup over the corpus, brief by default.
 - `scripts/emit_xql.py` -- the rule-authoring handoff for a single record. The XQL it prints is a skeleton for inspection, not a rule.
@@ -47,7 +47,7 @@ Records drawn from licensed sources carry `where.disclosure: "restricted"`, an a
 
 ## Status
 
-Version 0.40.2. The corpus holds 1,151 records and 475 patterns, and the validator reports no problems against it. Consultation, lookup, gap ranking and the single-record XQL handoff all work, and every finding carries a LOCUS saying where it sits.
+Version 0.44.0. The corpus holds 1,142 records and 475 patterns, and the validator reports no problems against it. Consultation, lookup, gap ranking and the single-record XQL handoff all work, and every finding carries a LOCUS saying where it sits.
 
 Corpus population continues on the maintainer side, but the bundle answers questions today rather than waiting on it. The XQL that `scripts/emit_xql.py` prints remains a skeleton for a rule-authoring skill to consume, deliberately: this bundle does not write rules.
 
@@ -61,11 +61,11 @@ the patterns, the scripts and the prose.
 Two shipped reference files are other people's work, reproduced under their own terms rather than
 ours, and each carries its notice in its own `attribution` field:
 
-- `corpus/reference/attack-techniques.json` -- MITRE ATT&CK, version 19.1, under the ATT&CK Terms
+- `corpus/reference/attack-techniques.json` -- MITRE ATT&CK, version 19.2, under the ATT&CK Terms
   of Use. "(c) 2026 The MITRE Corporation. This work is reproduced and distributed with the
   permission of The MITRE Corporation. ATT&CK(R) is a registered trademark of The MITRE
   Corporation."
-- `corpus/reference/d3fend-countermeasures.json` -- MITRE D3FEND, version 1.5.0, under the MIT
+- `corpus/reference/d3fend-countermeasures.json` -- MITRE D3FEND, version 1.6.0, under the MIT
   Licence, "Copyright (c) 2022 The MITRE Corporation". MIT requires its copyright and permission
   notices to travel with every copy, so the full licence text ships in that file's `licence_text`
   field.
@@ -74,15 +74,18 @@ Two public detection-rule corpora are not shipped, but patterns in this bundle a
 them or measured against them, and both carry terms of their own:
 
 - `SigmaHQ/sigma`, under the Detection Rule License 1.1. 36 patterns name it in `derived_from` and
-  292 in `external_corroboration.sources`.
-- `splunk/security_content`, under Apache 2.0, in the same 36 and 292 patterns.
+  443 in `external_corroboration.sources`.
+- `splunk/security_content`, under Apache 2.0. The same 36 name it in `derived_from`, and 432 in
+  `external_corroboration.sources`.
 
 No rule text from either is reproduced here. What is carried is the fact that a comparable
 detection exists upstream, which is why the corroboration is a count and a citation rather than a
 copy.
 
 `corpus/reference/response-doctrine.json` is distilled from public government advisories and each
-entry cites the advisory it came from.
+entry cites the advisories that say it, quoting the words that do.
+`corpus/reference/advisory-identifiers.json` carries only the CVE identifiers each CISA advisory
+page names, and no advisory text.
 
 Stated here as well as in the data because a reader deciding whether to install reads this file and
 does not open a 545 KB JSON. A blanket licence declaration that silently covers someone else's

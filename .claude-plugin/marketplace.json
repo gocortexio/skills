@@ -7,12 +7,17 @@
   "plugins": [
     {
       "name": "gocortex-skills",
-      "version": "3.0.0",
-      "description": "GoCortexIO skill bundles for the Palo Alto Networks Cortex Platform: a phased content-pack harness plus instrument bundles for XDM modelling rules, correlation rules, playbooks, and threat-advisory consultation.",
+      "version": "3.1.0",
+      "description": "GoCortexIO skill bundles for the Palo Alto Networks Cortex Platform.",
+      "author": {
+        "name": "GoCortexIO"
+      },
       "source": "./",
       "strict": false,
       "license": "AGPL-3.0-or-later",
       "homepage": "https://github.com/gocortexio/skills",
+      "repository": "https://github.com/gocortexio/skills",
+      "category": "security",
       "keywords": [
         "cortex",
         "xsiam",
@@ -22,10 +27,8 @@
         "datamodel",
         "security",
         "siem",
-        "correlation",
-        "playbook",
         "detection-engineering",
-        "threat-intelligence"
+        "triage"
       ],
       "skills": [
         "./skills/cortex-platform-xdm-author",

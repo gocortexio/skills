@@ -185,9 +185,10 @@
   "file_path": "Full or partial filesystem path",
   "file_name": "File name only",
   "file_extension": "Extension without the dot",
-  "file_hash": "MD5, SHA1 or SHA256",
+  "file_hash": "MD5, SHA1 or SHA256, one digest type per marker",
   "registry_key": "Registry key path",
   "registry_value_name": "Registry value name under a key",
+  "registry_data": "Registry value data, what a value under a key holds",
   "domain": "Fully qualified domain or DNS suffix",
   "url_path": "URL path or query substring",
   "http_header": "HTTP header name or value shape",
@@ -207,13 +208,18 @@
   "software_version": "Product build or version string",
   "cloud_operation": "Cloud or SaaS audit operation name",
   "computed": "A derived condition requiring computation rather than a field lookup; expr is mandatory",
-  "event_type": "Normalised event type or operation sub-type",
+  "event_type": "Event type or operation sub-type, as the source writes it, or flagged normalised where it is this corpus's word for the event",
   "event_outcome": "Success, failure or other outcome value",
-  "zone": "Network zone or segment name on either side of the session",
+  "zone": "Network zone or segment name on either side of the session, flagged normalised where it is a site's own name for the zone",
   "hostname": "Host or device name",
   "http_status": "HTTP response status code",
   "content_type": "MIME or content type",
   "dns_record_type": "DNS query record type"
+ },
+ "normalised_marker_types": {
+  "_comment": "The marker types whose value may be this corpus's own word rather than a literal any source writes. Such a marker carries normalised: true, and emit_xql.py prints it as a REQUIRES comment naming its field, never as a live clause: six filter=complete alert blocks tested xdm.event.type = \"integrity_check\", xdm.event.operation_sub_type = \"account_create\" or xdm.source.zone = \"dmz\", which no source writes, and a filter that can never match reads as a true negative. validate.py refuses the flag on any other type, on a marker bound to an XDM_CONST enum (a member is a real value), and an unflagged marker of these types holding a word another marker flags.",
+  "event_type": "A word naming the kind of event (integrity_check, configuration_change, account_create) where the source's own event name or code differs by product",
+  "zone": "A zone name (dmz, internal, ot, workstation), which each site defines for itself"
  },
  "rule_shape": {
   "single_event": "One event matching the markers is enough; a filter",

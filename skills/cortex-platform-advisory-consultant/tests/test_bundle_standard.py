@@ -59,6 +59,7 @@ OVER_STANDARD = {}
 PROJECT_BUNDLES = (
     "cortex-content-pack-go-again",
     "cortex-platform-advisory-consultant",
+    "cortex-platform-agentic-response",
     "cortex-platform-correlation-author",
     "cortex-platform-playbook-author",
     "cortex-platform-xdm-author",

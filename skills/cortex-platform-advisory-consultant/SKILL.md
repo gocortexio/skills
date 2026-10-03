@@ -1,7 +1,7 @@
 ---
 name: cortex-platform-advisory-consultant
-description: Consult on what a vendor technology has historically been caught up in, what to detect as a result, and what to do about it once found. Answers three questions from a corpus of 1,151 threat advisory records joined to MITRE ATT&CK and D3FEND. One, scoping -- "I run this technology, what should I worry about" -- which works even when the corpus has never heard of the product. Two, rule design -- "here are the patterns or techniques I am considering, what does the corpus say". Three, coverage -- "what should I build that I have not got", ranked by gap against what the caller already collects. Answers cover the management, control and data planes, not only the plane the ranking favours. Use whenever someone names a firewall, VPN, EDR, cloud platform, OT device or any product they run and asks what to worry about, what to detect, what use cases to build, or where coverage is thin.
-version: 0.40.2
+description: Consult on what a vendor technology has historically been caught up in, what to detect as a result, and what to do about it once found. Answers three questions from a corpus of 1,142 threat advisory records joined to MITRE ATT&CK and D3FEND. One, scoping -- "I run this technology, what should I worry about" -- which works even when the corpus has never heard of the product. Two, rule design -- "here are the patterns or techniques I am considering, what does the corpus say". Three, coverage -- "what should I build that I have not got", ranked by gap against what the caller already implements. Answers cover the management, control and data planes, not only the plane the ranking favours. Use whenever someone names a firewall, VPN, EDR, cloud platform, OT device or any product they run and asks what to worry about, what to detect, what use cases to build, or where coverage is thin.
+version: 0.44.0
 license: AGPL-3.0-or-later
 ---
 
@@ -12,7 +12,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # cortex-platform-advisory-consultant
 
-The current version is 0.40.2; the per-version change history lives in [CHANGELOG.md](CHANGELOG.md).
+The current version is 0.44.0; the per-version change history lives in [CHANGELOG.md](CHANGELOG.md).
 
 
 Somebody names a technology they run. This skill returns what that technology, its
@@ -59,27 +59,30 @@ that exists precisely so it never has to be summarised.
 Scope-time and design-time are different questions and take different scripts. A caller who
 has a vendor and a product and no pattern ids yet wants `consult.py`: it resolves the product
 against `corpus/schema/aliases.json` and returns everything the corpus holds for that class.
-Handing the same words to `advise.py` returns a single token-overlap guess, because
-`advise.py` selects and does not resolve.
+Handing the same words to `advise.py` returns up to three token-overlap guesses per phrase,
+because `advise.py` selects and does not resolve.
 
-**Pass `--have` with whatever telemetry you collect**, to either script. Without it every
-`DATA_GAP` comes back `UNASSESSED`, which is not the same answer as "no gap".
+**Pass `--have` with the telemetry you collect**, as `evidence_type` values from
+`corpus/schema/vocab.json`, to either script. Without it every `DATA_GAP` comes back
+`UNASSESSED`, which is not the same answer as "no gap"; any other value is refused and named
+in `DECLARED_TELEMETRY_REJECTED`.
 
 **Read the echo before you read a finding.** Both scripts state what they did with the
 request, because a guess is returned in the same confident format as an exact match:
 
 - `consult.py` prints `RESOLVED_TO:` in its header. It can resolve wider than you asked:
   "I have a Cisco firewall" resolves to `vendors=Cisco | classes=network.firewall`, and the
-  class is what carries the lesson across vendors. Until 0.29.0 it also returned
-  `vendors=Cisco, Sophos | products=Firewall`, because `firewall` is a product alias for a
-  Sophos appliance and any word in a question could resolve as a product name wherever it
-  appeared. That was a second vendor the caller never named, and this page documented it as
-  intended behaviour.
+  class is what carries the lesson across vendors. A vendor or product you did not name is
+  the first thing to check; `references/resolution.md` has the ones that once resolved
+  falsely, and one this page documented as intended.
 - `advise.py` prints a `### SHAPE:` banner per group and `MATCH_BASIS:` per pattern.
   `selected exactly by pattern id` and `selected exactly by ATT&CK id` mean you got what you
   named. `free-text overlap on <tokens> (score N) - VERIFY THIS IS THE RIGHT PATTERN BEFORE
   CITING IT` means the corpus ranked a guess for you. Nothing emits a line beginning
-  `SELECTION:`; that text is the tail of the `### SHAPE:` banner.
+  `SELECTION:`; that text is the tail of the `### SHAPE:` banner. A parent `--attack` id also
+  selects its sub-techniques and a revoked one is answered as MITRE's replacement would be,
+  each with its own `MATCH_BASIS`; `ATTACK_REQUESTED` says what became of every id, and
+  `SHAPE_RESULT` what each free-text shape added.
 - `advise.py` also prints `FINDINGS: N pattern(s) returned` and a `SELECTED_BY:` breakdown
   of that total across exact pattern id, exact ATT&CK id and free-text guess. `FINDINGS` is
   how many patterns are printed below, so it is the count to trust; the trailing `across N
@@ -94,98 +97,101 @@ nothing else in the output tells them apart.
 **When the corpus does not know your technology by name, do not stop.** 73% of a real
 integration library resolves to zero records here, so an unresolved name is the normal case,
 not the exceptional one -- and the product *class* almost always holds findings when the
-product name holds none. `consult.py` answers this in three labelled modes and prints which
-one it used on a `RESOLUTION:` line:
+product name holds none. `consult.py` answers in labelled modes and prints which one it
+used on a `RESOLUTION:` line:
 
 | mode | when | what it means |
 |---|---|---|
-| `product` | a vendor or product matched | the corpus holds records naming this technology |
+| `product` | an observation names the product, or the vendor when no product was named | the tight case |
+| `VENDOR-LEVEL` | observations name the vendor, none the product | findings are the vendor's other lines or class analogues |
 | `CLASS-LEVEL (inferred)` | only a class matched | answering on product class alone |
 | `CLASS-LEVEL (declared via --as)` | you asserted the class | same, and you chose it |
-| `NAME_WITHOUT_RECORDS` | a name resolved, no record is about it | every finding came from tag or prose; `identity=0` |
+| `NAME_WITHOUT_OBSERVATIONS` | a name resolved, no observation is about it | every finding came from tag or prose |
+| `EXPOSURES_ONLY` | only exposure records name it | no findings; `EXPOSURE` blocks, exits 0; re-ask with `--as` |
+| `mechanism` | nothing resolved, words matched | see the response contract |
 | `UNRESOLVED` | nothing matched | exits 1, and prints how to re-ask |
+
+`references/resolution.md` says how each mode is decided.
 
 ```bash
 python3 scripts/consult.py "Portkey"                       # UNRESOLVED, tells you what to do
 python3 scripts/consult.py "Portkey" --as app.ai_platform  # 32 findings
 python3 scripts/consult.py "Portkey" \
-  --as app.ai_platform,network.proxy,security.pam,cloud.saas   # 119, all six loci filled
+  --as app.ai_platform,network.proxy,security.pam,cloud.saas   # 116, all six loci filled
 ```
 
 **Name every class the technology behaves as.** The measurement above is the argument: one
-class matched 32 findings and left MANAGEMENT, DATA and ORGANISATION empty; naming what the
-thing also *is* -- a proxy, a credential store, a SaaS app -- matched 119 and filled all six
-loci. A single class is usually an under-description.
+class matched 32 findings and left ORGANISATION empty; naming what the thing also *is* -- a
+proxy, a credential store, a SaaS app -- matched 116 and filled all six loci. A single class
+is usually an under-description.
 
-Both class-level modes print a `CLASS_LEVEL_WARNING` and it must survive into whatever you
-write. A class-level answer says what this *kind* of technology has been caught up in, and
-passing it on as product intelligence is the one failure here worse than an empty answer.
+Every mode but `product` and `mechanism` prints a `CLASS_LEVEL_WARNING`, worded for the
+mode, and it must survive into whatever you write. A class-level answer says what this
+*kind* of technology has been caught up in, and passing it on as product intelligence is the
+one failure here worse than an empty answer.
 
 **When the corpus has nothing at all**, say so and report the term back here.
-`consult.py` exits 1 when nothing matched and 2 when `--rank-by gap` was asked for without
-`--covered`, so an empty answer is distinguishable from a failure; `advise.py` exits 1 when
-nothing was selected and says which path came back empty, since an id that does not exist is
-a different problem from a guess that missed; `query.py` exits 0 either way. An empty consultation is far more often a term missing from `corpus/schema/aliases.json`
-than a technology the corpus has never seen, so name the term you tried. That is a corpus gap
-and it is fixable.
+`consult.py` exits 1 when nothing matched, no finding, exposure or library pattern, and 2
+when `--rank-by gap` was asked for without `--covered` or `--role` names an unknown role,
+so an empty answer is distinguishable from a failure; `advise.py` exits 1 when nothing was
+selected and says which path came back empty, since an id that does not exist is a
+different problem from a guess that missed; `query.py` exits 0 either way. All three exit 2
+when a count flag is below its floor (`--limit` and `--per-locus` 1, `--exposure-limit` and
+`--pattern-limit` 0, `--per-shape` 1) rather than reading it as a slice from the end. An
+empty consultation is far more often a term missing from `corpus/schema/aliases.json` than a
+technology the corpus has never seen, so name the term you tried. That is a corpus gap and
+it is fixable.
 
 ## The response contract
 
 **You can ask by mechanism, not only by technology.** `consult.py "phishing"` reaches 78
-findings and `"prompt injection"` 99; before 0.22.0 both returned nothing, because the
+findings and `"prompt injection"` 95; before 0.22.0 both returned nothing, because the
 resolver only searched vendor and product names. A question that resolves to no vendor but
 matches record wording is reported as `RESOLUTION: mechanism` rather than as unresolved.
 
-**Every finding carries a `MATCH_BASIS:` line saying how it was reached** -- `identity`
-(named the technology), `tag`, `name-fragment`, or `LOOSE` for a pattern-wording or prose
-match. Loose matches are ranked below tight ones and are the ones that may be about
-something else: the measurement behind this change found 31 records answering a vendor
-query they are not about, all of them via prose. They are kept and demoted rather than
-dropped, so treat a `LOOSE` finding as a lead rather than an answer.
+**Every finding carries `MATCH_TIER:` and a `MATCH_BASIS:` sentence saying how it was
+reached** -- `product` (names the product asked about), `vendor` (names the vendor, in a
+class asked about), `class` (an analogue about another product), `vendor-other-class` (the
+vendor's other product lines), `tag`, `name-fragment`, or `pattern` and `summary`, printed
+`LOOSE`. `ORDERING` groups them before the score: product and vendor, then class and
+vendor-other-class, then the rest, so a record naming your product is never outranked by a
+fresher analogue. Loose matches may be about something else: 31 records once answered a
+vendor query they are not about, all via prose. Treat a `LOOSE` finding as a lead.
 
 **`name-fragment` means a word from the question sits inside a name nothing resolved.**
-It is not `identity` and until 2026-08-27 it was reported as though it were. Asking
-`"mobile app hardening"` resolves to no vendor, product or class, and yet returned an
-Ivanti Connect Secure VPN gateway at rank 1 saying `named this technology` -- because
-`Mobile` appears inside the product name `Endpoint Manager Mobile`, and `app` inside
-`web applications`. Read the `TECHNOLOGY:` line before treating a `name-fragment` finding
-as being about your technology; roughly half of them are about something else.
+Read the `TECHNOLOGY:` line before treating such a finding as being about your technology;
+roughly half of them are about something else. `UNMATCHED_TERMS:` lists the question's words
+that reached no record, and a mechanism answer adds `MECHANISM_WARNING:` when one of them
+looks like a name, with `CANDIDATE_CLASSES:` for an `--as` re-ask.
 
-**A word in your question only names a product when it sits beside that product's vendor.**
-Ordinary words are also product names -- `runtime` is an Android product, `ios` a Cisco one,
-`web server` a Commvault one -- and until 0.29.0 any of them resolved wherever it appeared.
-Asking about "runtime application self-protection" returned `RESOLUTION: product`, claimed
-Android Runtime and Cisco IOS, and put a GeoServer deserialisation record at rank 1 of 860.
-The words listed under `ambiguous_aliases` in `corpus/schema/aliases.json` now resolve only
-within two tokens of their vendor, so `Cisco IOS` works and `iOS apps` does not. Measured
-across the alias table: 90 vendor-qualified product questions stopped resolving a second
-vendor they never named, and none lost its own subject.
-
-**A class can still resolve falsely, and a class is the bigger claim.** That gate covers
-product aliases only. `class_aliases` has none, and a wrong class sets the plane the whole
-consultation is about rather than one line of the header. Asking about "an in-app **sensor**
-reporting rooted or jailbroken devices" resolved `sensor` to `ot.field_device` until 0.30.0
-and answered a handset question with industrial field instrumentation. `sensor` and
-`instrumentation` are gone; `ran`, `relay`, `ad` and `switch` are known to still do it and
-are kept rather than deleted, because deleting them is a coverage decision nobody has made:
-only `network.switch` has no other route into its class, while the other three keep three or
-more unambiguous aliases each. `tests/test_class_aliases.py` pins all four as still
-failing, so the tripwire fires when a gate lands. **Read `RESOLVED_TO:` against the words you actually wrote.** If a class appears that
-you did not mean, name your technology explicitly or pass `--as`, and treat everything under
+**The header says which words resolved and which were refused.** `RESOLVED_BY:` follows
+`RESOLVED_TO:` and names the alias behind every vendor, product, class and sector. `GATED:`
+appears when a word matched an alias and was refused because it is also an ordinary word:
+`exchange` in "key exchange", `quantum` in "post-quantum", `IDs` in "event IDs", `ms` in
+"500 ms". Such a product word resolves only within two words of a name for its vendor or of
+an unambiguous product of that vendor, so `Cisco IOS` and `Cisco ASA and IOS` work and `iOS
+apps` does not. A class acronym (IDS, IPS, RADIUS, AD, RAN, SIM, CI) resolves only where that
+word is written in capitals, so **a consumer that lower-cases its questions loses those
+routes**. `any` is never a vendor. Words a resolved alias consumed are not searched again as
+free text, and a refused word reaches nothing it was refused as. **Read `RESOLVED_TO:` and
+`RESOLVED_BY:` against the words you actually wrote.** If a class appears that you did not
+mean, name your technology explicitly or pass `--as`, and treat everything under
 `RESOLUTION: CLASS-LEVEL (inferred)` as the guess it is labelled as.
+`references/resolution.md` has the rules, what each one fixed, and the two words (`relay`,
+`switch`) still known to resolve falsely.
 
 **The header's `MATCH_TIERS:` line is the check.** It counts the whole match set by tier
-before `--limit` truncates, so `identity=0` beside `RESOLVED_TO: vendors=- | products=- |
-classes=-` is self-consistent and a consumer can gate on it without parsing English. If
-those two ever disagree -- nothing resolved by name, yet findings claiming `identity` --
-the answer is wrong and the tally is how you see it.
+before `--limit` truncates, so `product=0, vendor=0, class=0` beside `RESOLVED_TO:
+vendors=- | products=- | classes=-` is self-consistent and a consumer can gate on it without
+parsing English. If those two ever disagree -- nothing resolved by name, yet findings
+claiming a subject tier -- the answer is wrong and the tally is how you see it.
 
 **Every finding carries a `SUPPORT:` line** saying when the source was last read and
 whether it was verified -- the axis ranking and `CORROBORATION` do not cover. Bracketed
 flags mark findings backed more weakly than the rest: `NO_READ_DATE`,
-`VERIFICATION_UNSTATED`, `SOURCE_NOT_RE-READ`, `SEED`, and
+`VERIFICATION_UNSTATED`, `SOURCE_NOT_FULLY_RE-READ`, `SEED`, and
 `NO_PUBLICATION_DATE:ranked-as-3650d`. Weigh a flagged finding accordingly rather than
-discarding it; 85% of observations carry no flag at all, so a flag means something.
+discarding it; 89% of observations carry no flag at all, so a flag means something.
 Age is reported but never flagged, because `PRIORITY_BASIS` already prints
 `days_since_published` and the ranking already decays recency.
 
@@ -244,7 +250,7 @@ which nothing did before 0.18.0:
 
 | block | answers |
 |---|---|
-| `LOCUS` + `LOCUS_SPAN` + `LOCUS_BASIS` | **where the finding sits**, and on what signal |
+| `LOCUS` + `LOCUS_SPAN` + `LOCUS_BASIS` | **where the finding sits**, and on what signal; a class the question named only appends to the span |
 | `COVERAGE` + `COVERAGE_BASIS` | whether the caller already implements it, and on what evidence |
 | `ACTION` | **what to do** |
 | `RATIONALE` | **why to do it** |
@@ -258,6 +264,11 @@ which nothing did before 0.18.0:
 | `REFERENCES` | **vendor, publisher and framework citations for code comments** |
 | `METHODOLOGY` | how to proceed when the specifics are absent |
 
+After the findings, `EXPOSURE` blocks list the exposure records naming what was asked, with
+handset records refused and counted, and `LIBRARY` blocks the patterns no record cites.
+Every key is prefixed, and neither takes a slot or clears `LOCUS_ABSENT`;
+`references/exposures.md` has the contract.
+
 ### Rules that are not negotiable
 
 1. **Ordering is computed and stated.** Most critical and most recent first, by a
@@ -266,7 +277,8 @@ which nothing did before 0.18.0:
 2. **`CAVEAT_VERBATIM` is reproduced exactly.** Never summarise it, never drop it. A
    detection handed over without its known false positive is worse than none.
 3. **`STATUS: SEED` is unconfirmed** and must be presented that way. Seed means it
-   was written from general knowledge and the source has not been re-read.
+   was written from general knowledge and not fully re-read against its source, or the
+   source was re-read and supports only part of it, which its `STATUS` line names.
 4. **Restricted sources are cited exactly as `where.title` states them.** No URL, no
    publisher, no filling the abstraction back in even when the report is
    recognisable. That is a licence condition, not a style choice.
@@ -274,43 +286,44 @@ which nothing did before 0.18.0:
    declared, that is a finding. Pass `--have` with whatever they told you they
    collect; anything missing becomes a `DATA_GAP` naming the connector to build.
    Saying nothing produces a rule that cannot fire. `--have` takes `evidence_type`
-   values, a closed list in `corpus/schema/vocab.json`; a word that is not on it is
-   accepted and then matches nothing, so translate what the caller said into that
-   vocabulary rather than passing their words through.
-6. **Say where an answer came from.** `DERIVATION` distinguishes a cited record from
-   a library pattern matched on product class alone.
+   values, a closed list in `corpus/schema/vocab.json`; any other word is refused, so
+   translate what the caller said into that vocabulary rather than passing their words
+   through.
+6. **Say where an answer came from.** `DERIVATION` on a finding is always a cited
+   record. Patterns no record cites come in `LIBRARY` blocks, matched on class alone,
+   and exposures in `EXPOSURE` blocks, as vulnerability facts with no detection logic.
+   Neither is a finding: say which one you are passing on.
 7. **An empty result is a finding about the corpus, not about the technology.** If
-   the resolver returns nothing, say the term is missing from
-   `corpus/schema/aliases.json` and offer to add it. Never let silence read as
+   the resolver returns nothing, offer to add the term to
+   `corpus/schema/aliases.json`, never a handset. Never let silence read as
    coverage.
 8. **`LOCUS_ABSENT` is reported to the caller, never swallowed.** A locus with no
-   match is a statement about this corpus and this question. It is not a statement
-   that the locus is covered, and it is not a statement that it is safe.
-9. **Answer across the MANAGEMENT, CONTROL and DATA planes, every time.** A
-   technology has more than one relationship to an attack and the caller needs all
-   three: the thing being attacked (CONTROL -- the appliance as a reachable service,
-   and as the gate users authenticate through), the thing being administered
-   (MANAGEMENT -- its console, its policy, its admin accounts), and the thing that
-   SEES (DATA -- the traffic, URL, DNS, TLS and threat telemetry it produces).
-   Name each plane as a heading and give several findings under each. Where a plane
-   is genuinely thin, say so in that plane's own words rather than omitting it.
+   eligible match (`LOCUS_ELIGIBLE`; its bullet says what did reach it) is a statement
+   about this corpus and this question. It is not a statement that the locus is covered,
+   and it is not a statement that it is safe.
+9. **Answer across the planes, every time, headed by the `LOCUS` the script printed.**
+   The headings are the six `locus` values in `corpus/schema/vocab.json`, and each finding
+   goes under the `LOCUS` it prints. Never re-judge a finding's plane: where you disagree
+   with one, say so under its printed heading rather than moving it. Always head
+   MANAGEMENT, CONTROL and DATA, and each of ENDPOINT, SUPPLY and ORGANISATION that
+   `LOCUS_ELIGIBLE` populates. In the vocabulary's words, MANAGEMENT is "Administration of
+   the subject", CONTROL is "The subject's own decisioning", in the network sense, so a
+   cloud provider's control-plane API is MANAGEMENT, and DATA is "What traverses or is
+   held". A locus in `LOCUS_ABSENT` keeps its heading and says what its bullet says reached
+   it; one in `LOCUS_ANALOGUE_ONLY` says nothing there names what was asked and names each
+   finding's own product from `TECHNOLOGY`. Give several findings under each:
+   `--per-locus 3 --limit 18`.
 
-   **The ranked output is an input to the answer, not the answer.** Criticality
-   ordering returns whatever the corpus is densest in, and density is not balance.
-   Measured on "I have a Palo Alto firewall": 143 records touch the firewall, VPN
-   gateway and proxy classes and **129 of them are `role: victim`**, so the top
-   ranked findings were almost entirely the appliance-as-target -- while the **14
-   non-victim records** (6 `control_bypassed`, 5 `inline_tool`, 2 `telemetry_source`,
-   1 `lateral_path`), the patterns readable from that firewall's own telemetry and the
-   remote-access authentication family sat below the cut and went unmentioned. The
-   caller had to ask for the two planes the ranking had buried. (Counts are over the
-   four `network.*` classes named above and move with the corpus; the ratio is the
-   point, and it has been about nine in ten victim at every size the corpus has been.)
-
-   So query the planes deliberately rather than taking the top of one ordering:
-   filter records by `what.role` for the non-victim relationships, and filter
-   patterns by `applies_to_classes` and by the `evidence_type` the technology
-   actually emits.
+   **The ranked output is an input to the answer, not the answer.** Criticality ordering
+   returns whatever the corpus is densest in, and most records touching a network
+   appliance's classes are `role: victim`, so the top of one ordering is mostly the
+   appliance as target (`references/locus-and-coverage.md` has the measurement). A
+   technology's other relationships to an attack -- the control the attacker bypassed, the
+   tool it used, the telemetry that saw it, the path it crossed -- are a `what.role`, one
+   per record, not a plane, and each such finding sits on whatever `LOCUS` it prints. Ask
+   for them with `--role control_bypassed,inline_tool,telemetry_source,lateral_path`, and
+   filter patterns by `applies_to_classes` (the `LIBRARY` blocks do) and by the
+   `evidence_type` the technology actually emits.
 
 10. **Carry the detail that makes a finding actionable.** A use-case answer names the
    pattern id, what it detects, the telemetry it needs, its ATT&CK ids, and the
@@ -323,10 +336,19 @@ which nothing did before 0.18.0:
 ### Further reading, when you need it
 
 - `references/locus-and-coverage.md` -- where a finding sits, why criticality ranking alone
-  returns a lopsided answer, and what `LOCUS_ABSENT` does and does not claim. Read it when a
+  returns a lopsided answer, what `LOCUS_ABSENT` does and does not claim, and what
+  `LOCUS_ELIGIBLE`, `RECORD_CAP`, `ROLE_FILTER` and each finding's `SLOT` say. Read it when a
   spread looks wrong or before changing how the quota picks.
 - `references/answering-another-session.md` -- the one-call contract for a rule-design consult
-  from another session. Read it when the caller is a session rather than a person.
+  from another session, and the header and finding keys both scripts print. Read it when
+  the caller is a session rather than a person.
+- `references/exposures.md` -- what the `EXPOSURE` and `LIBRARY` blocks list, their order and
+  header counts, and the handset refusal. Read it before relying on either block.
+- `references/emit-xql.md` -- what the XQL skeleton promises, its statuses and comment kinds,
+  and the `--json` handoff keys. Read it before passing a skeleton on.
+- `references/resolution.md` -- how a question's words become vendors, products and classes,
+  what `RESOLVED_BY:` and `GATED:` say, and which ordinary words are gated. Read it when
+  `RESOLVED_TO:` names something you did not ask about.
 - `corpus/README.md` -- what a record guarantees. Read it before building on one.
 
 ### When the caller asks something the script cannot answer
@@ -347,7 +369,7 @@ so **start here and expand only what the question needs** -- the full form of th
 same query costs about ten times as much to read.
 
 **The listing is capped and says so.** For the query above the header reads `20 of 38
-observation(s) and 10 of 88 exposure(s) shown, of 1151 records in corpus`, and an `OUTPUT CAPPED:` line names the flag to raise when the caps
+observation(s) and 10 of 89 exposure(s) shown, of 1142 records in corpus`, and an `OUTPUT CAPPED:` line names the flag to raise when the caps
 bite: `--limit` for observations, `--exposure-limit` for exposures, `--pattern-limit` for
 the library block, which shows six of the class's patterns by default. What a cap removes
 is the tail of the ranking, never the corpus, so raise them when the question is "what is
@@ -357,11 +379,14 @@ complete one.
 
 ```sh
 python3 scripts/query.py "I have a Cisco FW" --full     # detection logic and caveats
-python3 scripts/emit_xql.py <record-id> --json          # the rule-authoring handoff
+python3 scripts/emit_xql.py <observation-id> --json     # the rule-authoring handoff
 ```
 
+Each line ends `loci=` with the plane or planes the record sits in, and a `LOCUS over shown:`
+header line counts them and names the absent ones.
+
 The resolver prints what it resolved to. If it resolves to nothing useful, the term
-is missing from `corpus/schema/aliases.json` and belongs there.
+belongs in `corpus/schema/aliases.json`, unless it names a handset.
 
 ### Reading the result
 
@@ -370,47 +395,51 @@ is missing from `corpus/schema/aliases.json` and belongs there.
 2. Give `how.logic` in full and say what telemetry it needs.
 3. **Always repeat `caveat`.** A detection handed over without its known false
    positive is worse than none.
-4. **Never present a `status: seed` record as confirmed.** Seed means it was
-   written from general knowledge and the source has not been re-read.
+4. **Never present a `status: seed` record as confirmed.** Seed means its source was
+   not fully re-read, or supports only part of it, as `STATUS` says.
 5. **Cite restricted sources exactly as `where.title` states them, no further.**
    Those come from licensed intelligence; the abstraction is deliberate and must
    not be filled back in, even when the underlying report is recognisable.
 
 ### Library patterns
 
-A query also returns patterns that no record cites, matched on product class.
-These are derived from technique space rather than from one incident, so they carry
-no story -- but they are often the most reusable answer, and several are corroborated
-by external detection rules. Say where they came from.
+A query, and a consultation's `LIBRARY` blocks, also return patterns that no record
+cites, matched on product class.
+No incident here is behind them, so they carry no story -- but they are often the most
+reusable answer, and several are corroborated by external detection rules. Say where
+they came from: `LIBRARY_MATCH` quotes each pattern's own `derived_from`.
 
 ## What the corpus holds
 
-1,151 records in `corpus/observations/observations.jsonl`, grouped by vendor, plus 475
+1,142 records in `corpus/observations/observations.jsonl`, grouped by vendor, plus 475
 patterns. Two record types:
 
 - **`observation`** (`obs-`) -- hand-written, carries `how[]` detection logic.
-- **`exposure`** (`exp-`) -- a vulnerability fact, no detection logic. Bulk-generated
-  from the KEV catalogue so a product is findable by name. Do not add markers.
+- **`exposure`** (`exp-`) -- a vulnerability fact, no detection logic, generated from
+  the CISA KEV catalogue, ZDI, vendor PSIRT feeds and NVD, or written by hand from a joint
+  government advisory. Do not add markers.
 
 Detection logic is carried as typed `markers[]` against a closed vocabulary, plus a
 `rule_shape` (`single_event`, `threshold`, `correlation`, `sequence`, `absence`,
 `inventory`). Generic markers live on the **pattern**; source-specific literals live
 on the **record**; the handoff supplies both unmerged.
 
-`corpus/reference/d3fend-countermeasures.json` ships 272 D3FEND 1.5.0 countermeasures
+`corpus/reference/d3fend-countermeasures.json` ships 272 D3FEND 1.6.0 countermeasures
 keyed by the ATT&CK ids every finding already prints, which is what lets a consultation
-answer what to do as well as what to look for. Lists are ordered contain, eradicate,
-recover first, so a truncated answer loses the tail rather than the first step. D3FEND
-covers 212 of the 410 technique ids this corpus cites: the other 48% report the gap
+answer what to do as well as what to look for. A block takes one control per tactic in
+turn, contain, eradicate and recover first, a control D3FEND maps directly before one it
+only infers, and names the rest in `NOT_SHOWN`. D3FEND covers 222 of the 407 technique
+ids this corpus cites, 12 through a revoked predecessor: the other 45% report the gap
 rather than an empty block, because silence must not read as coverage.
 
 `corpus/reference/response-doctrine.json` holds 12 sequencing and scoping rules, matched
 on a finding's product class and impact: collect before you mitigate, plan containment
 assuming the adversary is watching, a factory reset is not eradication on a compromised
-appliance. Each cites the advisory it came from. They are read in incident order rather
-than lifecycle order, so preparation comes last, being the part nobody can action today.
+appliance. Each cites the advisories that say it, with their own words. They are read in
+incident order rather than lifecycle order, so preparation comes last, being the part
+nobody can action today.
 
-`corpus/reference/attack-techniques.json` ships 1,166 ATT&CK v19.1 techniques with the
+`corpus/reference/attack-techniques.json` ships 1,166 ATT&CK v19.2 techniques with the
 log sources each is visible in and the elements ATT&CK says to tune locally, so a
 rule author needs no separate ATT&CK copy.
 
@@ -418,7 +447,9 @@ rule author needs no separate ATT&CK copy.
 
 In scope: what has happened to a vendor, product or product class; the detection
 logic and telemetry for each; carrying a class-level lesson across vendors, so
-somebody asking about their VPN concentrator gets more than their brand.
+somebody asking about their VPN concentrator gets more than their brand. A question naming
+only a vendor is carried to the classes of that vendor's own records, printed as
+`CLASSES_FROM_VENDOR:`.
 
 Out of scope: vulnerability management (CVEs are recorded where a source named
 them; this is not a feed); attribution (actor names are repeated as sources gave
@@ -460,24 +491,28 @@ disclosure hygiene. It exits non-zero if any of them fail.
   report identifier.
 - `scripts/emit_xql.py` -- the handoff. Emits markers, ATT&CK context, D3FEND
   countermeasures and provenance. The XQL it prints is a skeleton for inspection,
-  **not a finished rule**. `--shape` narrows to one `rule_shape`. The tally on stderr
-  accounts for every candidate block as emitted, skipped for having no markers, or
-  filtered by `--shape`, and when the filter takes everything it names the shapes that
-  were actually present -- which is the answer whenever the shape name was a typo.
+  **not a finished rule**, but every line it prints as XQL is XQL: a computed or unbound
+  condition is a comment saying why, and each header says `filter=complete|partial|none`.
+  Given a consultation's `FINDING_KEY` (`<record-id>#how<n>`) it emits that one block.
+  `references/emit-xql.md` has the skeleton, the statuses and the handoff keys.
 - `scripts/advise.py` -- **answers the pattern question**, "here are the shapes I am
-  considering". Exact selection by pattern id or ATT&CK id, free text accepted but labelled
-  a guess in `MATCH_BASIS`, corroboration and observation kept separate, caveats verbatim,
-  D3FEND countermeasures per pattern, URL liveness cached. One call replaces the
-  five-to-eight hand-written searches this previously took.
+  considering". Exact selection by pattern id or ATT&CK id (a parent includes its
+  sub-techniques unless `--attack-exact`), free text accepted but labelled a guess in
+  `MATCH_BASIS`, corroboration and observation kept separate, `LOCUS_OBSERVED` beside
+  `LOCUS`, caveats verbatim, D3FEND countermeasures per pattern, URL liveness cached. One
+  call replaces the five-to-eight hand-written searches this previously took.
 - `scripts/consult.py` -- **answers the technology question**, "I run this, what should I
   worry about". Resolves the term against the alias table and prints `RESOLVED_TO`. Fixed
-  block text with stable keys, ranked by criticality and recency with the basis printed,
-  telemetry gaps reported as acquisition recommendations, D3FEND countermeasures per
-  finding. `--have` declares what the caller collects, `--covered` what they already
-  implement, `--rank-by criticality|gap` chooses the question being answered, `--today`
-  fixes the date for reproducible ranking. Exit 1 when nothing matched, exit 2 when
-  `--rank-by gap` is asked for without `--covered`, so a caller can tell an empty answer
-  from a failure.
+  block text with stable keys, grouped by match tier and then ranked by criticality and
+  recency with the basis printed, telemetry gaps reported as acquisition recommendations,
+  D3FEND countermeasures per finding. `--have` declares what the caller collects,
+  `--covered` what they already implement, `--rank-by criticality|gap` chooses the question
+  being answered, `--per-locus` and `--role` set depth per plane and the relationship,
+  `--today` fixes the date for reproducible ranking. `EXPOSURE` and `LIBRARY` blocks
+  follow the findings, capped by `--exposure-limit` and `--pattern-limit`. Exit 1 when
+  nothing matched, no finding, exposure or library pattern, exit 2 when `--rank-by gap` is
+  asked for without `--covered` or on an unknown `--role`, so a caller can tell an empty
+  answer from a failure.
 
 Run every command from the bundle root -- the directory holding `SKILL.md` -- because
 the paths above are relative to it and fail from anywhere else.

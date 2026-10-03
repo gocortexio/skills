@@ -1,50 +1,464 @@
 {
   "_comment": "How a person's words become a corpus lookup. Keys are lowercase, punctuation stripped. Each entry narrows a query to a vendor, a product, a product_class, or some combination. query.py also does substring matching against vendor and product names, so this file only needs the terms that substring matching would miss: abbreviations, slang, model numbers and product names that changed.",
-  "_ambiguous_comment": "Product aliases whose ordinary meaning competes with the product name. resolve() will not let one of these resolve on its own: the owning vendor has to appear within two tokens of it. Without that gate a caller asking about \"runtime application self-protection\" resolved to Android Runtime and Cisco IOS and was told RESOLUTION: product, with a GeoServer deserialisation record at rank 1 -- reported by a consuming content-pack session. The list is curated rather than derived, because both derivations tried are candidate generators and neither is a decider. Counting records whose vendor differs but whose prose carries the word ranks platform 85, client 31, tools 25, firewall 25 -- useful -- but also windows 17 and microsoft 11, which are not ambiguous to a caller who types them, while runtime and ios score 7 each and would sit far down the list. /usr/share/dict/words is worse: it flags confluence, chromium, outlook, asa and tomcat, and contains neither runtime nor ios. Add an entry when a caller could plausibly write the word meaning something other than the product.",
-  "_rasp_comment": "Mobile application shielding and RASP. These thirteen vendors are refused as sources, measured: zero files across 1,347 upstream packs, and a shielded binary's attestation goes to the vendor's own SaaS rather than a tenant dataset, so there is no evidence_type for it. That refusal stands and none of it is re-read. What these aliases do is different: they route the question to the classes a build-integrated SDK behaves as, so a caller who names one gets a labelled CLASS-LEVEL answer about compiling a third-party binary-rewriting dependency into a pipeline, instead of exit 1 -- or, before 0.29.0, an Android Runtime and a GeoServer record. dev.library and app.cicd reach 59 findings, 48 of them SUPPLY. security.edr fills two more loci and is deliberately not here: it derives ENDPOINT, and the handset is the one plane this corpus declines to advise on, which is the mistake this corpus made once with app.mdm and corrected. ENDPOINT and ORGANISATION come back as LOCUS_ABSENT, which is the honest answer and not a gap to paper over. Licel joined them 2026-09-04 on its own measurement rather than by resemblance: zero files for licel and dexprotector across 1,350 upstream packs, the same result the thirteen returned. It was reported by a consuming content-pack session, whose Licel Alice question returned nothing while Guardsquare answered -- the route existed and the vendor was simply missing from it, which is a registration gap and not a corpus gap. Licel's other product, Alice, is a real product name and an ordinary given name, so it is NOT here: it sits in product_aliases under the ambiguous gate, resolving only within two tokens of licel. class_aliases has no gate, which is why a word like that cannot live in this table. Four aliases are known to still resolve falsely and are kept rather than deleted: ran, relay, ad and switch. Only switch is the sole route to its class; identity.directory, telecom.ran and ot.protection_relay each keep three or more unambiguous aliases, so deleting ad, ran or relay would cost no class coverage. Measured 2026-09-13; the earlier claim that each was the only way into its class was wrong.",
+  "_ambiguous_comment": "Product aliases whose ordinary meaning competes with the product name. resolve() will not let one of these resolve on its own: a name for the owning vendor -- its whole name or any of its vendor aliases, never one word of a longer name -- has to appear within two tokens of it, or an unambiguous product alias of the same vendor has to appear within the same two tokens. Without that gate a caller asking about \"runtime application self-protection\" resolved to Android Runtime and Cisco IOS and was told RESOLUTION: product, with a GeoServer deserialisation record at rank 1 -- reported by a consuming content-pack session. The list is curated rather than derived, because both derivations tried are candidate generators and neither is a decider. Counting records whose vendor differs but whose prose carries the word ranks platform 85, client 31, tools 25, firewall 25 -- useful -- but also windows 17 and microsoft 11, which are not ambiguous to a caller who types them, while runtime and ios score 7 each and would sit far down the list. /usr/share/dict/words is worse: it flags confluence, chromium, outlook, asa and tomcat, and contains neither runtime nor ios. Add an entry when a caller could plausibly write the word meaning something other than the product. The dictionary still generates candidates: since 0.43.0 a test fails on any single-word product alias that is a dictionary word and is neither listed here nor kept in _ambiguous_reviewed_keep with a reason, so the decision is made rather than inherited.",
+  "_gate_comment": "How the tables above ambiguous_aliases are read. _ambiguous_reviewed_keep lists every single-word product alias that is also a dictionary word and was reviewed and kept ungated, with the reason; tests/test_ambiguous_aliases.py fails on a dictionary-word alias in neither list, so a new one is decided rather than inherited. ambiguous_vendor_aliases are vendor aliases that are ordinary words: one never adds a vendor on its own, is a no-op beside a product or name of the same vendor, and still counts as a name that corroborates that vendor's ambiguous products. ambiguous_class_aliases gate a class alias by mode: upper admits it only where the question writes it in capitals at that word, and with acronym_plural also as the acronym's plural in capitals with a lower-case s (ADs, SIMs), refuse_near refuses it within two words of any listed word, require_near admits it only within two words of one. singular_only aliases take no optional plural, because their plural is another word (cis, ads, hfs). vendor_families maps a vendor to the lines it acquired, which the corpus still files under their own names: a question naming the parent reaches a member's records as the parent's, a question naming a member never reaches the parent's other lines or a sibling's, and a record filed under the parent is the member's only where its products name the member. vendor_spellings lists names the corpus files one company under, which match each other both ways. platform_of maps a vendor, or a vendor and product, to the platform query.py uses to break ties.",
+  "_rasp_comment": "Mobile application shielding and RASP. These thirteen vendors are refused as sources, measured: zero files across 1,347 upstream packs, and a shielded binary's attestation goes to the vendor's own SaaS rather than a tenant dataset, so there is no evidence_type for it. That refusal stands and none of it is re-read. What these aliases do is different: they route the question to the classes a build-integrated SDK behaves as, so a caller who names one gets a labelled CLASS-LEVEL answer about compiling a third-party binary-rewriting dependency into a pipeline, instead of exit 1 -- or, before 0.29.0, an Android Runtime and a GeoServer record. dev.library and app.cicd reach 59 findings, 48 of them SUPPLY. security.edr fills two more loci and is deliberately not here: it derives ENDPOINT, and the handset is the one plane this corpus declines to advise on, which is the mistake this corpus made once with app.mdm and corrected. ENDPOINT and ORGANISATION come back as LOCUS_ABSENT, which is the honest answer and not a gap to paper over. Licel joined them 2026-09-04 on its own measurement rather than by resemblance: zero files for licel and dexprotector across 1,350 upstream packs, the same result the thirteen returned. It was reported by a consuming content-pack session, whose Licel Alice question returned nothing while Guardsquare answered -- the route existed and the vendor was simply missing from it, which is a registration gap and not a corpus gap. Licel's other product, Alice, is a real product name and an ordinary given name, so it is NOT here: it sits in product_aliases under the ambiguous gate, resolving only within two tokens of licel. class_aliases has no gate that asks for a vendor beside a word, only the capitals and context-word gates of ambiguous_class_aliases, and neither tells a product name from a given name, which is why a word like that cannot live in this table. Four class aliases were measured resolving falsely on 2026-09-13: ran, relay, ad and switch. ran and ad have been gated to capitals since 0.43.0. relay and switch still resolve falsely, are kept rather than deleted, and are pinned as failing by tests/test_class_aliases.py. Only switch is the sole route to its class; ot.protection_relay keeps three other aliases, so deleting relay would cost no class coverage. The earlier claim that each was the only way into its class was wrong.",
   "ambiguous_aliases": {
+    "access management": "the tail of privileged access management; ForgeRock's only beside its vendor",
+    "airflow": "air flow in a data centre; Apache Airflow only beside its vendor",
     "alice": "an ordinary given name; Licel ships a product called Alice",
+    "amplify": "attackers amplify DNS traffic; AWS Amplify only beside its vendor",
+    "auditor": "an auditor asking for coverage; Netwrix Auditor only beside its vendor",
+    "backup and replication": "Veeam's product name spelt with and; NAKIVO's only beside its vendor",
     "beacon": "a C2 beacon, the thing this corpus is mostly about",
-    "cargo": "Rust's package manager, and the English word",
     "cli": "any command-line interface",
     "client": "any client, in almost every record here",
+    "coherence": "the ordinary noun; Oracle Coherence only beside its vendor",
+    "command center": "any management console; Commvault's only beside its vendor",
     "compact": "the adjective",
-    "device management": "the concept; the class_aliases entry already carries app.mdm and app.rmm",
-    "web server": "the concept, and the class; the alias points at a backup product",
-    "multiple products": "a phrase an advisory uses, not a product",
+    "concerto": "the ordinary noun; Versa Concerto only beside its vendor",
     "controllers": "any controller, including every OT one",
     "core": "a core, a kernel, a product edition",
+    "counteract": "the verb, as in counteract credential theft",
+    "cursor": "cursor-based pagination and the text cursor; the Anysphere editor only beside its vendor, or as cursor ide or cursor editor",
+    "customer relationship management": "any CRM; SAP's only beside its vendor",
+    "dawn": "the time of day, as in beaconing at dawn",
     "defender": "the defender, who is the reader of every finding here",
     "desktop": "any desktop",
+    "device management": "the concept; the class_aliases entry already carries app.mdm and app.rmm",
     "director": "a person, and a dozen products",
     "edge": "the network edge, an edge device",
+    "email security gateway": "any vendor's mail gateway, Barracuda's included; Libraesva's only beside its vendor",
+    "email server": "any mail server; MDaemon's only beside its vendor",
+    "endpoint manager": "Ivanti's and Motex's and Microsoft's; Ivanti Endpoint Manager only beside its vendor",
     "enterprise": "the edition suffix on half the software here",
+    "eos": "end of sale and end of support; Arista EOS only beside its vendor",
+    "epm": "two vendors' products, Ivanti Endpoint Manager and CyberArk Endpoint Privilege Management; ivanti epm keeps its own alias",
+    "exchange": "key exchange, token exchange and a crypto exchange; Exchange Server keeps its own alias",
+    "expedition": "the ordinary noun; Palo Alto Networks Expedition only beside its vendor",
+    "eyesight": "the ordinary noun; Forescout eyeSight only beside its vendor",
     "firewall": "the class, which is what a caller means by it",
     "forms": "any form",
     "framework": "any framework",
     "frontend": "any front end",
     "helpdesk": "any help desk, and process.service_desk",
+    "horizon": "a time horizon, as in a 90 day horizon; omnissa horizon keeps its own alias",
     "ics": "industrial control systems, which is the ot.ics class",
+    "ignition": "a car ignition, and Inductive Automation's SCADA platform; Laravel Ignition only beside its vendor",
     "ios": "Apple iOS, far more often than Cisco IOS",
     "kernel": "any kernel",
+    "live update": "any vendor's update client; ASUS Live Update only beside its vendor",
+    "mail transfer agent": "any MTA; Exim only beside its vendor",
+    "media server": "any media server; Plex's only beside its vendor",
+    "multiple products": "a phrase an advisory uses, not a product",
+    "network attached storage": "any vendor's NAS; QNAP's only beside its vendor",
     "office": "a physical office, an office network",
+    "pixel": "a tracking pixel in a phishing mail; the Android handset only beside its vendor",
     "platform": "any platform",
     "project": "any project",
     "publisher": "the publisher of a source, a word this corpus uses constantly in prose",
+    "quantum": "post-quantum cryptography and quantum key distribution; quantum security gateway keeps its own alias",
+    "ray": "x-ray and ray tracing; the Ray AI framework only beside its vendor",
     "reader": "any reader",
     "routers": "the class, which is what a caller means by it",
     "runtime": "any runtime, and the word in \"runtime protection\"",
+    "s7": "a handset model and a protocol version as well as Siemens's controller series; the SIMATIC S7 only beside its vendor or the SIMATIC name",
     "salt": "a password salt",
+    "sd wan": "every vendor's SD-WAN; Cisco's only beside its vendor",
     "sdk": "any SDK",
+    "secure remote access": "any remote access product; SonicWall's only beside its vendor",
+    "security gateway": "any vendor's security gateway; Check Point's only beside its vendor",
     "sense": "the verb and the noun",
     "sentry": "a sentry, and Sentry.io",
     "spark": "the English word",
     "spring": "the season, and the English word",
+    "superset": "a superset of a rule set; Apache Superset only beside its vendor",
     "teams": "the plural of team",
     "tools": "any tooling",
+    "triton": "the TRITON safety-system malware; NVIDIA Triton only beside its vendor",
     "viewer": "any viewer",
+    "vigor": "the ordinary noun; DrayTek Vigor only beside its vendor",
+    "web server": "the concept, and the class; the alias points at a backup product",
     "webmail": "any webmail",
     "word": "the English word, the most generic token in the table"
+  },
+  "_ambiguous_reviewed_keep": {
+    "acrobat": "the ordinary sense is rare in a security question",
+    "aks": "an acronym with no competing sense here",
+    "azure": "the colour is rare in a security question, and bare Azure is how callers name it",
+    "chrome": "the finish is rare in a security question, and bare Chrome is how callers name the browser",
+    "chromium": "the metal is rare in a security question",
+    "confluence": "the ordinary sense is rare in a security question; see _ambiguous_comment",
+    "drupal": "a product name with no competing sense",
+    "excel": "the verb is rare in a security question, and bare Excel is how callers name it",
+    "firebox": "a product name with no competing sense",
+    "firepower": "the ordinary sense is rare in a security question",
+    "git": "names the tool whatever the context, and its alias names no vendor, so a gate could never admit it",
+    "hasp": "the ordinary noun is rare in a security question",
+    "internment": "an npm package name; the ordinary sense is rare in a security question",
+    "kemp": "a product name with no competing sense",
+    "macos": "a product name with no competing sense",
+    "panorama": "the ordinary sense is rare in a security question, and bare Panorama is how callers name it",
+    "snort": "the verb is rare in a security question, and bare Snort is how callers name the IDS",
+    "struts": "the ordinary noun is rare in a security question",
+    "yarn": "names the package manager whatever the context, and its alias names no vendor, so a gate could never admit it",
+    "windows": "KNOWN FALSE POSITIVE, kept: 'maintenance windows' resolves Windows, and gating it would lose the commonest bare naming of the platform; tests/test_ambiguous_aliases.py pins it as still failing",
+    "outlook": "KNOWN FALSE POSITIVE, kept: 'threat outlook' resolves Outlook, and gating it would lose the commonest bare naming of the client; tests/test_ambiguous_aliases.py pins it as still failing"
+  },
+  "ambiguous_vendor_aliases": {
+    "algo": "short for algorithm, as in hash algo downgrade",
+    "ami": "an Amazon Machine Image",
+    "arm": "an ARM template and the CPU architecture",
+    "array": "a storage array and the data structure",
+    "checkbox": "a checkbox on any form",
+    "daemon": "any background service",
+    "elastic": "an elastic IP and elastic scaling; elastic stack and elastic nv keep the vendor",
+    "meta": "meta tags and the prefix",
+    "ms": "milliseconds, as in 500 ms of jitter",
+    "nice": "the adjective, as in it would be nice to detect",
+    "notepad++": "notepad.exe, which normalises to the same word",
+    "pan": "a primary account number in a payment card question; palo alto and panw keep the vendor",
+    "progress": "attack in progress; progress software keeps the vendor",
+    "pulse": "a pulse of traffic; pulse secure keeps the vendor",
+    "quest": "the ordinary noun",
+    "rails": "guard rails; ruby on rails is a product alias",
+    "sentinel": "Microsoft Sentinel, the SIEM, and not Thales"
+  },
+  "ambiguous_class_aliases": {
+    "ids": {
+      "reason": "identifiers, as in which event IDs; the intrusion detection system is written IDS",
+      "mode": "upper",
+      "near": [],
+      "acronym_plural": true
+    },
+    "ips": {
+      "reason": "IP addresses, as in block these IPs; the intrusion prevention system is written IPS",
+      "mode": "upper",
+      "near": [],
+      "acronym_plural": true
+    },
+    "radius": {
+      "reason": "blast radius; the authentication protocol is written RADIUS",
+      "mode": "upper",
+      "near": []
+    },
+    "ad": {
+      "reason": "an advertisement; Active Directory is written AD",
+      "mode": "upper",
+      "near": [],
+      "acronym_plural": true
+    },
+    "ran": {
+      "reason": "the past tense of run; the radio access network is written RAN",
+      "mode": "upper",
+      "near": [],
+      "acronym_plural": true
+    },
+    "sim": {
+      "reason": "a simulation; the subscriber identity module is written SIM",
+      "mode": "upper",
+      "near": [],
+      "acronym_plural": true
+    },
+    "ci": {
+      "reason": "a configuration item and a confidence interval; continuous integration is written CI",
+      "mode": "upper",
+      "near": []
+    },
+    "actuator": {
+      "reason": "the Spring Boot actuator endpoints, where it is not a field device",
+      "mode": "refuse_near",
+      "near": [
+        "spring",
+        "boot",
+        "heapdump",
+        "env",
+        "endpoint",
+        "endpoints",
+        "management"
+      ]
+    },
+    "endpoint": {
+      "reason": "an API or service endpoint, and the management products named for the endpoint",
+      "mode": "refuse_near",
+      "near": [
+        "api",
+        "apis",
+        "rest",
+        "http",
+        "https",
+        "url",
+        "graphql",
+        "actuator",
+        "webhook",
+        "oauth",
+        "token",
+        "s3",
+        "vpc",
+        "private",
+        "service",
+        "manager",
+        "metadata"
+      ]
+    },
+    "endpoints": {
+      "reason": "API or service endpoints, and the management products named for the endpoint",
+      "mode": "refuse_near",
+      "near": [
+        "api",
+        "apis",
+        "rest",
+        "http",
+        "https",
+        "url",
+        "graphql",
+        "actuator",
+        "webhook",
+        "oauth",
+        "token",
+        "s3",
+        "vpc",
+        "private",
+        "service",
+        "manager",
+        "metadata"
+      ]
+    },
+    "tenant": {
+      "reason": "the caller's own platform tenant, as in deploy to our XSIAM tenant",
+      "mode": "refuse_near",
+      "near": [
+        "xsiam",
+        "xsoar",
+        "cortex",
+        "content",
+        "pack",
+        "dataset",
+        "datasets"
+      ]
+    },
+    "library": {
+      "reason": "a detection or content library, which is not a software dependency",
+      "mode": "refuse_near",
+      "near": [
+        "detection",
+        "content",
+        "rule",
+        "rules",
+        "playbook",
+        "playbooks",
+        "pattern",
+        "query",
+        "use",
+        "case"
+      ]
+    },
+    "pipeline": {
+      "reason": "a log or data pipeline, which is not CI/CD",
+      "mode": "refuse_near",
+      "near": [
+        "log",
+        "logs",
+        "ingestion",
+        "data",
+        "parsing",
+        "event",
+        "events",
+        "xdm",
+        "cribl",
+        "siem"
+      ]
+    },
+    "workflow": {
+      "reason": "a SOAR, analyst or business workflow, which is not CI/CD",
+      "mode": "refuse_near",
+      "near": [
+        "soar",
+        "approval",
+        "analyst",
+        "playbook",
+        "triage",
+        "incident",
+        "ticket",
+        "business"
+      ]
+    },
+    "package": {
+      "reason": "a parcel, as in a package delivery lure",
+      "mode": "refuse_near",
+      "near": [
+        "delivery",
+        "courier",
+        "parcel",
+        "shipping"
+      ]
+    },
+    "pam": {
+      "reason": "Linux pluggable authentication modules, which is not privileged access management",
+      "mode": "refuse_near",
+      "near": [
+        "linux",
+        "module",
+        "modules",
+        "pluggable",
+        "unix",
+        "sshd"
+      ]
+    },
+    "udm": {
+      "reason": "Google SecOps' unified data model and Ubiquiti's Dream Machine, which are not the telecom subscriber database",
+      "mode": "refuse_near",
+      "near": [
+        "google",
+        "secops",
+        "chronicle",
+        "ubiquiti",
+        "unifi",
+        "dream",
+        "field",
+        "fields"
+      ]
+    },
+    "routing": {
+      "reason": "mail and call routing rules, which are not a router",
+      "mode": "refuse_near",
+      "near": [
+        "mail",
+        "email",
+        "message",
+        "mailbox",
+        "rule",
+        "rules",
+        "call"
+      ]
+    },
+    "controller": {
+      "reason": "a domain, ingress, wireless or baseboard management controller, and Aviatrix's cloud controller; a PLC only beside the words that make it one",
+      "mode": "require_near",
+      "near": [
+        "plc",
+        "plcs",
+        "s7",
+        "simatic",
+        "siemens",
+        "logic",
+        "programmable",
+        "ladder",
+        "modicon",
+        "allen bradley",
+        "rockwell",
+        "ot",
+        "ics",
+        "scada",
+        "plant",
+        "industrial"
+      ]
+    }
+  },
+  "singular_only": [
+    "ad",
+    "ci",
+    "hf"
+  ],
+  "vendor_families": {
+    "Broadcom": [
+      "VMware",
+      "VMware Tanzu",
+      "Symantec"
+    ],
+    "Progress": [
+      "Telerik"
+    ],
+    "Hewlett Packard Enterprise (HPE)": [
+      "Hewlett Packard (HP)"
+    ]
+  },
+  "vendor_spellings": [
+    [
+      "Barracuda Networks",
+      "Barracuda"
+    ],
+    [
+      "QNAP",
+      "QNAP Systems"
+    ],
+    [
+      "Rockwell Automation",
+      "Rockwell"
+    ]
+  ],
+  "_product_families_comment": "One product the vendor ships, or the corpus and its catalogues file, under several names. A family's names match each other both ways, so a question naming any of them reaches a record naming another at the product tier: a FortiGate question reaches FortiOS, and an EPMM question MobileIron Core. A component is part of the product and runs one way, as vendor_families do: a question naming the product reaches a record naming the component, and a question naming the component reaches only the component. Names are matched as query.py matches any product, by canonical equality with bracketed segments and the vendor's own name removed and a trailing s optional, and never by containment, which matched Endpoint Manager (EPM) to Endpoint Manager Mobile. Until 0.43.0 there was no such table, and a FortiGate question tiered 9 of its 10 exposures and 5 of its 9 own findings as the vendor's other lines, among them a catalogued, ransomware-linked SSL-VPN flaw it then left out of the answer. Every entry states its reason; tests/test_product_identity.py holds each one to the records it moves, and asks every name beside its vendor for its own product and one set of classes, because until 0.44.0 fortigate resolved network.firewall and fortios network.vpn_gateway, and what a FortiGate answer reached depended on which of the two names was typed. A platform whose parts are sold as separate services is not a family: aws and amazon web services are vendor aliases of Amazon, whose records are all AWS services.",
+  "product_families": [
+    {
+      "vendor": "Fortinet",
+      "names": ["FortiGate", "FortiOS"],
+      "components": ["FortiGate SSL VPN", "FortiOS SSL-VPN"],
+      "reason": "FortiOS is the operating system every FortiGate runs, and the catalogue, the vendor's PSIRT and the government advisories file the appliance's flaws under either name. The SSL-VPN is a FortiOS feature on the same appliance."
+    },
+    {
+      "vendor": "Ivanti",
+      "names": ["Endpoint Manager Mobile", "MobileIron Core"],
+      "reason": "Ivanti renamed MobileIron Core to Endpoint Manager Mobile (EPMM) after acquiring MobileIron; the catalogue files one of its flaws under both names at once, and the corpus's EPMM observation lists both."
+    },
+    {
+      "vendor": "Ivanti",
+      "names": ["Connect Secure", "Pulse Connect Secure"],
+      "reason": "Pulse Connect Secure became Ivanti Connect Secure when Ivanti acquired Pulse Secure; the catalogue still files its older flaws under the Pulse name."
+    },
+    {
+      "vendor": "Ivanti",
+      "names": ["Policy Secure", "Pulse Policy Secure"],
+      "reason": "Pulse Policy Secure became Ivanti Policy Secure in the same acquisition."
+    },
+    {
+      "vendor": "Ivanti",
+      "names": ["Cloud Service Appliance", "Cloud Services Appliance", "Endpoint Manager Cloud Service Appliance"],
+      "reason": "One appliance, version 4.6 in every record here. The joint government advisory calls it Cloud Service Appliance, the catalogue files its 2024 flaws under Cloud Services Appliance (CSA) and its 2021 flaw under Endpoint Manager Cloud Service Appliance (EPM CSA), and NVD describes that 2021 flaw as one in the EPM Cloud Services Appliance (CSA). Service and Services differ mid-name, which no canonical form joins. Endpoint Manager itself is the product the appliance serves, and is not here."
+    },
+    {
+      "vendor": "Cisco",
+      "names": ["Adaptive Security Appliance", "Secure Firewall Adaptive Security Appliance"],
+      "reason": "Cisco renamed the ASA line Secure Firewall ASA; the catalogue files its 2025 flaws under the new name and its older ones under the old."
+    },
+    {
+      "vendor": "Cisco",
+      "names": ["Firepower Threat Defense", "Secure Firewall Threat Defense"],
+      "reason": "Firepower Threat Defense was renamed Secure Firewall Threat Defense in the same rebranding."
+    },
+    {
+      "vendor": "Cisco",
+      "names": ["Secure Firewall Management Center", "Firepower Management Center"],
+      "reason": "Firepower Management Center was renamed Secure Firewall Management Center in the same rebranding, and the corpus's FMC observation lists both."
+    },
+    {
+      "vendor": "Microsoft",
+      "names": ["Exchange Server", "Exchange"],
+      "reason": "The catalogue and the disclosure programme file the on-premises mail server as Exchange and as Exchange Server. Exchange Online is Microsoft 365's, a different product on a different plane, and is not here."
+    },
+    {
+      "vendor": "Linux",
+      "names": ["Kernel"],
+      "components": ["Kernel KSMBD"],
+      "reason": "KSMBD is the SMB server built into the Linux kernel, so a flaw in it is a flaw in the kernel a kernel question asked about."
+    },
+    {
+      "vendor": "Siemens",
+      "names": ["SIMATIC S7"],
+      "components": ["SIMATIC S7-200", "SIMATIC S7-300", "SIMATIC S7-400", "SIMATIC S7-1200", "SIMATIC S7-1500"],
+      "reason": "SIMATIC S7 is the controller series, and the S7-200 to S7-1500 are its lines; AA26-231A defends the series and lists all five. A question naming the series reaches a record naming a line, and a question naming a line reaches only that line. S7comm, the series' own protocol, names the series."
+    }
+  ],
+  "platform_of": {
+    "linux": "linux",
+    "red hat": "linux",
+    "ubuntu": "linux",
+    "debian": "linux",
+    "suse": "linux",
+    "centos": "linux",
+    "microsoft windows": "windows",
+    "windows": "windows",
+    "apple macos": "macos",
+    "macos": "macos"
   },
   "vendor_aliases": {
     "pan": "Palo Alto Networks",
@@ -92,7 +506,6 @@
     "nutanix": "Nutanix",
     "mozilla": "Mozilla",
     "google": "Google",
-    "akira": "Akira",
     "cisco": "Cisco",
     "citrix": "Citrix",
     "eldos": "EldoS",
@@ -111,7 +524,6 @@
     "winrar": "RARLAB",
     "f5": "F5",
     "activemq": "Apache",
-    "msp": "any",
     "netwrix": "Netwrix",
     "osgeo": "OSGeo",
     "juniper": "Juniper",
@@ -122,7 +534,6 @@
     "check point": "Check Point",
     "simplehelp": "SimpleHelp",
     "checkpoint": "Check Point",
-    "impacket": "any",
     "adobe": "Adobe",
     "accellion": "Accellion",
     "drupal": "Drupal",
@@ -270,7 +681,7 @@
     "servicenow": "ServiceNow",
     "twilio": "Twilio",
     "rejetto": "Rejetto",
-    "php group": "PHP Group",
+    "php group": "PHP",
     "arm": "Arm",
     "justice av solutions": "Justice AV Solutions",
     "nextgen healthcare": "NextGen Healthcare",
@@ -330,6 +741,8 @@
     "webmin": "Webmin",
     "arcserve": "Arcserve",
     "elastic": "Elastic",
+    "elastic stack": "Elastic",
+    "elastic nv": "Elastic",
     "d-link and trendnet": "D-Link and TRENDnet",
     "hewlett packard (hp)": "Hewlett Packard (HP)",
     "hewlett packard": "Hewlett Packard (HP)",
@@ -414,7 +827,9 @@
     "aquasec": "Aquasecurity",
     "ray project": "Ray-Project",
     "anyscale": "Ray-Project",
-    "mlflow": "MLflow"
+    "mlflow": "MLflow",
+    "aws": "Amazon",
+    "amazon web services": "Amazon"
   },
   "product_aliases": {
     "asa": {
@@ -432,6 +847,16 @@
       "product": "Firepower Threat Defense",
       "product_class": "network.firewall"
     },
+    "firepower threat defense": {
+      "vendor": "Cisco",
+      "product": "Firepower Threat Defense",
+      "product_class": "network.firewall"
+    },
+    "secure firewall threat defense": {
+      "vendor": "Cisco",
+      "product": "Secure Firewall Threat Defense",
+      "product_class": "network.firewall"
+    },
     "anyconnect": {
       "vendor": "Cisco",
       "product": "AnyConnect",
@@ -445,12 +870,18 @@
     "fortigate": {
       "vendor": "Fortinet",
       "product": "FortiGate",
-      "product_class": "network.firewall"
+      "product_class": [
+        "network.firewall",
+        "network.vpn_gateway"
+      ]
     },
     "fortios": {
       "vendor": "Fortinet",
       "product": "FortiOS",
-      "product_class": "network.vpn_gateway"
+      "product_class": [
+        "network.firewall",
+        "network.vpn_gateway"
+      ]
     },
     "globalprotect": {
       "vendor": "Palo Alto Networks",
@@ -672,6 +1103,11 @@
       "product": "VMware Horizon",
       "product_class": "network.remote_access"
     },
+    "omnissa horizon": {
+      "vendor": "Broadcom",
+      "product": "VMware Horizon",
+      "product_class": "network.remote_access"
+    },
     "okta": {
       "vendor": "Okta",
       "product": "Okta",
@@ -705,22 +1141,28 @@
     "srx": {
       "vendor": "Juniper",
       "product": "Junos OS SRX Series",
-      "product_class": "network.router"
+      "product_class": "network.firewall"
     },
     "ex series": {
       "vendor": "Juniper",
       "product": "Junos OS EX Series",
-      "product_class": "network.router"
+      "product_class": "network.switch"
     },
     "j-web": {
       "vendor": "Juniper",
       "product": "Junos OS J-Web",
-      "product_class": "network.router"
+      "product_class": [
+        "network.firewall",
+        "network.switch"
+      ]
     },
     "jweb": {
       "vendor": "Juniper",
       "product": "Junos OS J-Web",
-      "product_class": "network.router"
+      "product_class": [
+        "network.firewall",
+        "network.switch"
+      ]
     },
     "telerik": {
       "vendor": "Progress",
@@ -735,12 +1177,15 @@
     "forticlient ems": {
       "vendor": "Fortinet",
       "product": "FortiClient EMS",
-      "product_class": "network.firewall"
+      "product_class": [
+        "app.rmm",
+        "security.edr"
+      ]
     },
     "cloud service appliance": {
       "vendor": "Ivanti",
       "product": "Cloud Service Appliance",
-      "product_class": "network.vpn_gateway"
+      "product_class": "network.remote_access"
     },
     "quantum": {
       "vendor": "Check Point",
@@ -940,22 +1385,42 @@
     "secure firewall management center (fmc)": {
       "vendor": "Cisco",
       "product": "Secure Firewall Management Center (FMC)",
-      "product_class": "network.firewall"
+      "product_class": [
+        "app.rmm",
+        "network.firewall"
+      ]
     },
     "secure firewall management center": {
       "vendor": "Cisco",
       "product": "Secure Firewall Management Center (FMC)",
-      "product_class": "network.firewall"
+      "product_class": [
+        "app.rmm",
+        "network.firewall"
+      ]
+    },
+    "firepower management center": {
+      "vendor": "Cisco",
+      "product": "Secure Firewall Management Center (FMC)",
+      "product_class": [
+        "app.rmm",
+        "network.firewall"
+      ]
     },
     "velocloud orchestrator": {
       "vendor": "Arista",
       "product": "VeloCloud Orchestrator",
-      "product_class": "network.wan_edge"
+      "product_class": [
+        "app.rmm",
+        "network.wan_edge"
+      ]
     },
     "smartconsole": {
       "vendor": "Check Point",
       "product": "SmartConsole",
-      "product_class": "network.firewall"
+      "product_class": [
+        "app.rmm",
+        "network.firewall"
+      ]
     },
     "sharepoint": {
       "vendor": "Microsoft",
@@ -970,7 +1435,7 @@
     "fortisandbox": {
       "vendor": "Fortinet",
       "product": "FortiSandbox",
-      "product_class": "network.firewall"
+      "product_class": "security.edr"
     },
     "e-business suite": {
       "vendor": "Oracle",
@@ -1055,7 +1520,10 @@
     "catalyst sd-wan manager": {
       "vendor": "Cisco",
       "product": "Catalyst SD-WAN Manager",
-      "product_class": "network.router"
+      "product_class": [
+        "app.rmm",
+        "network.router"
+      ]
     },
     "peoplesoft enterprise peopletools": {
       "vendor": "Oracle",
@@ -1075,7 +1543,7 @@
     "extensible operating system": {
       "vendor": "Arista",
       "product": "Extensible Operating System",
-      "product_class": "endpoint.os"
+      "product_class": "network.switch"
     },
     "litellm": {
       "vendor": "BerriAI",
@@ -1193,7 +1661,10 @@
     "catalyst sd-wan manger": {
       "vendor": "Cisco",
       "product": "Catalyst SD-WAN Manger",
-      "product_class": "network.router"
+      "product_class": [
+        "app.rmm",
+        "network.router"
+      ]
     },
     "kentico xperience": {
       "vendor": "Kentico",
@@ -1340,7 +1811,7 @@
     },
     "webmail": {
       "vendor": "Roundcube",
-      "product": "Webmail",
+      "product": "Roundcube Webmail",
       "product_class": "server.mail"
     },
     "recoverpoint for virtual machines (rp4vms)": {
@@ -1451,7 +1922,7 @@
     "live update": {
       "vendor": "ASUS",
       "product": "Live Update",
-      "product_class": "network.router"
+      "product_class": "endpoint.os"
     },
     "sma1000 appliance": {
       "vendor": "SonicWall",
@@ -1496,7 +1967,7 @@
     "fortiweb": {
       "vendor": "Fortinet",
       "product": "FortiWeb",
-      "product_class": "network.firewall"
+      "product_class": "network.proxy"
     },
     "triofox": {
       "vendor": "Gladinet",
@@ -1540,7 +2011,7 @@
     },
     "xperience cms": {
       "vendor": "Kentico",
-      "product": "Xperience CMS",
+      "product": "Kentico Xperience",
       "product_class": "server.web"
     },
     "experience manager forms": {
@@ -1766,7 +2237,7 @@
     "brocade fabric os": {
       "vendor": "Broadcom",
       "product": "Brocade Fabric OS",
-      "product_class": "server.hypervisor"
+      "product_class": "network.switch"
     },
     "active! mail": {
       "vendor": "Qualitia",
@@ -1871,7 +2342,7 @@
     "partner center": {
       "vendor": "Microsoft",
       "product": "Partner Center",
-      "product_class": "endpoint.os"
+      "product_class": "cloud.saas"
     },
     "agile product lifecycle management (plm)": {
       "vendor": "Oracle",
@@ -2026,12 +2497,15 @@
     "kemp loadmaster": {
       "vendor": "Progress",
       "product": "Kemp LoadMaster",
-      "product_class": "server.file_transfer"
+      "product_class": "network.load_balancer"
     },
     "expedition": {
       "vendor": "Palo Alto Networks",
       "product": "Expedition",
-      "product_class": "network.firewall"
+      "product_class": [
+        "app.rmm",
+        "network.firewall"
+      ]
     },
     "jira server and data center": {
       "vendor": "Atlassian",
@@ -2071,7 +2545,10 @@
     "fortimanager": {
       "vendor": "Fortinet",
       "product": "FortiManager",
-      "product_class": "network.firewall"
+      "product_class": [
+        "app.rmm",
+        "network.firewall"
+      ]
     },
     "sl1": {
       "vendor": "ScienceLogic",
@@ -2151,7 +2628,10 @@
     "director": {
       "vendor": "Versa",
       "product": "Director",
-      "product_class": "network.wan_edge"
+      "product_class": [
+        "app.rmm",
+        "network.wan_edge"
+      ]
     },
     "ip camera firmware": {
       "vendor": "Dahua",
@@ -2231,6 +2711,11 @@
     "quantum security gateways": {
       "vendor": "Check Point",
       "product": "Quantum Security Gateways",
+      "product_class": "network.firewall"
+    },
+    "quantum security gateway": {
+      "vendor": "Check Point",
+      "product": "Quantum Security Gateway",
       "product_class": "network.firewall"
     },
     "viewer": {
@@ -2416,7 +2901,7 @@
     },
     "cisco ios xe web ui": {
       "vendor": "Cisco",
-      "product": "Cisco IOS XE Web UI",
+      "product": "IOS XE Web UI",
       "product_class": "network.router"
     },
     "ios xe web ui": {
@@ -2477,7 +2962,7 @@
     "ignition": {
       "vendor": "Laravel",
       "product": "Ignition",
-      "product_class": "ot.scada_server"
+      "product_class": "server.web"
     },
     "chromium webp": {
       "vendor": "Google",
@@ -2492,7 +2977,7 @@
     "streaming service proxy": {
       "vendor": "Microsoft",
       "product": "Streaming Service Proxy",
-      "product_class": "network.proxy"
+      "product_class": "endpoint.os"
     },
     "ios, ipados, and watchos": {
       "vendor": "Apple",
@@ -2610,6 +3095,11 @@
       "product_class": "security.email_gateway"
     },
     "email security gateway appliance": {
+      "vendor": "Barracuda Networks",
+      "product": "Email Security Gateway (ESG) Appliance",
+      "product_class": "security.email_gateway"
+    },
+    "barracuda email security gateway": {
       "vendor": "Barracuda Networks",
       "product": "Email Security Gateway (ESG) Appliance",
       "product_class": "security.email_gateway"
@@ -3057,7 +3547,7 @@
     "firebox and xtm": {
       "vendor": "WatchGuard",
       "product": "Firebox and XTM",
-      "product_class": "network.router"
+      "product_class": "network.firewall"
     },
     "checkbox survey": {
       "vendor": "Checkbox",
@@ -3066,12 +3556,12 @@
     },
     "qnap network-attached storage (nas)": {
       "vendor": "QNAP",
-      "product": "QNAP Network-Attached Storage (NAS)",
+      "product": "Network Attached Storage (NAS)",
       "product_class": "security.backup"
     },
     "qnap network-attached storage": {
       "vendor": "QNAP",
-      "product": "QNAP Network-Attached Storage (NAS)",
+      "product": "Network Attached Storage (NAS)",
       "product_class": "security.backup"
     },
     "http protocol stack": {
@@ -3177,7 +3667,7 @@
     "firebox and xtm appliances": {
       "vendor": "WatchGuard",
       "product": "Firebox and XTM Appliances",
-      "product_class": "network.router"
+      "product_class": "network.firewall"
     },
     "micollab, mivoice business express": {
       "vendor": "Mitel",
@@ -3251,7 +3741,7 @@
     },
     "xperience": {
       "vendor": "Kentico",
-      "product": "Xperience",
+      "product": "Kentico Xperience",
       "product_class": "server.web"
     },
     "matrix project plugin": {
@@ -3294,15 +3784,20 @@
       "product": "KACE System Management Appliance",
       "product_class": "app.rmm"
     },
+    "kace": {
+      "vendor": "Quest",
+      "product": "KACE Systems Management Appliance (SMA)",
+      "product_class": "app.rmm"
+    },
     "secure access control system": {
       "vendor": "Cisco",
       "product": "Secure Access Control System (ACS)",
-      "product_class": "facility.physical_access"
+      "product_class": "identity.directory"
     },
     "secure access control system (acs)": {
       "vendor": "Cisco",
       "product": "Secure Access Control System (ACS)",
-      "product_class": "facility.physical_access"
+      "product_class": "identity.directory"
     },
     "vpn routers": {
       "vendor": "Cisco",
@@ -3362,12 +3857,18 @@
     "prime data center network manager": {
       "vendor": "Cisco",
       "product": "Prime Data Center Network Manager (DCNM)",
-      "product_class": "network.router"
+      "product_class": [
+        "app.rmm",
+        "network.switch"
+      ]
     },
     "prime data center network manager (dcnm)": {
       "vendor": "Cisco",
       "product": "Prime Data Center Network Manager (DCNM)",
-      "product_class": "network.router"
+      "product_class": [
+        "app.rmm",
+        "network.switch"
+      ]
     },
     "kerberos key distribution center (kdc)": {
       "vendor": "Microsoft",
@@ -3527,12 +4028,18 @@
     "forefront threat management gateway (tmg)": {
       "vendor": "Microsoft",
       "product": "Forefront Threat Management Gateway (TMG)",
-      "product_class": "endpoint.os"
+      "product_class": [
+        "network.firewall",
+        "network.proxy"
+      ]
     },
     "forefront threat management gateway": {
       "vendor": "Microsoft",
       "product": "Forefront Threat Management Gateway (TMG)",
-      "product_class": "endpoint.os"
+      "product_class": [
+        "network.firewall",
+        "network.proxy"
+      ]
     },
     "virtualbox": {
       "vendor": "Oracle",
@@ -3752,7 +4259,7 @@
     "nexus repository manager": {
       "vendor": "Sonatype",
       "product": "Nexus Repository Manager",
-      "product_class": "network.switch"
+      "product_class": "app.cicd"
     },
     "solr": {
       "vendor": "Apache",
@@ -4147,7 +4654,7 @@
     "nexus repository": {
       "vendor": "Sonatype",
       "product": "Nexus Repository",
-      "product_class": "network.switch"
+      "product_class": "app.cicd"
     },
     "sonicwall email security": {
       "vendor": "SonicWall",
@@ -4282,7 +4789,10 @@
     "forticlientems": {
       "vendor": "Fortinet",
       "product": "FortiClientEMS",
-      "product_class": "security.edr"
+      "product_class": [
+        "app.rmm",
+        "security.edr"
+      ]
     },
     "fortideceptor": {
       "vendor": "Fortinet",
@@ -4341,7 +4851,7 @@
     },
     "fortisanbox": {
       "vendor": "Fortinet",
-      "product": "FortiSanbox",
+      "product": "FortiSandbox",
       "product_class": "security.edr"
     },
     "fortiswitch": {
@@ -4352,7 +4862,10 @@
     "fortiswitchmanager": {
       "vendor": "Fortinet",
       "product": "FortiSwitchManager",
-      "product_class": "network.switch"
+      "product_class": [
+        "app.rmm",
+        "network.switch"
+      ]
     },
     "fortitokenandroid": {
       "vendor": "Fortinet",
@@ -4367,12 +4880,12 @@
     "asika": {
       "vendor": "Nokia",
       "product": "ASIKA",
-      "product_class": "network.wan_edge"
+      "product_class": "telecom.ran"
     },
     "bts": {
       "vendor": "Nokia",
       "product": "BTS",
-      "product_class": "network.wan_edge"
+      "product_class": "telecom.ran"
     },
     "beacon": {
       "vendor": "Nokia",
@@ -4417,7 +4930,7 @@
     "single ran": {
       "vendor": "Nokia",
       "product": "Single RAN",
-      "product_class": "network.wan_edge"
+      "product_class": "telecom.ran"
     },
     "tnms": {
       "vendor": "Nokia",
@@ -4482,7 +4995,10 @@
     "panorama": {
       "vendor": "Palo Alto Networks",
       "product": "Panorama",
-      "product_class": "app.rmm"
+      "product_class": [
+        "app.rmm",
+        "network.firewall"
+      ]
     },
     "prisma access": {
       "vendor": "Palo Alto Networks",
@@ -5267,16 +5783,6 @@
       "product": "Cloudflare WAF",
       "product_class": "network.proxy"
     },
-    "aws": {
-      "vendor": "Amazon",
-      "product": "Amazon Web Services",
-      "product_class": "cloud.iaas"
-    },
-    "amazon web services": {
-      "vendor": "Amazon",
-      "product": "Amazon Web Services",
-      "product_class": "cloud.iaas"
-    },
     "amazon s3": {
       "vendor": "Amazon",
       "product": "Amazon S3",
@@ -5393,6 +5899,11 @@
       "product_class": "cloud.identity"
     },
     "microsoft 365": {
+      "vendor": "Microsoft",
+      "product": "Microsoft 365",
+      "product_class": "cloud.saas"
+    },
+    "exchange online": {
       "vendor": "Microsoft",
       "product": "Microsoft 365",
       "product_class": "cloud.saas"
@@ -5642,6 +6153,16 @@
       "product": "Cursor",
       "product_class": "app.ai_platform"
     },
+    "cursor ide": {
+      "vendor": "Anysphere",
+      "product": "Cursor",
+      "product_class": "app.ai_platform"
+    },
+    "cursor editor": {
+      "vendor": "Anysphere",
+      "product": "Cursor",
+      "product_class": "app.ai_platform"
+    },
     "npmjs": {
       "vendor": "npm",
       "product": "npm",
@@ -5680,11 +6201,6 @@
     "pypi": {
       "vendor": "any",
       "product": "PyPI",
-      "product_class": "dev.library"
-    },
-    "package manager": {
-      "vendor": "any",
-      "product": "npm registry",
       "product_class": "dev.library"
     },
     "ray": {
@@ -5884,7 +6400,17 @@
     },
     "s7comm": {
       "vendor": "Siemens",
-      "product": "SIMATIC S7-1500",
+      "product": "SIMATIC S7",
+      "product_class": "ot.plc"
+    },
+    "s7": {
+      "vendor": "Siemens",
+      "product": "SIMATIC S7",
+      "product_class": "ot.plc"
+    },
+    "simatic s7": {
+      "vendor": "Siemens",
+      "product": "SIMATIC S7",
       "product_class": "ot.plc"
     },
     "tia portal": {
@@ -5920,26 +6446,6 @@
     "proc-macro2": {
       "vendor": "Multiple",
       "product": "proc-macro1",
-      "product_class": "dev.library"
-    },
-    "crates.io": {
-      "vendor": "Multiple",
-      "product": "arrayref",
-      "product_class": "dev.library"
-    },
-    "crates io": {
-      "vendor": "Multiple",
-      "product": "arrayref",
-      "product_class": "dev.library"
-    },
-    "cargo": {
-      "vendor": "Multiple",
-      "product": "arrayref",
-      "product_class": "dev.library"
-    },
-    "rust crate": {
-      "vendor": "Multiple",
-      "product": "arrayref",
       "product_class": "dev.library"
     },
     "badiis": {
@@ -6010,6 +6516,19 @@
       "product": "Endpoint Manager (EPM)",
       "product_class": "app.rmm"
     },
+    "ivanti epm": {
+      "vendor": "Ivanti",
+      "product": "Endpoint Manager (EPM)",
+      "product_class": "app.rmm"
+    },
+    "ivanti endpoint manager mobile": {
+      "vendor": "Ivanti",
+      "product": "Endpoint Manager Mobile",
+      "product_class": [
+        "app.mdm",
+        "app.rmm"
+      ]
+    },
     "lanscope": {
       "vendor": "Motex",
       "product": "LANSCOPE Endpoint Manager",
@@ -6027,6 +6546,11 @@
         "dev.library",
         "app.cicd"
       ]
+    },
+    "veeam backup and replication": {
+      "vendor": "Veeam",
+      "product": "Backup & Replication",
+      "product_class": "security.backup"
     }
   },
   "class_aliases": {
@@ -6139,7 +6663,6 @@
     "plc": "ot.plc",
     "scada": "ot.scada_server",
     "engineering workstation": "ot.engineering_workstation",
-    "ews": "ot.engineering_workstation",
     "safety system": "ot.safety_system",
     "sis": "ot.safety_system",
     "licence server": "app.licensing",
@@ -6163,6 +6686,7 @@
     "wiki": "app.collaboration",
     "collaboration": "app.collaboration",
     "library": "dev.library",
+    "crate": "dev.library",
     "dependency": "dev.library",
     "soho router": "network.router",
     "home router": "network.router",
@@ -6299,6 +6823,7 @@
     "monitoring platform": "security.siem",
     "backups": "security.backup",
     "nas": "security.backup",
+    "network attached storage": "security.backup",
     "storage appliance": "security.backup",
     "multi factor": "security.mfa",
     "multifactor": "security.mfa",
@@ -6336,9 +6861,9 @@
     "forward proxy": "network.proxy",
     "reverse proxy": "network.proxy",
     "sdwan": "network.wan_edge",
+    "sd wan": "network.wan_edge",
     "wan edge": "network.wan_edge",
     "branch router": "network.wan_edge",
-    "directory": "identity.directory",
     "directory service": "identity.directory",
     "remote monitoring": "app.rmm",
     "endpoint management": "app.rmm",
@@ -6352,7 +6877,6 @@
     "continuous integration": "app.cicd",
     "chat platform": "app.collaboration",
     "conferencing": "app.collaboration",
-    "teams": "app.collaboration",
     "itsm": "app.itsm",
     "ticketing": "app.itsm",
     "office suite": "app.office_suite",
@@ -6438,6 +6962,8 @@
     "base station": "telecom.ran",
     "radio access network": "telecom.ran",
     "ss7": "telecom.signalling",
+    "siemens s7": "ot.plc",
+    "simatic s7": "ot.plc",
     "diameter": "telecom.signalling",
     "gtp": "telecom.signalling",
     "gtp-u": "telecom.signalling",
@@ -6526,7 +7052,8 @@
     "mobile fleet management": [
       "app.mdm",
       "app.rmm"
-    ]
+    ],
+    "ldap": "identity.directory"
   },
   "sector_aliases": {
     "electric": "energy.electric",
